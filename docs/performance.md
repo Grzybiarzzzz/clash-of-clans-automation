@@ -16,6 +16,8 @@ I kept timing logs while iterating on the bot and optimizing the SBarb attack ro
 
 Attack counts come from timestamped records because the loop counter resets between runs. Neither log contains exact duplicate rows or duplicate timestamps.
 
+The [complete datasets and reproduction script](metrics/README.md) include every recorded attack, with calendar dates and chronological order preserved. Time of day is omitted for privacy.
+
 ## SBarb target attainment
 
 The 5,023 SBarb records from 23 January to 10 May 2026 include an outcome: 4,873 are marked Success, 114 Failed (timeout), and 36 Failed (early end). That is 97.0% marked Success among labelled records; the other 7,070 have no outcome field. In the current implementation, Success means the detected destruction percentage reached the configured target, not an independently verified game result.
@@ -24,7 +26,7 @@ The building-name field records the selected spell target when the code marks sp
 
 ## How the comparison was calculated
 
-All rows were parsed according to their actual width and sorted by timestamp. SBarb records evolved from three columns to four and then five; Builder Base records added a troop-mode column before the timestamp. The initial CSV headers do not describe every later row.
+The original logs evolved during development: SBarb added spell-target and outcome fields, while Builder Base added troop mode. The published CSVs use consistent columns, leave missing values blank, and preserve the original timestamp order through `attack_number`.
 
 The comparison uses equal-sized first and last windows of 1,000 records, including all logged durations. No slow runs, failures, or statistical outliers were removed. The first window spans 2025-10-30–2025-11-22; the last spans 2026-04-14–2026-05-10. The chart shows a rolling window of 500 attacks, sampled every 25 records plus the final record.
 

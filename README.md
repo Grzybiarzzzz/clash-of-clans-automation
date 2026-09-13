@@ -17,7 +17,7 @@ I kept timing logs as I iterated on the attack routine. Target attainment means 
 
 ![SBarb attack duration over recorded usage](docs/metrics/sbarb-duration.png)
 
-See [Attack logs and timing improvements](docs/performance.md) for outcome definitions, comparison windows, and aggregate data. Builder Base records document use across different troop strategies and opponent strengths.
+The [complete attack datasets and reproduction script](docs/metrics/README.md) make these statistics reproducible. See [Attack logs and timing improvements](docs/performance.md) for outcome definitions and comparison windows. Builder Base records document use across different troop strategies and opponent strengths.
 
 ## Explore the project
 
