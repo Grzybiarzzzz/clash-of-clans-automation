@@ -1,0 +1,32 @@
+# Local credentials and runtime data
+private_config.py
+.env
+.env.*
+data/
+temp/
+errors/
+debug_ocr_regions/
+screenshots/debug/
+screenshots/ai/
+*.log
+wall_coordinates.json
+
+# Python and test caches
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+*.egg-info/
+
+# Frontend and build products
+node_modules/
+dist/
+build/
+
+# Editor and operating-system files
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+nul

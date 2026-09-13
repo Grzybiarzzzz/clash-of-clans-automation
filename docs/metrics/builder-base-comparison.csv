@@ -1,0 +1,20 @@
+window,troop_mode,recorded_stars,attacks,mean_seconds,median_seconds
+"First 1,000",All,All,1000,35.0157,33.955
+"First 1,000",All,0,24,50.6529,28.835
+"First 1,000",All,2,735,33.5508,32.84
+"First 1,000",All,3,241,37.9259,35.85
+"First 1,000",Baby Dragons,0,17,40.4671,21.48
+"First 1,000",Baby Dragons,2,103,29.6761,27.47
+"First 1,000",Baby Dragons,3,238,37.7191,35.815
+"First 1,000",Bomber + Night Witches,0,5,69.806,63.0
+"First 1,000",Bomber + Night Witches,2,486,34.1869,33.29
+"First 1,000",Bomber + Night Witches,3,3,54.3267,49.88
+"First 1,000",Unrecorded,0,2,89.35,89.35
+"First 1,000",Unrecorded,2,146,34.167,33.875
+"Last 1,000",All,All,1000,47.2955,42.83
+"Last 1,000",All,0,86,53.4569,39.465
+"Last 1,000",All,2,152,52.7905,44.02
+"Last 1,000",All,3,762,45.504,42.895
+"Last 1,000",Baby Dragons,0,86,53.4569,39.465
+"Last 1,000",Baby Dragons,2,152,52.7905,44.02
+"Last 1,000",Baby Dragons,3,762,45.504,42.895

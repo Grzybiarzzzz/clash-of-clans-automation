@@ -1,0 +1,16 @@
+# private_config.py.example
+# Fill in your own tokens, API keys, and IDs. Rename this file to private_config.py after editing.
+# DO NOT commit your actual private_config.py to version control!
+
+# Discord Webhook URLs
+DISCORD_WEBHOOK_URL = "https://discord.com/api/webhooks/your_webhook_id/your_webhook_token"
+DISCORD_OCR_WEBHOOK_URL = "https://discord.com/api/webhooks/your_ocr_webhook_id/your_ocr_webhook_token"
+
+# Clash of Clans API
+COC_API_TOKEN = "your_clash_of_clans_api_token"
+COC_PLAYER_TAG = "YOURPLAYERTAG"
+
+# Discord Bot
+DISCORD_TOKEN = "your_discord_bot_token"
+AUTHORIZED_USERS = [123456789012345678]  # List of Discord user IDs (as integers)
+CONTROL_CHANNEL_ID = 123456789012345678  # Discord channel ID (as integer) 
