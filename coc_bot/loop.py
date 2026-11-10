@@ -52,7 +52,7 @@ def _take_scheduled_break_if_due():
 
 def _recover_from_end_screen(return_home_pos):
     """Leave a stuck end screen: click Return Home, close the star bonus and wait for the base."""
-    print(f"[MAIN LOOP] !! Return Home detected at loop start - recovering from stuck end screen")
+    print("[MAIN LOOP] !! Return Home detected at loop start - recovering from stuck end screen")
     runtime.gui.log_message("Recovery: Clicking Return Home (stuck on end screen)")
     send_discord_debug_log("Main Loop: Return Home recovery triggered", "WARNING")
 
@@ -168,7 +168,7 @@ def _run_evaluated_attack_cycle(sgoblin_farm_mode):
     """Evaluation-based modes: skip bases until one is attacked (Super Goblin farming or the normal attack)."""
     while runtime.running:
         if sgoblin_farm_mode:
-            print(f"[DEBUG] ✓ sgoblin_farm_mode matched - using perform_sgoblin_farm_attack()")
+            print("[DEBUG] ✓ sgoblin_farm_mode matched - using perform_sgoblin_farm_attack()")
             # Handle SGoblin Farm mode (no TH/AD detection, resource-based only)
             result = perform_sgoblin_farm_attack()
             if result == True:
@@ -221,7 +221,7 @@ def _run_evaluated_attack_cycle(sgoblin_farm_mode):
                 runtime.root.after(0, lambda: runtime.gui.update_skipped_stats(runtime.skipped_bases, runtime.attacked_bases))
                 break  # Exit inner while loop to start a new attack cycle
         else:
-            print(f"[DEBUG] Using NORMAL ATTACK mode (will evaluate and may skip)")
+            print("[DEBUG] Using NORMAL ATTACK mode (will evaluate and may skip)")
             # Handle normal attack mode
             should_pause = perform_normal_attack()
             if should_pause:
@@ -388,9 +388,9 @@ def main_loop():
 
             # 2. Fast attack modes (no evaluation) - handle immediately and skip evaluation loop
             # These modes attack every base without checking resources/defenses
-            print(f"[DEBUG] Checking fast attack modes...")
+            print("[DEBUG] Checking fast attack modes...")
             if derank_mode:
-                print(f"[DEBUG] ✓ derank_mode matched - using handle_derank_mode()")
+                print("[DEBUG] ✓ derank_mode matched - using handle_derank_mode()")
                 # Derank: attack every base with one troop
                 if handle_derank_mode():
                     runtime.loop_count += 1
@@ -403,8 +403,8 @@ def main_loop():
                 continue  # Skip to next attack cycle immediately
 
             elif sbarb_farm_mode:
-                print(f"[DEBUG] ✓ ✓ ✓ sbarb_farm_mode matched - using handle_sbarb_farm_mode()")
-                print(f"[DEBUG] NO EVALUATION - NO SKIPPING - Attacking base immediately!")
+                print("[DEBUG] ✓ ✓ ✓ sbarb_farm_mode matched - using handle_sbarb_farm_mode()")
+                print("[DEBUG] NO EVALUATION - NO SKIPPING - Attacking base immediately!")
                 send_discord_debug_log("SBarb Farm: Mode ACTIVE - NO evaluation, attacking immediately")
                 # SBarb Farm: NO EVALUATION, NO SKIPPING - Attack every base immediately
                 if handle_sbarb_farm_mode():
@@ -480,8 +480,8 @@ def main_loop():
 
             # 3. Evaluation-based attack modes (may skip bases)
             # These modes check resources/defenses and may skip bases
-            print(f"[DEBUG] ❌ No fast modes matched - entering evaluation loop")
-            print(f"[DEBUG] Will check: SGoblin Farm or Normal Attack")
+            print("[DEBUG] ❌ No fast modes matched - entering evaluation loop")
+            print("[DEBUG] Will check: SGoblin Farm or Normal Attack")
             _run_evaluated_attack_cycle(sgoblin_farm_mode)
 
         except pytesseract.pytesseract.TesseractNotFoundError:

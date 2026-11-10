@@ -13,7 +13,7 @@ import math
 
 # Import configuration
 try:
-    from coc_bot.humanized_config import *
+    from coc_bot.humanized_config import *  # noqa: F403
 except ImportError:
     # Fallback to default values if config file is missing
     print("Warning: humanized_config.py not found, using default settings")

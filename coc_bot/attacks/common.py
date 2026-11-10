@@ -164,8 +164,8 @@ def deploy_lightning_spells(air_defenses, lightning_targets, chosen_side, settin
     reinforcements_enabled = get_global_reinforcements_enabled()
     
     if reinforcements_enabled:
-        print(f"Deploying 13 lightning spells on 4 air defenses (Reinforcements mode)")
-        runtime.gui.log_message(f"Deploying 13 lightning spells on 4 air defenses (Reinforcements mode)")
+        print("Deploying 13 lightning spells on 4 air defenses (Reinforcements mode)")
+        runtime.gui.log_message("Deploying 13 lightning spells on 4 air defenses (Reinforcements mode)")
         send_discord_debug_log("Deploying 13 lightning spells (Reinforcements mode)")
         
         position_to_level = {}
@@ -204,9 +204,9 @@ def deploy_lightning_spells(air_defenses, lightning_targets, chosen_side, settin
         runtime.gui.log_message("Lightning spell deployment completed (Reinforcements mode)")
         send_discord_debug_log("Lightning spell deployment completed (Reinforcements mode)")
     else:
-        print(f"Deploying lightning spells on top 3 air defenses (non-reinforcements mode)")
-        runtime.gui.log_message(f"Deploying lightning spells on top 3 air defenses (non-reinforcements mode)")
-        send_discord_debug_log(f"Deploying lightning spells on top 3 air defenses (non-reinforcements mode)")
+        print("Deploying lightning spells on top 3 air defenses (non-reinforcements mode)")
+        runtime.gui.log_message("Deploying lightning spells on top 3 air defenses (non-reinforcements mode)")
+        send_discord_debug_log("Deploying lightning spells on top 3 air defenses (non-reinforcements mode)")
         
         position_to_level = {}
         for x, y, level, _ in air_defenses:

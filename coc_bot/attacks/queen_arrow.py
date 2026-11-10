@@ -21,7 +21,7 @@ def detect_queen_arrow_projectile():
         List of (x, y) coordinates along arrow path for spell casting, or None if detection failed
     """
     try:
-        print(f"[QUEEN ARROW] Starting glow trail detection...")
+        print("[QUEEN ARROW] Starting glow trail detection...")
 
         # Arrow glow trail color range (bright cyan/green beam)
         # CALIBRATED VALUES - tuned to reduce false positives
@@ -117,13 +117,12 @@ def detect_queen_arrow_projectile():
         y_coords_all = np.array([p[1] for p in all_glow_points])
 
         if len(x_coords_all) < 3:
-            print(f"[QUEEN ARROW] Not enough points for clustering")
+            print("[QUEEN ARROW] Not enough points for clustering")
             return None
 
         # IMPROVED: Find the densest LINE segment by starting from the densest point
         # and including only connected neighbors - prevents scattered points from skewing the line
         cluster_radius = 200  # pixels - connection radius
-        min_neighbors = 2  # Reduced - we'll filter more later
 
         # Step 1: Count neighbors for each point
         neighbor_counts = []
@@ -139,7 +138,7 @@ def detect_queen_arrow_projectile():
         # Step 2: Find ALL connected components, then choose the most LINEAR one
         # (Arrow paths are straight lines, not scattered clusters)
         if len(neighbor_counts) == 0 or max(neighbor_counts) == 0:
-            print(f"[QUEEN ARROW] No clustered points found")
+            print("[QUEEN ARROW] No clustered points found")
             clustered_indices = list(range(len(all_glow_points)))
         else:
             # Find all connected components
@@ -207,7 +206,7 @@ def detect_queen_arrow_projectile():
                     best_component = comp_indices
 
             if best_component is None or len(best_component) < 3:
-                print(f"[QUEEN ARROW] No good linear component found, using all points")
+                print("[QUEEN ARROW] No good linear component found, using all points")
                 clustered_indices = list(range(len(all_glow_points)))
             else:
                 clustered_indices = best_component
@@ -265,7 +264,7 @@ def detect_queen_arrow_projectile():
         # Safety check: ensure we still have enough points after outlier removal
         if len(x_coords) < 2:
             print(f"[QUEEN ARROW] All points removed as outliers! Only {len(x_coords)} points remain.")
-            print(f"[QUEEN ARROW] No clear arrow glow detected - detection failed")
+            print("[QUEEN ARROW] No clear arrow glow detected - detection failed")
             return None
 
         # Final line fit with refined points
@@ -350,18 +349,18 @@ def detect_queen_arrow_path_and_cast_spells(queen_side, queen_ability_timing, sp
         print(f"[QUEEN ARROW] Ability activated after {queen_ability_timing}s - starting detection...")
 
         # ===== PRIMARY METHOD: GLOW TRAIL DETECTION =====
-        print(f"[QUEEN ARROW] Attempting glow trail detection...")
+        print("[QUEEN ARROW] Attempting glow trail detection...")
         arrow_path = detect_queen_arrow_projectile()
 
         if arrow_path is not None and len(arrow_path) == 2:
             # Successfully detected arrow glow trail - use these coordinates
             start, end = arrow_path
             print(f"[QUEEN ARROW] ✓ Glow trail detection successful: {start} -> {end}")
-            send_discord_debug_log(f"SBarb Farm: Queen arrow glow trail detected")
+            send_discord_debug_log("SBarb Farm: Queen arrow glow trail detected")
             detection_method = "glow_trail"
         else:
             # ===== FALLBACK METHOD: PURPLE HP BAR DETECTION =====
-            print(f"[QUEEN ARROW] Glow trail detection failed, using HP bar fallback...")
+            print("[QUEEN ARROW] Glow trail detection failed, using HP bar fallback...")
             time.sleep(0.5)  # Wait a bit more for damage to show
 
             # Capture screenshot
@@ -454,7 +453,7 @@ def detect_queen_arrow_path_and_cast_spells(queen_side, queen_ability_timing, sp
                 detection_method = "hp_bar"
             else:
                 print(f"[QUEEN ARROW] ✗ Both detection methods failed ({len(hp_bar_centers)} HP bars)")
-                send_discord_debug_log(f"SBarb Farm: Queen arrow detection failed completely", "WARNING")
+                send_discord_debug_log("SBarb Farm: Queen arrow detection failed completely", "WARNING")
                 return False
 
         # ===== SPELL CASTING (COMMON TO BOTH METHODS) =====

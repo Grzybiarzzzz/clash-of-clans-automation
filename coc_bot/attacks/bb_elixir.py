@@ -69,7 +69,7 @@ def handle_bb_elixir_mode():
             send_discord_debug_log(f"BB Elixir: Success - {button_type} button found at ({button_x}, {button_y})")
             break
         else:
-            print(f"[BB ELIXIR] Surrender/end battle button not found - invalid placement, trying different location...")
+            print("[BB ELIXIR] Surrender/end battle button not found - invalid placement, trying different location...")
 
     # Phase 2: If still no success, try random coordinates across entire screen until success
     if not surrender_pos:
@@ -141,7 +141,7 @@ def handle_bb_elixir_mode():
                 fast_click(1483, 898)  # Confirmation
                 time.sleep(0.3)
             elif button_type == 'end_battle':
-                print(f"[BB ELIXIR] Battle ended - clicking end battle")
+                print("[BB ELIXIR] Battle ended - clicking end battle")
                 fast_click(x, y)
                 time.sleep(0.3)
                 fast_click(1483, 898)  # Confirmation

@@ -82,15 +82,15 @@ def perform_achievement_farm_attack():
 
     if target_mode == 'target':
         # MODE 1: Target - Try buildings in priority order until one is found
-        print(f"[TARGET MODE] Trying buildings in priority order...")
+        print("[TARGET MODE] Trying buildings in priority order...")
 
         # Filter priority list to only include enabled buildings
         priority_enabled = [b for b in priority_list if b in enabled_buildings]
 
         if not priority_enabled:
-            print(f"[TARGET MODE] No enabled buildings in priority list!")
-            runtime.gui.log_message(f"No enabled buildings - surrendering")
-            send_discord_debug_log(f"Achievement Farm [TARGET]: No enabled buildings", "WARNING")
+            print("[TARGET MODE] No enabled buildings in priority list!")
+            runtime.gui.log_message("No enabled buildings - surrendering")
+            send_discord_debug_log("Achievement Farm [TARGET]: No enabled buildings", "WARNING")
             # Surrender immediately
             fast_click(152, 1136)
             time.sleep(0.3)
@@ -124,9 +124,9 @@ def perform_achievement_farm_attack():
                 print("not found")
 
         if not found:
-            print(f"[TARGET MODE] No buildings detected in priority list - skipping base")
-            runtime.gui.log_message(f"No targets found - skipping base")
-            send_discord_debug_log(f"Achievement Farm [TARGET]: No buildings found - skipping base")
+            print("[TARGET MODE] No buildings detected in priority list - skipping base")
+            runtime.gui.log_message("No targets found - skipping base")
+            send_discord_debug_log("Achievement Farm [TARGET]: No buildings found - skipping base")
             # Skip base and continue searching
             fast_click(*config.SKIP_BUTTON)
             time.sleep(config.SKIP_DELAY)
@@ -135,7 +135,7 @@ def perform_achievement_farm_attack():
 
     elif target_mode == 'first_detected':
         # MODE 3: First Detected - FAST MODE: Stop scanning as soon as ANY building is found (PRIORITY ORDER)
-        print(f"[FIRST DETECTED MODE] Scanning in priority order for first match...")
+        print("[FIRST DETECTED MODE] Scanning in priority order for first match...")
         overlay_clear()  # Clear overlay before scanning
 
         # Filter priority list to only include enabled buildings
@@ -165,9 +165,9 @@ def perform_achievement_farm_attack():
             # Draw spell target on overlay at building center
             overlay_draw_spell_target(x, y, f"FIRST: {found_type.replace('_', ' ')}")
         else:
-            print(f"No buildings detected after scanning priority list - skipping base")
-            runtime.gui.log_message(f"No buildings detected - skipping base")
-            send_discord_debug_log(f"Achievement Farm [FIRST]: No buildings detected - skipping base")
+            print("No buildings detected after scanning priority list - skipping base")
+            runtime.gui.log_message("No buildings detected - skipping base")
+            send_discord_debug_log("Achievement Farm [FIRST]: No buildings detected - skipping base")
             # Skip base and continue searching
             fast_click(*config.SKIP_BUTTON)
             time.sleep(config.SKIP_DELAY)
@@ -176,7 +176,7 @@ def perform_achievement_farm_attack():
 
     else:  # target_mode == 'clumps'
         # MODE 2: Clumps - Look for clusters, prefer priority building if no cluster
-        print(f"[CLUMPS MODE] Scanning enabled building types for clusters...")
+        print("[CLUMPS MODE] Scanning enabled building types for clusters...")
         overlay_clear()  # Clear overlay before scanning
         if runtime.gui.overlay and runtime.gui.overlay_enabled:
             runtime.gui.overlay.draw_text(100, 50, "CLUMPS MODE: Scanning all building types...", '#FFFF00')
@@ -184,9 +184,9 @@ def perform_achievement_farm_attack():
         all_buildings = detect_all_achievement_buildings(enabled_buildings)
 
         if not all_buildings:
-            print(f"No achievement buildings found - skipping base")
-            runtime.gui.log_message(f"No achievement buildings found - skipping base")
-            send_discord_debug_log(f"Achievement Farm [CLUMPS]: No buildings found - skipping base")
+            print("No achievement buildings found - skipping base")
+            runtime.gui.log_message("No achievement buildings found - skipping base")
+            send_discord_debug_log("Achievement Farm [CLUMPS]: No buildings found - skipping base")
             # Skip base and continue searching
             fast_click(*config.SKIP_BUTTON)
             time.sleep(config.SKIP_DELAY)
@@ -225,7 +225,7 @@ def perform_achievement_farm_attack():
             overlay_draw_spell_target(x, y, f"CLUSTER ({len(biggest_cluster)})")
         else:
             # No cluster - select building based on priority list order
-            print(f"No cluster found, selecting highest priority building...")
+            print("No cluster found, selecting highest priority building...")
 
             # Filter priority list to only buildings that were actually found
             found_building_types = list(all_buildings.keys())

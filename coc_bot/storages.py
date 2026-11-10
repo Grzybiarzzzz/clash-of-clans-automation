@@ -74,12 +74,12 @@ def check_and_pause_if_storages_full(base_type='main_base'):
             resource_str = f"Gold: {first[0]:,}, Elixir: {first[1]:,}"
 
         print(f"\n{'='*60}")
-        print(f"⚠️ STORAGES FULL - NO LOOT GAINED")
+        print("⚠️ STORAGES FULL - NO LOOT GAINED")
         print(f"{'='*60}")
-        print(f"Same resources detected for 3 consecutive attacks:")
+        print("Same resources detected for 3 consecutive attacks:")
         print(f"  {resource_str}")
-        print(f"Likely max storage values are outdated or storages are full.")
-        print(f"AUTO-PAUSING BOT - Please update profile storage maximums!")
+        print("Likely max storage values are outdated or storages are full.")
+        print("AUTO-PAUSING BOT - Please update profile storage maximums!")
         print(f"{'='*60}\n")
 
         runtime.gui.log_message("⚠️ STORAGES FULL - Pausing bot")
@@ -135,7 +135,6 @@ def read_own_base_storages():
     try:
         # Read absolute storage values using existing regions and OCR
         # Retry if OCR returns 0 (usually an OCR error)
-        max_retries = 3
 
         # Read Gold with template matching OCR
         base_gold_img = ImageGrab.grab(bbox=config.BASE_GOLD_REGION)
@@ -226,7 +225,6 @@ def read_bb_base_storages():
             return result
 
         # Read absolute storage values with retry logic
-        max_retries = 3
 
         # Read BB Gold with template matching OCR
         bb_gold_img = ImageGrab.grab(bbox=config.BB_BASE_GOLD_REGION)

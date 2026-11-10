@@ -738,7 +738,7 @@ def scan_achievement_buildings_sequential(settings):
             send_discord_debug_log(f"Sequential scan found: {building_type} (priority #{i+1})")
             return (x, y, confidence, building_type)
         else:
-            print(f"  ✗ Not found, continuing...")
+            print("  ✗ Not found, continuing...")
 
     print("[SEQUENTIAL SCAN] No achievement buildings detected")
     send_discord_debug_log("Sequential scan: no buildings found")

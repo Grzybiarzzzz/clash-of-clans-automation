@@ -140,7 +140,7 @@ def deploy_bb_gold_baby_dragons(context):
             context['surrender_button_pos'] = surrender_pos
             context['surrender_button_type'] = button_type
             bm_coord = fallback_coord
-            print(f"[BB DRAGONS] BM fallback deployment successful")
+            print("[BB DRAGONS] BM fallback deployment successful")
             runtime.gui.update_bb_gold_state('BATTLE_ACTIVE')
         else:
             print("[BB DRAGONS] CRITICAL: Failed to deploy Battle Machine!")
@@ -269,7 +269,7 @@ def deploy_bb_gold_troops(context):
             runtime.gui.update_bb_gold_state('BATTLE_ACTIVE')
             break
         else:
-            print(f"[BB GOLD DEPLOY] Surrender/end battle button not found - invalid placement, trying again...")
+            print("[BB GOLD DEPLOY] Surrender/end battle button not found - invalid placement, trying again...")
             # Try a different random valid coordinate for next attempt
             if valid_coords:
                 deployment_coord = random.choice(valid_coords)
@@ -857,7 +857,7 @@ def _state_battle_ending(context, current_state):
                 return_home_pos = detect_return_home_button()
                 if return_home_pos:
                     print(f"[BB GOLD STATE] BATTLE_ENDING: ✓ Return home button confirmed at {return_home_pos}")
-                    send_discord_debug_log(f"BB Gold: Return home button confirmed (3 stars)")
+                    send_discord_debug_log("BB Gold: Return home button confirmed (3 stars)")
                     # Cache position for END_SCREEN state
                     context['return_home_button_pos'] = return_home_pos
                     return_home_found = True

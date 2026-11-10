@@ -943,7 +943,7 @@ def detect_bb_boat():
                 else:
                     print(f"[BB BOAT] Trees fallback failed (confidence: {trees_max_val:.2f})")
 
-        send_discord_debug_log(f"BB boat not detected, trees fallback also failed", "WARNING")
+        send_discord_debug_log("BB boat not detected, trees fallback also failed", "WARNING")
         return None
     except Exception as e:
         print(f"[BB BOAT] Error detecting boat: {e}")

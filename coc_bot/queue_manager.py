@@ -264,8 +264,8 @@ class QueueManager:
                         self.gui.log_message(f"Smart Mode: Selecting BB Elixir (Gold {gold_pct:.0f}% > {ratio}x Elixir {elixir_pct:.0f}%)")
                         return "BB Elixir"
                     else:
-                        print(f"[SMART MODE] Selecting BB Gold mode (default)")
-                        self.gui.log_message(f"Smart Mode: Selecting BB Gold")
+                        print("[SMART MODE] Selecting BB Gold mode (default)")
+                        self.gui.log_message("Smart Mode: Selecting BB Gold")
                         return "BB Gold"
         except Exception as e:
             print(f"[SMART MODE] Error selecting BB mode: {e}")

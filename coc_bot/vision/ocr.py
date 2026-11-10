@@ -59,7 +59,7 @@ def ocr_resources(region, debug=False):
         runtime.gui.ocr_log("Resources", value, raw_value=cleaned)
         return value
     except ValueError:
-        send_discord_ocr_log(f"OCR: ValueError (ocr_resources)")
+        send_discord_ocr_log("OCR: ValueError (ocr_resources)")
         runtime.gui.ocr_log("Resources", "ERROR", raw_value=cleaned)
         return 0
 

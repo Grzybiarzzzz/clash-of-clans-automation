@@ -422,7 +422,6 @@ class VisualizationOverlay:
             os.makedirs(folder, exist_ok=True)
 
             # Temporarily make background solid black (not transparent)
-            original_bg = self.canvas.cget('bg')
             self.canvas.configure(bg='#000000')
             self.window.attributes('-transparentcolor', '')  # Disable transparency
             self.window.update_idletasks()

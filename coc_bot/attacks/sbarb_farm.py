@@ -60,7 +60,7 @@ def _deploy_turbo(
     surrender_button_cache,
 ):
     """Turbo deployment: both waves, heroes, siege and spells through rapid SendInput clicks."""
-    print(f"[SBARB FARM] *** TURBO DEPLOYMENT MODE ENABLED ***")
+    print("[SBARB FARM] *** TURBO DEPLOYMENT MODE ENABLED ***")
     send_discord_debug_log("SBarb Farm: Turbo deployment mode active (~16 CPS)")
 
     # Get turbo corners for both sides
@@ -85,7 +85,7 @@ def _deploy_turbo(
         turbo_deploy_heroes(first_side, hero_timings, destruction_reached)
         turbo_deploy_siege(first_side, destruction_reached)
     else:
-        print(f"[TURBO DEPLOY] 50% reached after first wave - skipping heroes/siege")
+        print("[TURBO DEPLOY] 50% reached after first wave - skipping heroes/siege")
 
     # Get spell casting setting
     sbarb_cast_spells = settings.get('sbarb_cast_spells', False)
@@ -115,7 +115,7 @@ def _deploy_turbo(
 
         # ===== PHASE 4: Activate ALL hero abilities immediately (during camera settle) =====
         if not destruction_reached['value']:
-            print(f"[TURBO DEPLOY] Activating all hero abilities...")
+            print("[TURBO DEPLOY] Activating all hero abilities...")
             for hero_key in ['queen', 'king', 'warden', 'rc']:
                 timing = hero_timings.get(hero_key, -1)
                 if timing >= 0:  # Only activate if not disabled (-1)
@@ -135,9 +135,9 @@ def _deploy_turbo(
             print(f"[TURBO DEPLOY] Deploying {first_half} troops on {opposite_side}...")
             turbo_deploy_along_path(second_corners, first_half, TURBO_CLICK_DELAY_MS, sbarb_hotkey, destruction_reached)
         else:
-            print(f"[TURBO DEPLOY] 50% reached - skipping second wave")
+            print("[TURBO DEPLOY] 50% reached - skipping second wave")
     else:
-        print(f"[TURBO DEPLOY] 50% reached - skipping phases 3-5")
+        print("[TURBO DEPLOY] 50% reached - skipping phases 3-5")
 
     # ===== PHASE 6: Spell casting (only if 50% not reached) =====
     achievement_spells_deployed = False
@@ -223,7 +223,7 @@ def _deploy_turbo(
             spell_casting_active['value'] = False
             print("[TURBO DEPLOY] Random spells deployed")
     elif destruction_reached['value']:
-        print(f"[TURBO DEPLOY] 50% reached - skipping spell casting")
+        print("[TURBO DEPLOY] 50% reached - skipping spell casting")
 
     # ===== Start background surrender button detection for fast surrender =====
     if not surrender_button_cache['detected']:
@@ -231,8 +231,8 @@ def _deploy_turbo(
         surrender_detect_thread.start()
         print("[TURBO DEPLOY] Started background surrender button detection")
 
-    print(f"[TURBO DEPLOY] All deployment phases complete")
-    print(f"[TURBO DEPLOY] *** TURBO MODE FINISHED - skipping standard deployment ***")
+    print("[TURBO DEPLOY] All deployment phases complete")
+    print("[TURBO DEPLOY] *** TURBO MODE FINISHED - skipping standard deployment ***")
     send_discord_debug_log("SBarb Farm: Turbo deployment complete")
     return building_destroyed, spells_completed
 
@@ -254,7 +254,7 @@ def _deploy_heroes_first_wave(
     spell_casting_active,
 ):
     """Standard deployment, heroes-first order: heroes and siege, optional Queen-arrow spells, then the first wave."""
-    print(f"[SBARB FARM] Using STANDARD deployment mode (hold-and-drag)")
+    print("[SBARB FARM] Using STANDARD deployment mode (hold-and-drag)")
 
     # CONDITIONAL DEPLOYMENT ORDER BASED ON SETTING
     if heroes_first:
@@ -339,7 +339,7 @@ def _deploy_heroes_first_wave(
 
     # Check if 50% reached during first wave deployment
     if destruction_reached['value']:
-        print(f"[SBARB FARM] 50% reached during first wave - skipping remaining deployment")
+        print("[SBARB FARM] 50% reached during first wave - skipping remaining deployment")
         pass  # Will check again before next phase
     return queen_arrow_spells
 
@@ -412,7 +412,7 @@ def _deploy_army_first_wave(
 
     # Check if 50% reached during first wave deployment
     if destruction_reached['value']:
-        print(f"[SBARB FARM] 50% reached during first wave - skipping remaining deployment")
+        print("[SBARB FARM] 50% reached during first wave - skipping remaining deployment")
         pass  # Will check again before next phase
 
 
@@ -579,10 +579,8 @@ def _cast_spells_after_deployment(
         print("[SBARB FARM] WARNING: Queen arrow spells require heroes-first mode, using random spells")
         send_discord_debug_log("SBarb Farm: Queen arrow requires heroes-first mode", "WARNING")
         # Deploy random spells as fallback
-        queen_arrow_use_fallback = True
-    else:
-        # Need to deploy spells: either army-first mode, or heroes-first with no queen arrow, or detection failed
-        queen_arrow_use_fallback = True
+    # Otherwise spells still need to be deployed: army-first mode, heroes-first without
+    # the Queen arrow, or arrow detection failed
 
     # Deploy spells if needed
     if not (heroes_first and queen_arrow_setting and queen_arrow_spells):
@@ -1019,7 +1017,7 @@ def handle_sbarb_farm_mode():
 
         # Check if 50% already reached before scanning
         if destruction_reached['value']:
-            print(f"[SBARB FARM] 50% reached before scan - skipping")
+            print("[SBARB FARM] 50% reached before scan - skipping")
             achievement_scan_result['completed'] = True
             achievement_scan_result['scanning'] = False
             return

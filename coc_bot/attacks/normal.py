@@ -29,10 +29,10 @@ def perform_normal_attack():
 
     if sbarb_mode_check:
         print(f"\n{'!'*70}")
-        print(f"[ERROR] ❌ CRITICAL: perform_normal_attack() called with sbarb_farm_mode=True!")
+        print("[ERROR] ❌ CRITICAL: perform_normal_attack() called with sbarb_farm_mode=True!")
         print(f"[ERROR] Profile: {current_profile}")
-        print(f"[ERROR] This should NEVER happen - SBarb Farm should skip evaluation!")
-        print(f"[ERROR] Check that bot was restarted after code changes!")
+        print("[ERROR] This should NEVER happen - SBarb Farm should skip evaluation!")
+        print("[ERROR] Check that bot was restarted after code changes!")
         print(f"{'!'*70}\n")
         send_discord_debug_log(f"ERROR: perform_normal_attack() called with sbarb_farm_mode=True! Profile: {current_profile}", "ERROR")
 

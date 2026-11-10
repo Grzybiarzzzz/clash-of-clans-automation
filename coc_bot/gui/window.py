@@ -79,11 +79,11 @@ class BotGUI(
             print(f"[GUI] Positioning on second monitor ({mon_w}x{mon_h} at {mon_x},{mon_y})")
         else:
             if prefer_second_monitor:
-                print(f"[GUI] Second monitor preferred but not detected, using primary")
+                print("[GUI] Second monitor preferred but not detected, using primary")
             # Center on primary monitor
             x = (primary_width // 2) - (window_width // 2)
             y = (primary_height // 2) - (window_height // 2)
-            print(f"[GUI] Positioning on primary monitor")
+            print("[GUI] Positioning on primary monitor")
 
         self.root.geometry(f"{window_width}x{window_height}+{x}+{y}")
 

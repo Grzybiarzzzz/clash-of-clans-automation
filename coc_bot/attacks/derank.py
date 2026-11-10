@@ -7,7 +7,7 @@ import keyboard
 
 import config
 from coc_bot import runtime
-from coc_bot.attacks.common import choose_attack_side, prepare_hotkeys
+from coc_bot.attacks.common import choose_attack_side
 from coc_bot.discord_log import send_discord_debug_log
 from coc_bot.humanized_input import human_like_move_click
 from coc_bot.input.camera import move_camera_to_side
@@ -30,9 +30,8 @@ def handle_derank_mode():
     chosen_side, side_coords = choose_attack_side(settings)
     print(f"[DERANK] Chosen side: {chosen_side}")
     send_discord_debug_log(f"Derank: chosen side {chosen_side}")
-    # Detect alternate hotkeys and prepare KEYS
-    alt_hotkeys = detect_alt_hotkeys()
-    KEYS = prepare_hotkeys(alt_hotkeys)
+    # Derank uses fixed hotkeys; the detection is kept for its log output and timing
+    detect_alt_hotkeys()
     # Move camera to the chosen side
     move_camera_to_side(chosen_side)
     # Pick a random valid deployment coordinate from side_coords['units']

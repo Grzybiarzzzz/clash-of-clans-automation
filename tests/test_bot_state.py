@@ -1,5 +1,3 @@
-import pytest
-import json
 import tempfile
 import os
 from coc_bot.bot_state import BotStateManager

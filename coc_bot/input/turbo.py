@@ -116,14 +116,14 @@ def turbo_deploy_heroes(side, hero_timings, destruction_check=None):
         time.sleep(0.05)
         deployed_count += 1
 
-    print(f"[TURBO DEPLOY] All heroes deployed")
+    print("[TURBO DEPLOY] All heroes deployed")
 
 
 def turbo_deploy_siege(side, destruction_check=None):
     """Deploy siege machine at hero position for turbo mode."""
     # Check for early exit
     if destruction_check and destruction_check.get('value', False):
-        print(f"[TURBO DEPLOY] Skipping siege (50% reached)")
+        print("[TURBO DEPLOY] Skipping siege (50% reached)")
         return
 
     hero_pos = config.SIDE_DEPLOYMENT_COORDS[side]['hero']
@@ -134,4 +134,4 @@ def turbo_deploy_siege(side, destruction_check=None):
     turbo_move_cursor(hero_pos[0], hero_pos[1])
     turbo_fast_click()
     time.sleep(0.1)
-    print(f"[TURBO DEPLOY] Siege deployed")
+    print("[TURBO DEPLOY] Siege deployed")

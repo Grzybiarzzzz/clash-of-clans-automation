@@ -118,10 +118,6 @@ def send_discord_debug_log(message, level="INFO"):
         if not webhook_url:
             return
         
-        # Add timestamp and format message
-        timestamp = datetime.now().strftime("%H:%M:%S")
-        formatted_message = f"[{timestamp}] [{level}] {message}"
-        
         # Send immediately for errors and warnings
         if level in ["ERROR", "WARNING"]:
             data = {"content": f"🚨 **{level}**: {message}"}
