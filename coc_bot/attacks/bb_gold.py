@@ -710,6 +710,220 @@ def save_bb_gold_attack_duration(context):
         send_discord_debug_log(f"BB Gold: Error saving timing - {e}", "WARNING")
 
 
+def _state_in_base(context):
+    """IN_BASE: click the search button. Returns the next state."""
+    print("[BB GOLD STATE] IN_BASE: Initiating search")
+    runtime.gui.log_message("BB Gold: Starting search")
+
+    # NEW: If queue is active, wait for storage UI to stabilize before checking
+    try:
+        if 'queue_manager' in globals() and runtime.queue_manager and runtime.queue_manager.queue_active:
+            print("[BB GOLD STATE] Queue active - waiting for storage UI to stabilize")
+            time.sleep(1.5)  # Allow storage bars to fully render
+    except NameError:
+        pass  # queue_manager not initialized yet
+
+    # NOTE: Star bonus handling is done by main loop's blind click at (73, 820)
+    # No detection needed here - blind click handles all popups efficiently
+
+    # Click search button - use fast click for instant response
+    fast_click(*config.BB_SEARCH_BUTTON[:2])  # Extract (x, y) from (x1, y1, x2, y2)
+
+    # Update state immediately after clicking
+    current_state = BBGoldState.SEARCHING
+    context['search_start_time'] = time.time()
+    runtime.gui.update_bb_gold_state(current_state.name)
+    return current_state
+
+
+
+def _state_searching(current_state, state_timeout):
+    """SEARCHING: wait for an opponent, or detect a ghost attack. Returns the next state."""
+    print("[BB GOLD STATE] SEARCHING: Waiting for match...")
+
+    # Wait for either attack ready or timeout
+    timeout_start = time.time()
+    while time.time() - timeout_start < state_timeout:
+
+        # Check if attack ready
+        if check_bb_attacker_text():
+            print("[BB GOLD STATE] SEARCHING -> ATTACK_READY: Attacker text detected")
+            current_state = BBGoldState.ATTACK_READY
+            runtime.gui.update_bb_gold_state(current_state.name)
+            break
+
+        # Check for ghost attack after 10 seconds
+        if time.time() - timeout_start > 10:
+            if detect_ghost_attack():
+                print("[BB GOLD STATE] SEARCHING -> ERROR_RECOVERY: Ghost attack")
+                current_state = BBGoldState.ERROR_RECOVERY
+                runtime.gui.update_bb_gold_state(current_state.name)
+                break
+
+        time.sleep(config.BB_LOAD_CHECK_INTERVAL)
+
+    # Timeout handling
+    if current_state == BBGoldState.SEARCHING:
+        print("[BB GOLD STATE] SEARCHING timeout - assuming ghost attack")
+        current_state = BBGoldState.ERROR_RECOVERY
+        runtime.gui.update_bb_gold_state(current_state.name)
+    return current_state
+
+
+
+def _state_attack_ready(context):
+    """ATTACK_READY: deploy the troops. Returns the next state."""
+    print("[BB GOLD STATE] ATTACK_READY: Deploying troops")
+    runtime.gui.log_message("BB Gold: Deploying troops")
+
+    # Set attack start time
+    context['attack_start_time'] = time.time()
+
+    # Deploy troops using helper function
+    deployment_success = deploy_bb_gold_troops(context)
+
+    if deployment_success:
+        context['troops_deployed'] = True
+        current_state = BBGoldState.BATTLE_ACTIVE
+        runtime.gui.update_bb_gold_state(current_state.name)
+        print("[BB GOLD STATE] ATTACK_READY -> BATTLE_ACTIVE: Troops deployed")
+    else:
+        print("[BB GOLD STATE] ATTACK_READY -> ERROR_RECOVERY: Deployment failed")
+        current_state = BBGoldState.ERROR_RECOVERY
+        runtime.gui.update_bb_gold_state(current_state.name)
+    return current_state
+
+
+
+def _state_battle_active(context):
+    """BATTLE_ACTIVE: monitor the battle until stars are earned or it ends. Returns the next state."""
+    print("[BB GOLD STATE] BATTLE_ACTIVE: Monitoring for stars")
+    runtime.gui.log_message("BB Gold: Monitoring battle...")
+
+    # Monitor for stars or Return Home button (battle ended)
+    battle_result = monitor_bb_gold_battle(context)
+
+    context['stars_detected'] = battle_result['stars']
+    context['battle_lost'] = battle_result['timeout_without_stars']
+
+    # Cache Return Home button position if detected (for faster END_SCREEN handling)
+    if battle_result.get('return_home_pos'):
+        context['return_home_button_pos'] = battle_result['return_home_pos']
+
+    current_state = BBGoldState.BATTLE_ENDING
+    runtime.gui.update_bb_gold_state(current_state.name)
+    print(f"[BB GOLD STATE] BATTLE_ACTIVE -> BATTLE_ENDING: {battle_result['stars']} stars, lost={battle_result['timeout_without_stars']}")
+    return current_state
+
+
+
+def _state_battle_ending(context, current_state):
+    """BATTLE_ENDING: surrender or end the battle and find the end screen. Returns the next state."""
+    print("[BB GOLD STATE] BATTLE_ENDING: Clicking surrender/end battle")
+
+    # Skip if battle ended (Return Home button detected without stars)
+    if not context.get('battle_lost', False):
+        end_result = end_bb_gold_battle(context['stars_detected'], context)
+
+        if not end_result['success']:
+            print("[BB GOLD STATE] BATTLE_ENDING: End button click failed, retrying")
+            time.sleep(1)
+            return current_state
+
+        # Update final stars from end result
+        context['final_stars'] = end_result['final_stars']
+    else:
+        print("[BB GOLD STATE] BATTLE_ENDING: Battle ended (Return Home detected), skipping surrender")
+        context['final_stars'] = 0
+        # Return Home button position already cached from monitor_bb_gold_battle()
+
+    # Special handling for 3 stars - FORCE return home button detection
+    if context.get('final_stars', 0) == 3:
+        print("[BB GOLD STATE] BATTLE_ENDING: 3 stars - forcing return home button detection (no fallback)")
+        send_discord_debug_log("BB Gold: 3 stars - waiting for return home button confirmation")
+
+        max_attempts = 5
+        attempt = 0
+
+        while attempt < max_attempts:
+            attempt += 1
+            print(f"[BB GOLD STATE] BATTLE_ENDING: Checking for return home button (attempt {attempt}/{max_attempts})...")
+
+            # Wait up to 5 seconds for return home button to appear
+            timeout_start = time.time()
+            return_home_found = False
+
+            while time.time() - timeout_start < 5:
+                return_home_pos = detect_return_home_button()
+                if return_home_pos:
+                    print(f"[BB GOLD STATE] BATTLE_ENDING: ✓ Return home button confirmed at {return_home_pos}")
+                    send_discord_debug_log(f"BB Gold: Return home button confirmed (3 stars)")
+                    # Cache position for END_SCREEN state
+                    context['return_home_button_pos'] = return_home_pos
+                    return_home_found = True
+                    break
+                time.sleep(0.3)  # Optimized: reduced from 0.5s
+
+            if return_home_found:
+                # Success - transition to END_SCREEN
+                print("[BB GOLD STATE] BATTLE_ENDING -> END_SCREEN: End screen confirmed (return home visible)")
+                current_state = BBGoldState.END_SCREEN
+                runtime.gui.update_bb_gold_state(current_state.name)
+                break
+            else:
+                # Return home button not visible - end battle/surrender didn't work
+                print(f"[BB GOLD STATE] BATTLE_ENDING: ✗ Return home button not visible (attempt {attempt}/{max_attempts})")
+                send_discord_debug_log(f"BB Gold: Return home not visible - clicking end battle again (attempt {attempt})", "WARNING")
+
+                # Click end battle button again
+                end_battle_pos = detect_end_battle_button()
+                if end_battle_pos:
+                    print(f"[BB GOLD STATE] BATTLE_ENDING: Clicking end battle button at {end_battle_pos}")
+                    fast_click(*end_battle_pos)
+                else:
+                    print("[BB GOLD STATE] BATTLE_ENDING: End battle button not detected, using fallback")
+                    fast_click(144, 1080)
+
+                time.sleep(1.0)
+
+                # Click confirm
+                print("[BB GOLD STATE] BATTLE_ENDING: Clicking confirmation")
+                fast_click(1483, 898)
+                time.sleep(1.0)  # Optimized: reduced from 2.0s
+
+        if current_state != BBGoldState.END_SCREEN:
+            print("[BB GOLD STATE] BATTLE_ENDING: ERROR - Failed to confirm return home button after 5 attempts")
+            send_discord_debug_log("BB Gold: CRITICAL - Failed to confirm end screen after 5 attempts", "ERROR")
+            # Assume end screen present to avoid getting stuck
+            current_state = BBGoldState.END_SCREEN
+            runtime.gui.update_bb_gold_state(current_state.name)
+
+    else:
+        # 0/1/2 stars - use standard end screen detection with fallback
+        print("[BB GOLD STATE] BATTLE_ENDING: 0/1/2 stars - standard end screen detection")
+        end_screen_timeout = getattr(config, 'BB_END_SCREEN_TIMEOUT', 10)
+        timeout_start = time.time()
+        while time.time() - timeout_start < end_screen_timeout:
+            end_screen = detect_end_screen_state()
+            if end_screen['detected']:
+                print("[BB GOLD STATE] BATTLE_ENDING -> END_SCREEN: End screen confirmed")
+                current_state = BBGoldState.END_SCREEN
+                runtime.gui.update_bb_gold_state(current_state.name)
+                context['star_bonus'] = end_screen['star_bonus']
+                # Cache return home button position if detected
+                if end_screen.get('return_button_pos'):
+                    context['return_home_button_pos'] = end_screen['return_button_pos']
+                break
+            time.sleep(0.3)  # Optimized: reduced from 0.5s
+
+        if current_state != BBGoldState.END_SCREEN:
+            print("[BB GOLD STATE] BATTLE_ENDING: End screen not detected, assuming present")
+            current_state = BBGoldState.END_SCREEN
+            runtime.gui.update_bb_gold_state(current_state.name)
+    return current_state
+
+
+
 def handle_bb_gold_mode_stateful():
     """
     Handle BB Gold mode using explicit state machine.
@@ -768,208 +982,27 @@ def handle_bb_gold_mode_stateful():
 
         # STATE 1: IN_BASE -> SEARCHING
         if current_state == BBGoldState.IN_BASE and context['retry_count'] == 0:
-            print("[BB GOLD STATE] IN_BASE: Initiating search")
-            runtime.gui.log_message("BB Gold: Starting search")
-
-            # NEW: If queue is active, wait for storage UI to stabilize before checking
-            try:
-                if 'queue_manager' in globals() and runtime.queue_manager and runtime.queue_manager.queue_active:
-                    print("[BB GOLD STATE] Queue active - waiting for storage UI to stabilize")
-                    time.sleep(1.5)  # Allow storage bars to fully render
-            except NameError:
-                pass  # queue_manager not initialized yet
-
-            # NOTE: Star bonus handling is done by main loop's blind click at (73, 820)
-            # No detection needed here - blind click handles all popups efficiently
-
-            # Click search button - use fast click for instant response
-            fast_click(*config.BB_SEARCH_BUTTON[:2])  # Extract (x, y) from (x1, y1, x2, y2)
-
-            # Update state immediately after clicking
-            current_state = BBGoldState.SEARCHING
-            context['search_start_time'] = time.time()
-            runtime.gui.update_bb_gold_state(current_state.name)
-
-            # Sleep removed - state transitions are now instant
+            current_state = _state_in_base(context)
             continue
 
         # STATE 2: SEARCHING -> ATTACK_READY
         if current_state == BBGoldState.SEARCHING:
-            print("[BB GOLD STATE] SEARCHING: Waiting for match...")
-
-            # Wait for either attack ready or timeout
-            timeout_start = time.time()
-            while time.time() - timeout_start < state_timeout:
-
-                # Check if attack ready
-                if check_bb_attacker_text():
-                    print("[BB GOLD STATE] SEARCHING -> ATTACK_READY: Attacker text detected")
-                    current_state = BBGoldState.ATTACK_READY
-                    runtime.gui.update_bb_gold_state(current_state.name)
-                    break
-
-                # Check for ghost attack after 10 seconds
-                if time.time() - timeout_start > 10:
-                    if detect_ghost_attack():
-                        print("[BB GOLD STATE] SEARCHING -> ERROR_RECOVERY: Ghost attack")
-                        current_state = BBGoldState.ERROR_RECOVERY
-                        runtime.gui.update_bb_gold_state(current_state.name)
-                        break
-
-                time.sleep(config.BB_LOAD_CHECK_INTERVAL)
-
-            # Timeout handling
-            if current_state == BBGoldState.SEARCHING:
-                print("[BB GOLD STATE] SEARCHING timeout - assuming ghost attack")
-                current_state = BBGoldState.ERROR_RECOVERY
-                runtime.gui.update_bb_gold_state(current_state.name)
+            current_state = _state_searching(current_state, state_timeout)
             continue
 
         # STATE 3: ATTACK_READY -> BATTLE_ACTIVE
         if current_state == BBGoldState.ATTACK_READY:
-            print("[BB GOLD STATE] ATTACK_READY: Deploying troops")
-            runtime.gui.log_message("BB Gold: Deploying troops")
-
-            # Set attack start time
-            context['attack_start_time'] = time.time()
-
-            # Deploy troops using helper function
-            deployment_success = deploy_bb_gold_troops(context)
-
-            if deployment_success:
-                context['troops_deployed'] = True
-                current_state = BBGoldState.BATTLE_ACTIVE
-                runtime.gui.update_bb_gold_state(current_state.name)
-                print("[BB GOLD STATE] ATTACK_READY -> BATTLE_ACTIVE: Troops deployed")
-            else:
-                print("[BB GOLD STATE] ATTACK_READY -> ERROR_RECOVERY: Deployment failed")
-                current_state = BBGoldState.ERROR_RECOVERY
-                runtime.gui.update_bb_gold_state(current_state.name)
+            current_state = _state_attack_ready(context)
             continue
 
         # STATE 4: BATTLE_ACTIVE -> BATTLE_ENDING
         if current_state == BBGoldState.BATTLE_ACTIVE:
-            print("[BB GOLD STATE] BATTLE_ACTIVE: Monitoring for stars")
-            runtime.gui.log_message("BB Gold: Monitoring battle...")
-
-            # Monitor for stars or Return Home button (battle ended)
-            battle_result = monitor_bb_gold_battle(context)
-
-            context['stars_detected'] = battle_result['stars']
-            context['battle_lost'] = battle_result['timeout_without_stars']
-
-            # Cache Return Home button position if detected (for faster END_SCREEN handling)
-            if battle_result.get('return_home_pos'):
-                context['return_home_button_pos'] = battle_result['return_home_pos']
-
-            current_state = BBGoldState.BATTLE_ENDING
-            runtime.gui.update_bb_gold_state(current_state.name)
-            print(f"[BB GOLD STATE] BATTLE_ACTIVE -> BATTLE_ENDING: {battle_result['stars']} stars, lost={battle_result['timeout_without_stars']}")
+            current_state = _state_battle_active(context)
             continue
 
         # STATE 5: BATTLE_ENDING -> END_SCREEN
         if current_state == BBGoldState.BATTLE_ENDING:
-            print("[BB GOLD STATE] BATTLE_ENDING: Clicking surrender/end battle")
-
-            # Skip if battle ended (Return Home button detected without stars)
-            if not context.get('battle_lost', False):
-                end_result = end_bb_gold_battle(context['stars_detected'], context)
-
-                if not end_result['success']:
-                    print("[BB GOLD STATE] BATTLE_ENDING: End button click failed, retrying")
-                    time.sleep(1)
-                    continue
-
-                # Update final stars from end result
-                context['final_stars'] = end_result['final_stars']
-            else:
-                print("[BB GOLD STATE] BATTLE_ENDING: Battle ended (Return Home detected), skipping surrender")
-                context['final_stars'] = 0
-                # Return Home button position already cached from monitor_bb_gold_battle()
-
-            # Special handling for 3 stars - FORCE return home button detection
-            if context.get('final_stars', 0) == 3:
-                print("[BB GOLD STATE] BATTLE_ENDING: 3 stars - forcing return home button detection (no fallback)")
-                send_discord_debug_log("BB Gold: 3 stars - waiting for return home button confirmation")
-
-                max_attempts = 5
-                attempt = 0
-
-                while attempt < max_attempts:
-                    attempt += 1
-                    print(f"[BB GOLD STATE] BATTLE_ENDING: Checking for return home button (attempt {attempt}/{max_attempts})...")
-
-                    # Wait up to 5 seconds for return home button to appear
-                    timeout_start = time.time()
-                    return_home_found = False
-
-                    while time.time() - timeout_start < 5:
-                        return_home_pos = detect_return_home_button()
-                        if return_home_pos:
-                            print(f"[BB GOLD STATE] BATTLE_ENDING: ✓ Return home button confirmed at {return_home_pos}")
-                            send_discord_debug_log(f"BB Gold: Return home button confirmed (3 stars)")
-                            # Cache position for END_SCREEN state
-                            context['return_home_button_pos'] = return_home_pos
-                            return_home_found = True
-                            break
-                        time.sleep(0.3)  # Optimized: reduced from 0.5s
-
-                    if return_home_found:
-                        # Success - transition to END_SCREEN
-                        print("[BB GOLD STATE] BATTLE_ENDING -> END_SCREEN: End screen confirmed (return home visible)")
-                        current_state = BBGoldState.END_SCREEN
-                        runtime.gui.update_bb_gold_state(current_state.name)
-                        break
-                    else:
-                        # Return home button not visible - end battle/surrender didn't work
-                        print(f"[BB GOLD STATE] BATTLE_ENDING: ✗ Return home button not visible (attempt {attempt}/{max_attempts})")
-                        send_discord_debug_log(f"BB Gold: Return home not visible - clicking end battle again (attempt {attempt})", "WARNING")
-
-                        # Click end battle button again
-                        end_battle_pos = detect_end_battle_button()
-                        if end_battle_pos:
-                            print(f"[BB GOLD STATE] BATTLE_ENDING: Clicking end battle button at {end_battle_pos}")
-                            fast_click(*end_battle_pos)
-                        else:
-                            print("[BB GOLD STATE] BATTLE_ENDING: End battle button not detected, using fallback")
-                            fast_click(144, 1080)
-
-                        time.sleep(1.0)
-
-                        # Click confirm
-                        print("[BB GOLD STATE] BATTLE_ENDING: Clicking confirmation")
-                        fast_click(1483, 898)
-                        time.sleep(1.0)  # Optimized: reduced from 2.0s
-
-                if current_state != BBGoldState.END_SCREEN:
-                    print("[BB GOLD STATE] BATTLE_ENDING: ERROR - Failed to confirm return home button after 5 attempts")
-                    send_discord_debug_log("BB Gold: CRITICAL - Failed to confirm end screen after 5 attempts", "ERROR")
-                    # Assume end screen present to avoid getting stuck
-                    current_state = BBGoldState.END_SCREEN
-                    runtime.gui.update_bb_gold_state(current_state.name)
-
-            else:
-                # 0/1/2 stars - use standard end screen detection with fallback
-                print("[BB GOLD STATE] BATTLE_ENDING: 0/1/2 stars - standard end screen detection")
-                end_screen_timeout = getattr(config, 'BB_END_SCREEN_TIMEOUT', 10)
-                timeout_start = time.time()
-                while time.time() - timeout_start < end_screen_timeout:
-                    end_screen = detect_end_screen_state()
-                    if end_screen['detected']:
-                        print("[BB GOLD STATE] BATTLE_ENDING -> END_SCREEN: End screen confirmed")
-                        current_state = BBGoldState.END_SCREEN
-                        runtime.gui.update_bb_gold_state(current_state.name)
-                        context['star_bonus'] = end_screen['star_bonus']
-                        # Cache return home button position if detected
-                        if end_screen.get('return_button_pos'):
-                            context['return_home_button_pos'] = end_screen['return_button_pos']
-                        break
-                    time.sleep(0.3)  # Optimized: reduced from 0.5s
-
-                if current_state != BBGoldState.END_SCREEN:
-                    print("[BB GOLD STATE] BATTLE_ENDING: End screen not detected, assuming present")
-                    current_state = BBGoldState.END_SCREEN
-                    runtime.gui.update_bb_gold_state(current_state.name)
+            current_state = _state_battle_ending(context, current_state)
 
             continue
 
