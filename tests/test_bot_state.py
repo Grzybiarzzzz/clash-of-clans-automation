@@ -2,7 +2,7 @@ import pytest
 import json
 import tempfile
 import os
-from bot_state import BotStateManager
+from coc_bot.bot_state import BotStateManager
 
 
 def test_get_set_basic():

@@ -6,7 +6,7 @@ from coc_bot import runtime
 
 # Always try to load GPU module, but use it only when GUI setting is enabled
 try:
-    from gpu_template_matching import gpu_match_template as _gpu_match_template, GPU_AVAILABLE
+    from coc_bot.gpu_template_matching import gpu_match_template as _gpu_match_template, GPU_AVAILABLE
     if GPU_AVAILABLE:
         print("[GPU] GPU template matching AVAILABLE - toggle in Global Settings")
     else:

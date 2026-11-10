@@ -1318,7 +1318,7 @@ def scan_achievement_buildings_overlay():
     Press R to capture template at mouse position.
     Press ESC to exit.
     """
-    from visualization_overlay import VisualizationOverlay
+    from coc_bot.visualization_overlay import VisualizationOverlay
 
     print("\n" + "=" * 60)
     print("Achievement Building Scanner (SINGLE SCAN MODE)")

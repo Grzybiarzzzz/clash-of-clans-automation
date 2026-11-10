@@ -18,7 +18,6 @@ from coc_bot.gui.state_sync import StateSyncMixin
 from coc_bot.gui.stats_panel import StatsPanelMixin
 from coc_bot.gui.visibility import VisibilityMixin
 
-
 class BotGUI(
     StateSyncMixin,
     ProfileDataMixin,
@@ -454,10 +453,8 @@ class BotGUI(
             return "break"  # Prevent event propagation
 
 
-def main():
-    root = tk.Tk()
-    app = BotGUI(root)
-    root.mainloop()
-
 if __name__ == "__main__":
-    main()
+    # Preview the control panel on its own: python -m coc_bot.gui.window
+    preview_root = tk.Tk()
+    BotGUI(preview_root)
+    preview_root.mainloop()

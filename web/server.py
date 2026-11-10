@@ -104,7 +104,7 @@ def start_web_server(
 
 if __name__ == "__main__":
     # For testing without bot
-    from bot_state import BotStateManager
+    from coc_bot.bot_state import BotStateManager
     state = BotStateManager()
     state.update({
         "running": False,

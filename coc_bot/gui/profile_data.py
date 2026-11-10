@@ -1,6 +1,5 @@
 """Built-in attack profiles and their default settings."""
 
-
 class ProfileDataMixin:
     """Built-in attack profiles and their default settings. Mixin for BotGUI."""
 

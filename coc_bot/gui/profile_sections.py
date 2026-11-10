@@ -5,7 +5,6 @@ from tkinter import ttk
 
 from coc_bot.gui.overlay_support import OVERLAY_AVAILABLE
 
-
 class ProfileSectionsMixin:
     """Widgets of the profile, army, attack and global settings sections. Mixin for BotGUI."""
 

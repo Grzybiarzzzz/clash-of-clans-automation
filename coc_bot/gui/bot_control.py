@@ -4,7 +4,6 @@ import threading
 import time
 from tkinter import messagebox
 
-
 class BotControlMixin:
     """Start, stop and pause handling, timers and status labels. Mixin for BotGUI."""
 

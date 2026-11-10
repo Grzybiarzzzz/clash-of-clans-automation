@@ -19,6 +19,7 @@ from coc_bot.geometry import (
     get_cluster_center,
     get_opposite_side,
 )
+from coc_bot.humanized_input import fast_click
 from coc_bot.input.turbo import (
     TURBO_CLICK_DELAY_MS,
     turbo_deploy_along_path,
@@ -39,7 +40,6 @@ from coc_bot.vision.screens import (
     detect_surrender_or_end_battle,
     wait_for_attack_screen_ready,
 )
-from humanized_input import fast_click
 
 def handle_sbarb_farm_mode():
     """

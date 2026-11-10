@@ -4,7 +4,6 @@ import json
 import tkinter as tk
 from tkinter import messagebox
 
-
 class SettingsIOMixin:
     """Reading, validating, saving and applying settings, profiles and storage presets. Mixin for BotGUI."""
 

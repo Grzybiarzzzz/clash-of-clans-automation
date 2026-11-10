@@ -16,6 +16,7 @@ from coc_bot.attacks.common import (
 )
 from coc_bot.discord_log import send_discord_debug_log
 from coc_bot.geometry import calculate_deployment_step, get_opposite_side
+from coc_bot.humanized_input import fast_click, human_like_move_click
 from coc_bot.input.camera import move_camera_to_opposite_side, move_camera_to_side
 from coc_bot.vision.buildings import scan_achievement_buildings_parallel_priority
 from coc_bot.vision.ocr import evaluate_base_resources
@@ -24,7 +25,6 @@ from coc_bot.vision.screens import (
     detect_surrender_or_end_battle,
     wait_for_attack_screen_ready,
 )
-from humanized_input import fast_click, human_like_move_click
 
 def perform_sgoblin_farm_attack():
     """Perform SGoblin Farm attack - split army on opposite sides and surrender after 10s"""

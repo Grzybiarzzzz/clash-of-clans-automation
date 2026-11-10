@@ -11,6 +11,7 @@ import config
 from coc_bot import runtime
 from coc_bot.discord_log import send_discord_debug_log, send_discord_notification
 from coc_bot.geometry import calculate_lightning_spells_needed
+from coc_bot.humanized_input import human_like_move_click, mouse_drift_idle, random_sleep
 from coc_bot.input.camera import click_in_square
 from coc_bot.overlay import overlay_draw_side, overlay_update
 from coc_bot.profiles import get_global_reinforcements_enabled, get_global_skip_on_th_fail
@@ -19,7 +20,6 @@ from coc_bot.storages import check_and_pause_if_storages_full, track_resources
 from coc_bot.vision.buildings import detect_air_sweepers
 from coc_bot.vision.ocr import ocr_attack_resource_template_digits, ocr_loot
 from coc_bot.vision.screens import detect_army_button, wait_for_base_screen
-from humanized_input import human_like_move_click, mouse_drift_idle, random_sleep
 
 def should_skip_base(gold, elixir, air_defenses, settings):
     """Determine if base should be skipped based on resources and air defenses"""

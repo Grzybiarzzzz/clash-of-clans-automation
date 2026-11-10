@@ -2,7 +2,6 @@
 
 import tkinter as tk
 
-
 class VisibilityMixin:
     """Show and hide settings widgets according to the selected profile and toggles. Mixin for BotGUI."""
 

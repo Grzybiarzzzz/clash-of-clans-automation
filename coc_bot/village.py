@@ -6,8 +6,8 @@ import pyautogui
 
 from coc_bot import runtime
 from coc_bot.discord_log import send_discord_debug_log
+from coc_bot.humanized_input import human_like_move_click
 from coc_bot.vision.screens import detect_bb_boat, detect_main_base_boat
-from humanized_input import human_like_move_click
 
 def switch_village(target_village):
     """

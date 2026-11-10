@@ -1,7 +1,7 @@
 """Optional import of the detection overlay."""
 
 try:
-    from visualization_overlay import VisualizationOverlay  # noqa: F401 (re-exported)
+    from coc_bot.visualization_overlay import VisualizationOverlay  # noqa: F401 (re-exported)
     OVERLAY_AVAILABLE = True
 except ImportError:
     OVERLAY_AVAILABLE = False

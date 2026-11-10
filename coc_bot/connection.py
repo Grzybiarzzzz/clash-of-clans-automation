@@ -5,8 +5,8 @@ import time
 
 from coc_bot import runtime
 from coc_bot.discord_log import send_discord_debug_log
+from coc_bot.humanized_input import fast_click
 from coc_bot.vision.screens import detect_connection_lost, detect_in_base_state
-from humanized_input import fast_click
 
 # Global flag to track if connection monitor is running
 _connection_monitor_running = False

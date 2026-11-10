@@ -14,11 +14,11 @@ from coc_bot.attacks.common import (
 )
 from coc_bot.discord_log import send_discord_debug_log
 from coc_bot.geometry import get_air_defense_proximity_sorter, get_lightning_spell_targets
+from coc_bot.humanized_input import reading_pause, thinking_pause
 from coc_bot.input.camera import move_camera_to_side
 from coc_bot.vision.buildings import detect_air_defenses, detect_town_hall
 from coc_bot.vision.ocr import evaluate_base_resources
 from coc_bot.vision.screens import detect_alt_hotkeys
-from humanized_input import reading_pause, thinking_pause
 
 def perform_normal_attack():
     """Perform a normal attack (non-derank mode)"""

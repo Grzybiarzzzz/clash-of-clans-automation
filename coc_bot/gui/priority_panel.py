@@ -3,7 +3,6 @@
 import tkinter as tk
 from tkinter import messagebox, ttk
 
-
 class PriorityPanelMixin:
     """Achievement building priority list. Mixin for BotGUI."""
 

@@ -3,7 +3,6 @@
 import tkinter as tk
 from tkinter import messagebox, ttk
 
-
 class QueuePanelMixin:
     """Queue section: smart mode controls and the manual task schedule. Mixin for BotGUI."""
 
@@ -551,7 +550,7 @@ class QueuePanelMixin:
                     print(f"[GUI] Updated task in manual schedule: {task}")
 
             # Validate schedule
-            from queue_manager import QueueManager
+            from coc_bot.queue_manager import QueueManager
             is_valid, error_msg = QueueManager(self).validate_manual_schedule(schedule)
 
             if not is_valid:

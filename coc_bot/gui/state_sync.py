@@ -2,7 +2,6 @@
 
 import tkinter as tk
 
-
 class StateSyncMixin:
     """Two-way synchronisation between the Tkinter widgets and the shared BotStateManager. Mixin for BotGUI."""
 

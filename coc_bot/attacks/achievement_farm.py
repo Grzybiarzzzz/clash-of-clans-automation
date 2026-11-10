@@ -11,11 +11,11 @@ from coc_bot import runtime
 from coc_bot.attacks.common import skip_base
 from coc_bot.discord_log import send_discord_debug_log
 from coc_bot.geometry import find_building_clusters, get_cluster_center
+from coc_bot.humanized_input import fast_click
 from coc_bot.input.win32 import turbo_fast_click, turbo_move_cursor
 from coc_bot.overlay import overlay_clear, overlay_draw_spell_target, overlay_update
 from coc_bot.vision.buildings import detect_achievement_building, detect_all_achievement_buildings
 from coc_bot.vision.screens import wait_for_attack_screen_ready
-from humanized_input import fast_click
 
 def perform_achievement_farm_attack():
     """Perform Achievement Farm attack with 3 targeting modes: Target, Clumps, First Detected"""

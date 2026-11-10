@@ -8,7 +8,7 @@ import pyautogui
 import config
 from coc_bot.discord_log import send_discord_debug_log
 from coc_bot.geometry import get_opposite_side
-from humanized_input import human_like_move_click
+from coc_bot.humanized_input import human_like_move_click
 
 def click_in_square(coord):  # coord: (x1,y1,x2,y2)
     x1, y1, x2, y2 = coord

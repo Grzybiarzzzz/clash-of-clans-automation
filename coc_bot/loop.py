@@ -18,6 +18,7 @@ from coc_bot.attacks.sbarb_farm import handle_sbarb_farm_mode
 from coc_bot.attacks.sgoblin_farm import perform_sgoblin_farm_attack
 from coc_bot.controls import check_discord_commands, update_status
 from coc_bot.discord_log import send_discord_debug_log
+from coc_bot.humanized_input import fast_click, human_like_move_click, humanized_sleep
 from coc_bot.input.camera import click_in_square
 from coc_bot.overlay import overlay_clear
 from coc_bot.session import check_auto_pause, schedule_next_break
@@ -28,7 +29,6 @@ from coc_bot.vision.screens import (
     is_base_search_ready,
     wait_for_base_screen,
 )
-from humanized_input import fast_click, human_like_move_click, humanized_sleep
 
 def main_loop():
     

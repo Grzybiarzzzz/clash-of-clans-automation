@@ -1,7 +1,7 @@
 import pytest
 from fastapi.testclient import TestClient
 
-from bot_state import BotStateManager
+from coc_bot.bot_state import BotStateManager
 from web.server import app
 from web.routes.ws import setup_state_listener
 

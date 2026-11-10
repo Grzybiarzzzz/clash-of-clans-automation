@@ -3,7 +3,6 @@
 import tkinter as tk
 from datetime import datetime
 
-
 class LogPanelMixin:
     """Log, debug and OCR message panels, including stdout capture. Mixin for BotGUI."""
 

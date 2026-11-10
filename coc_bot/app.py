@@ -9,11 +9,11 @@ import pyautogui
 import pytesseract
 
 import config
-from coc_bot.gui import BotGUI
-from bot_state import BotStateManager
 from coc_bot import runtime
+from coc_bot.bot_state import BotStateManager
 from coc_bot.connection import start_connection_monitor
 from coc_bot.controls import exit_app, on_pause_from_web, stop_bot, toggle_pause
+from coc_bot.gui.window import BotGUI
 from coc_bot.loop import gui_run_bot
 from coc_bot.overlay import clear_overlay_hotkey, save_overlay_screenshot_hotkey
 from coc_bot.session import schedule_next_break
@@ -23,7 +23,6 @@ from coc_bot.vision.buildings import load_achievement_building_templates
 from coc_bot.vision.ocr import debug_save_ocr_regions
 from coc_bot.vision.screens import load_bb_gold_templates
 from web.server import start_web_server
-
 
 def main():
     """Start the bot application. Blocks in the Tk main loop until the window closes."""
@@ -71,7 +70,7 @@ def main():
 
     # Initialize Queue Manager (callbacks are set further down)
     try:
-        from queue_manager import QueueManager
+        from coc_bot.queue_manager import QueueManager
         runtime.queue_manager = QueueManager(runtime.gui)
         print("[MAIN] Queue Manager initialized (callbacks pending)")
 

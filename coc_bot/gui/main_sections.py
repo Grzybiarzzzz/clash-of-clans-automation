@@ -5,7 +5,6 @@ from tkinter import ttk
 
 from PIL import Image, ImageTk
 
-
 class MainSectionsMixin:
     """Top-level window sections: status, settings, controls, loot and log. Mixin for BotGUI."""
 

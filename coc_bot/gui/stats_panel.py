@@ -7,7 +7,6 @@ from datetime import datetime, timedelta
 import matplotlib.pyplot as plt
 import pandas as pd
 
-
 class StatsPanelMixin:
     """Loot statistics labels, CSV totals and the statistics window. Mixin for BotGUI."""
 

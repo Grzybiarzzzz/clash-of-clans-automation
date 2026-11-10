@@ -12,6 +12,7 @@ import pyautogui
 import config
 from coc_bot import runtime
 from coc_bot.discord_log import send_discord_debug_log
+from coc_bot.humanized_input import fast_click, human_like_move_click
 from coc_bot.input.camera import click_in_square
 from coc_bot.input.win32 import turbo_fast_click, turbo_move_cursor
 from coc_bot.village import collect_bb_loot
@@ -35,7 +36,6 @@ from coc_bot.vision.screens import (
     detect_three_stars,
     detect_two_stars,
 )
-from humanized_input import fast_click, human_like_move_click
 
 bb_gold_attack_count = 0  # Counter for BB Gold loot collection every 12 attacks
 

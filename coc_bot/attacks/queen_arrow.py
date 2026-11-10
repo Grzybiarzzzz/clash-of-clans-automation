@@ -10,7 +10,7 @@ from PIL import ImageGrab
 
 import config
 from coc_bot.discord_log import send_discord_debug_log
-from humanized_input import fast_click
+from coc_bot.humanized_input import fast_click
 
 def detect_queen_arrow_projectile():
     """

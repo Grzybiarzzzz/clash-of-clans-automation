@@ -8,10 +8,10 @@ import keyboard
 import config
 from coc_bot import runtime
 from coc_bot.discord_log import send_discord_debug_log
+from coc_bot.humanized_input import fast_click, human_like_move_click
 from coc_bot.village import collect_bb_loot
 from coc_bot.vision.bb_deployment_zone import detect_bb_deployment_zone, filter_out_unit_bar
 from coc_bot.vision.screens import detect_current_game_state, detect_surrender_or_end_battle
-from humanized_input import fast_click, human_like_move_click
 
 # Session counters
 bb_elixir_attack_count = 0  # Counter for BB Elixir loot collection every 12 attacks

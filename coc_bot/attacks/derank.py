@@ -9,9 +9,9 @@ import config
 from coc_bot import runtime
 from coc_bot.attacks.common import choose_attack_side, prepare_hotkeys
 from coc_bot.discord_log import send_discord_debug_log
+from coc_bot.humanized_input import human_like_move_click
 from coc_bot.input.camera import move_camera_to_side
 from coc_bot.vision.screens import detect_alt_hotkeys, is_attack_screen_ready
-from humanized_input import human_like_move_click
 
 def handle_derank_mode():
     """Handle derank mode attack - place one unit using normal deployment strategy and surrender immediately"""

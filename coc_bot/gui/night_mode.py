@@ -4,7 +4,6 @@ from tkinter import ttk
 
 from coc_bot.gui.overlay_support import OVERLAY_AVAILABLE
 
-
 class NightModeMixin:
     """Night mode and detection-overlay toggles. Mixin for BotGUI."""
 
