@@ -4,6 +4,8 @@ import threading
 import time
 from tkinter import messagebox
 
+from coc_bot import runtime
+
 class BotControlMixin:
     """Start, stop and pause handling, timers and status labels. Mixin for BotGUI."""
 
@@ -101,13 +103,10 @@ class BotControlMixin:
 
         # Reset queue system
         try:
-            import sys
-            main_module = sys.modules.get('__main__')
-            if main_module:
-                queue_manager = getattr(main_module, 'queue_manager', None)
-                if queue_manager:
-                    queue_manager.reset_queue()
-                    print("[GUI] Queue manager reset on bot stop")
+            queue_manager = runtime.queue_manager
+            if queue_manager:
+                queue_manager.reset_queue()
+                print("[GUI] Queue manager reset on bot stop")
         except Exception as e:
             print(f"[GUI] Error resetting queue manager: {e}")
 

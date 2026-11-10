@@ -3,6 +3,8 @@
 import tkinter as tk
 from tkinter import messagebox, ttk
 
+from coc_bot import runtime
+
 class QueuePanelMixin:
     """Queue section: smart mode controls and the manual task schedule. Mixin for BotGUI."""
 
@@ -191,16 +193,7 @@ class QueuePanelMixin:
 
         # Start or stop the queue manager
         try:
-            import sys
-            # Get queue_manager from main module (already imported)
-            main_module = sys.modules.get('__main__')
-
-            if main_module is None:
-                print("[GUI] ERROR: Cannot access main module")
-                self.save_settings()
-                return
-
-            queue_manager = getattr(main_module, 'queue_manager', None)
+            queue_manager = runtime.queue_manager
             print(f"[GUI] queue_manager reference: {queue_manager}")
 
             if self.queue_enabled_var.get():

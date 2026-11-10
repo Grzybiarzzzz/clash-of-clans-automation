@@ -2,6 +2,8 @@
 
 import tkinter as tk
 
+from coc_bot import runtime
+
 class StateSyncMixin:
     """Two-way synchronisation between the Tkinter widgets and the shared BotStateManager. Mixin for BotGUI."""
 
@@ -172,17 +174,14 @@ class StateSyncMixin:
                         self.queue_enabled_var.set(bool(value))
                         # Start/stop queue manager
                         try:
-                            import sys
-                            main_module = sys.modules.get('__main__')
-                            if main_module:
-                                queue_manager = getattr(main_module, 'queue_manager', None)
-                                if queue_manager:
-                                    if value:
-                                        queue_manager.start_queue()
-                                        self.log_message("Queue System: STARTED (from web)")
-                                    else:
-                                        queue_manager.reset_queue()
-                                        self.log_message("Queue System: STOPPED (from web)")
+                            queue_manager = runtime.queue_manager
+                            if queue_manager:
+                                if value:
+                                    queue_manager.start_queue()
+                                    self.log_message("Queue System: STARTED (from web)")
+                                else:
+                                    queue_manager.reset_queue()
+                                    self.log_message("Queue System: STOPPED (from web)")
                         except Exception as e:
                             print(f"[GUI] Error toggling queue: {e}")
                         self.save_settings()

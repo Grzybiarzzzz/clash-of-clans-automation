@@ -717,7 +717,7 @@ def _state_in_base(context):
 
     # NEW: If queue is active, wait for storage UI to stabilize before checking
     try:
-        if 'queue_manager' in globals() and runtime.queue_manager and runtime.queue_manager.queue_active:
+        if runtime.queue_manager and runtime.queue_manager.queue_active:
             print("[BB GOLD STATE] Queue active - waiting for storage UI to stabilize")
             time.sleep(1.5)  # Allow storage bars to fully render
     except NameError:

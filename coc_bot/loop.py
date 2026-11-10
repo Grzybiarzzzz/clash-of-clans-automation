@@ -121,7 +121,7 @@ def main_loop():
             # Check if queue system is active
             queue_enabled = settings.get('queue_enabled', False)
 
-            if queue_enabled and 'queue_manager' in globals() and runtime.queue_manager:
+            if queue_enabled and runtime.queue_manager:
                 # Ensure queue is started (handles race condition from web GUI)
                 if not runtime.queue_manager.queue_active:
                     runtime.queue_manager.start_queue()
