@@ -21,7 +21,7 @@ import numpy as np
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 import config
 
-# Detection parameters (matching main.py)
+# Detection parameters (matching coc_bot/attacks/queen_arrow.py)
 MIN_AREA = 100
 MAX_AREA = 1000
 MIN_THICKNESS = 8  # pixels - minimum width or height

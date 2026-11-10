@@ -193,7 +193,7 @@ def monitor_and_surrender():
 
     print("[MONITOR] Starting star detection loop...")
     print("[MONITOR] Will check for 2 or 3 stars every 0.5 seconds")
-    print("[MONITOR] Note: main.py now uses Return Home button detection instead of 80s timeout")
+    print("[MONITOR] Note: the bot now uses Return Home button detection instead of 80s timeout")
     print("[MONITOR] This debug tool uses 80s timeout for simplicity")
     print()
 

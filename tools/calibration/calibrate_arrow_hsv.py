@@ -13,7 +13,7 @@ Instructions:
 - Run this program
 - Click on the arrow glow to sample pixels (5-10 clicks along the trail)
 - Adjust sliders to tune the detection
-- Copy the final HSV values to main.py
+- Copy the final HSV values to coc_bot/attacks/queen_arrow.py
 """
 
 import sys
@@ -178,11 +178,11 @@ class HSVCalibrator:
     def export_values(self):
         """Export the current HSV values"""
         self.log("\n" + "="*70)
-        self.log("FINAL HSV VALUES - Copy these to main.py:")
+        self.log("FINAL HSV VALUES - Copy these to coc_bot/attacks/queen_arrow.py:")
         self.log("="*70)
         self.log(f"lower_cyan = np.array([{self.h_min}, {self.s_min}, {self.v_min}])")
         self.log(f"upper_cyan = np.array([{self.h_max}, {self.s_max}, {self.v_max}])")
-        self.log("\nUpdate these lines in main.py (around line 2401-2402):")
+        self.log("\nUpdate these lines in detect_queen_arrow_projectile (coc_bot/attacks/queen_arrow.py):")
         self.log("="*70)
 
     def log(self, message):

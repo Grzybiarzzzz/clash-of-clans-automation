@@ -129,7 +129,7 @@ def detect_and_visualize_arrow_glow():
             # Get bounding box
             x, y, w, h = cv2.boundingRect(contour)
 
-            # Check filters (same as main.py)
+            # Check filters (same as coc_bot/attacks/queen_arrow.py)
             is_valid = True
             filter_reason = ""
 
