@@ -9,7 +9,7 @@ import pyautogui
 import pytesseract
 
 import config
-from bot_gui import BotGUI
+from coc_bot.gui import BotGUI
 from bot_state import BotStateManager
 from coc_bot import runtime
 from coc_bot.connection import start_connection_monitor
