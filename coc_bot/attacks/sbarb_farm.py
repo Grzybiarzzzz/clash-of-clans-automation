@@ -563,7 +563,7 @@ def handle_sbarb_farm_mode():
     # STANDARD DEPLOYMENT MODE (hold-and-drag)
     # Skip this entire section if turbo deployment was used
     # ============================================================
-    if not turbo_deployment:
+    if not turbo_deployment and heroes_first:
         print(f"[SBARB FARM] Using STANDARD deployment mode (hold-and-drag)")
 
         # CONDITIONAL DEPLOYMENT ORDER BASED ON SETTING
