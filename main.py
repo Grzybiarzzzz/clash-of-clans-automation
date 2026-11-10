@@ -12,6 +12,7 @@ import cv2
 import os
 import config  # external constants
 from bot_gui import BotGUI
+from coc_bot import runtime
 import tkinter as tk
 import requests  # Add for Discord webhook notifications
 import json # Added for wall coordinate saving/loading
@@ -60,7 +61,7 @@ except ImportError as e:
 def gpu_match_template(image, template, method='TM_CCOEFF_NORMED'):
     """Wrapper that checks GUI setting to decide GPU vs CPU"""
     # Check if GUI exists and GPU scanning is enabled
-    use_gpu = GPU_AVAILABLE and hasattr(gui, 'gpu_scanning_var') and gui.gpu_scanning_var.get()
+    use_gpu = GPU_AVAILABLE and hasattr(runtime.gui, 'gpu_scanning_var') and runtime.gui.gpu_scanning_var.get()
     if use_gpu and _gpu_match_template:
         return _gpu_match_template(image, template, method)
     else:
@@ -250,14 +251,7 @@ def turbo_deploy_siege(side, destruction_check=None):
     time.sleep(0.1)
     print(f"[TURBO DEPLOY] Siege deployed")
 
-# Global control flags
-paused = True
-running = True
-loop_count = 0
-
-# Add global counters for statistics
-skipped_bases = 0
-attacked_bases = 0
+# Session counters
 bb_elixir_attack_count = 0  # Counter for BB Elixir loot collection every 12 attacks
 bb_gold_attack_count = 0  # Counter for BB Gold loot collection every 12 attacks
 
@@ -301,45 +295,44 @@ last_debug_log = 0
 debug_log_buffer = []
 
 # Create GUI
-root = tk.Tk()
-gui = BotGUI(root)
+runtime.root = tk.Tk()
+runtime.gui = BotGUI(runtime.root)
 
 # Initialize shared state manager for web GUI
-state_manager = BotStateManager()
+runtime.state_manager = BotStateManager()
 
 # Load existing state from JSON if it exists
 WEB_STATE_FILE = os.path.join("data", "web_state.json")
 if os.path.exists(WEB_STATE_FILE):
     try:
-        state_manager.load_from_json(WEB_STATE_FILE)
+        runtime.state_manager.load_from_json(WEB_STATE_FILE)
         print("[MAIN] Loaded web state from JSON")
     except Exception as e:
         print(f"[MAIN] Failed to load web state: {e}")
 
 # Initialize default state values
-state_manager.update({
+runtime.state_manager.update({
     "running": False,
     "paused": True,
     "status": "PAUSED",
-    "current_profile": gui.current_profile,
+    "current_profile": runtime.gui.current_profile,
     "loop_count": 0,
     "bases_attacked": 0,
     "bases_skipped": 0
 })
 
 # Connect GUI to state manager for web GUI integration
-gui.state_manager = state_manager
-gui._sync_state_to_manager()
-state_manager.subscribe(gui._on_state_change)
+runtime.gui.state_manager = runtime.state_manager
+runtime.gui._sync_state_to_manager()
+runtime.state_manager.subscribe(runtime.gui._on_state_change)
 
 # Register pause callback to update main.py's global paused variable
 def on_pause_from_web(new_paused_state):
     """Called when web GUI toggles pause - updates main.py global."""
-    global paused
-    paused = new_paused_state
-    print(f"[MAIN] Pause state updated from web GUI: {paused}")
+    runtime.paused = new_paused_state
+    print(f"[MAIN] Pause state updated from web GUI: {runtime.paused}")
 
-gui.set_control_callback('pause', on_pause_from_web)
+runtime.gui.set_control_callback('pause', on_pause_from_web)
 print("[MAIN] GUI connected to state manager for web sync")
 
 # ============================================================
@@ -347,56 +340,56 @@ print("[MAIN] GUI connected to state manager for web sync")
 # ============================================================
 def overlay_clear():
     """Clear the overlay canvas if enabled."""
-    if gui.overlay and gui.overlay_enabled:
+    if runtime.gui.overlay and runtime.gui.overlay_enabled:
         print("[OVERLAY] Clearing overlay")
-        gui.overlay.clear()
+        runtime.gui.overlay.clear()
 
 def overlay_update():
     """Update/refresh the overlay display if enabled."""
-    if gui.overlay and gui.overlay_enabled:
+    if runtime.gui.overlay and runtime.gui.overlay_enabled:
         print("[OVERLAY] Updating overlay")
-        gui.overlay.update()
+        runtime.gui.overlay.update()
 
 def overlay_draw_ocr(region, value, confidence, resource_type=''):
     """Draw an OCR region visualization if overlay is enabled."""
-    if gui.overlay and gui.overlay_enabled:
+    if runtime.gui.overlay and runtime.gui.overlay_enabled:
         print(f"[OVERLAY] Drawing OCR: {resource_type} = {value} ({confidence}%)")
-        gui.overlay.draw_ocr_region(region, str(value), confidence, resource_type)
+        runtime.gui.overlay.draw_ocr_region(region, str(value), confidence, resource_type)
 
 def overlay_draw_detection(x, y, w, h, building_type, level, confidence, color):
     """Draw a building detection box if overlay is enabled."""
-    if gui.overlay and gui.overlay_enabled:
+    if runtime.gui.overlay and runtime.gui.overlay_enabled:
         print(f"[OVERLAY] Drawing detection: {building_type} at ({x},{y})")
-        gui.overlay.draw_detection(x, y, w, h, building_type, level, confidence, color)
+        runtime.gui.overlay.draw_detection(x, y, w, h, building_type, level, confidence, color)
 
 def overlay_draw_side(side):
     """Draw the attack side indicator if overlay is enabled."""
-    if gui.overlay and gui.overlay_enabled:
+    if runtime.gui.overlay and runtime.gui.overlay_enabled:
         print(f"[OVERLAY] Drawing attack side: {side}")
-        gui.overlay.highlight_side(side, config.OVERLAY_COLORS.get('side_indicator', '#00FF00'))
+        runtime.gui.overlay.highlight_side(side, config.OVERLAY_COLORS.get('side_indicator', '#00FF00'))
 
 def overlay_draw_spell_target(x, y, spell_name):
     """Draw a spell target crosshair if overlay is enabled."""
-    if gui.overlay and gui.overlay_enabled:
+    if runtime.gui.overlay and runtime.gui.overlay_enabled:
         print(f"[OVERLAY] Drawing spell target: {spell_name} at ({x},{y})")
-        gui.overlay.draw_crosshair(x, y, 25, config.OVERLAY_COLORS.get('spell_target', '#FF00FF'), spell_name)
+        runtime.gui.overlay.draw_crosshair(x, y, 25, config.OVERLAY_COLORS.get('spell_target', '#FF00FF'), spell_name)
 
 
 # Initialize Queue Manager (callbacks will be set later after functions are defined)
 try:
     from queue_manager import QueueManager
-    queue_manager = QueueManager(gui)
+    runtime.queue_manager = QueueManager(runtime.gui)
     print("[MAIN] Queue Manager initialized (callbacks pending)")
 
     # Start queue if enabled in settings
-    settings = gui.get_settings()
+    settings = runtime.gui.get_settings()
     if settings.get('queue_enabled', False):
-        queue_manager.start_queue()
+        runtime.queue_manager.start_queue()
 except ImportError:
-    queue_manager = None
+    runtime.queue_manager = None
     print("[MAIN] Queue Manager not available")
 except Exception as e:
-    queue_manager = None
+    runtime.queue_manager = None
     print(f"[MAIN] Failed to initialize Queue Manager: {e}")
 
 # Helper functions
@@ -705,7 +698,7 @@ def detect_achievement_building(building_type):
 
     # Draw LOW confidence buildings in RED (for debugging threshold tuning)
     # Check if user wants to hide low confidence detections
-    hide_low_conf = gui.get_settings().get('overlay_hide_low_conf', False) if gui else False
+    hide_low_conf = runtime.gui.get_settings().get('overlay_hide_low_conf', False) if runtime.gui else False
     if not hide_low_conf:
         for x, y, conf in low_conf_buildings:
             overlay_draw_detection(x, y, box_w, box_h, f"{building_type.replace('_', ' ').title()} (LOW)", None, conf,
@@ -823,7 +816,7 @@ def detect_achievement_building_from_image(building_type, base_cv):
 
     # Draw LOW confidence buildings in RED (for debugging threshold tuning)
     # Check if user wants to hide low confidence detections
-    hide_low_conf = gui.get_settings().get('overlay_hide_low_conf', False) if gui else False
+    hide_low_conf = runtime.gui.get_settings().get('overlay_hide_low_conf', False) if runtime.gui else False
     if not hide_low_conf:
         for x, y, conf in low_conf_buildings:
             overlay_draw_detection(x, y, box_w, box_h, f"{building_type.replace('_', ' ').title()} (LOW)", None, conf,
@@ -1534,7 +1527,7 @@ def handle_connection_lost():
     _connection_monitor_paused = True
 
     print("[CONNECTION] *** CONNECTION LOST - Attempting reconnect ***")
-    gui.log_message("Connection lost! Clicking Try Again...")
+    runtime.gui.log_message("Connection lost! Clicking Try Again...")
     send_discord_debug_log("Connection lost detected - attempting reconnect", "WARNING")
 
     # Click "TRY AGAIN" button
@@ -1560,20 +1553,20 @@ def handle_connection_lost():
         # Try to detect where we are
         if detect_in_base_state():
             print("[CONNECTION] ✓ Reconnected - at home base")
-            gui.log_message("Reconnected successfully - at home base")
+            runtime.gui.log_message("Reconnected successfully - at home base")
             send_discord_debug_log("Reconnected successfully - at home base", "INFO")
             _connection_monitor_paused = False
             return True
 
         # Could be in attack screen or elsewhere - just continue
         print("[CONNECTION] ✓ Reconnected - determining screen state...")
-        gui.log_message("Reconnected - screen state unknown, continuing...")
+        runtime.gui.log_message("Reconnected - screen state unknown, continuing...")
         send_discord_debug_log("Reconnected - screen state unknown", "INFO")
         _connection_monitor_paused = False
         return True
 
     print("[CONNECTION] ✗ Failed to reconnect after 30 seconds")
-    gui.log_message("Failed to reconnect after 30 seconds")
+    runtime.gui.log_message("Failed to reconnect after 30 seconds")
     send_discord_debug_log("Failed to reconnect after 30 seconds", "ERROR")
     _connection_monitor_paused = False
     return False
@@ -2036,11 +2029,11 @@ def ocr_resources(region, debug=False):
     try:
         value = int(cleaned)
         send_discord_ocr_log(f"OCR: {value} (ocr_resources)")
-        gui.ocr_log("Resources", value, raw_value=cleaned)
+        runtime.gui.ocr_log("Resources", value, raw_value=cleaned)
         return value
     except ValueError:
         send_discord_ocr_log(f"OCR: ValueError (ocr_resources)")
-        gui.ocr_log("Resources", "ERROR", raw_value=cleaned)
+        runtime.gui.ocr_log("Resources", "ERROR", raw_value=cleaned)
         return 0
 
 
@@ -2073,18 +2066,18 @@ def ocr_loot():
         for k in ['gold', 'elixir', 'dark_elixir']:
             if loot[k] > 4_000_000:
                 print(f"[OCR FAILSAFE] Loot {k} value {loot[k]} > 4 million. Ignoring this value.")
-                gui.log_message(f"[OCR FAILSAFE] Loot {k} value {loot[k]} > 4 million. Ignoring this value.")
+                runtime.gui.log_message(f"[OCR FAILSAFE] Loot {k} value {loot[k]} > 4 million. Ignoring this value.")
                 send_discord_debug_log(f"OCR failsafe: Loot {k} value {loot[k]} > 4 million, ignoring", "WARNING")
                 send_discord_ocr_log(f"OCR: {loot[k]} (loot_{k}, loot_screen) > 4 million, set to 0")
                 loot[k] = 0
         print(f"Loot captured - Gold: {loot['gold']:,}, Elixir: {loot['elixir']:,}, Dark Elixir: {loot['dark_elixir']:,}")
-        gui.log_message(f"Loot: Gold {loot['gold']:,}, Elixir {loot['elixir']:,}, Dark {loot['dark_elixir']:,}")
+        runtime.gui.log_message(f"Loot: Gold {loot['gold']:,}, Elixir {loot['elixir']:,}, Dark {loot['dark_elixir']:,}")
         send_discord_debug_log(f"Loot captured: Gold {loot['gold']:,}, Elixir {loot['elixir']:,}, Dark {loot['dark_elixir']:,}")
         debug_save_loot_ocr_regions()  # Automatically save loot OCR regions after battle
         return loot
     except Exception as e:
         print(f"Error capturing loot: {e}")
-        gui.log_message(f"Error capturing loot: {e}")
+        runtime.gui.log_message(f"Error capturing loot: {e}")
         send_discord_debug_log(f"Error capturing loot: {e}", "ERROR")
         send_discord_ocr_log(f"OCR: Exception {e} (ocr_loot)")
         return loot
@@ -2103,8 +2096,8 @@ def find_best_matching_profile(gold, elixir, dark_elixir=None):
     Returns:
         tuple: (profile_name, match_score, reason) or (None, 0, None) if no better match
     """
-    current_profile = gui.current_profile
-    all_profiles = gui.profiles
+    current_profile = runtime.gui.current_profile
+    all_profiles = runtime.gui.profiles
 
     current_settings = all_profiles.get(current_profile, {})
     current_max_gold = current_settings.get('max_gold_storage', 18000000)
@@ -2211,7 +2204,7 @@ def auto_switch_profile_if_needed(gold, elixir, dark_elixir=None):
 
         if profile_name:
             # Found a better matching profile - auto-switch
-            current_profile = gui.current_profile
+            current_profile = runtime.gui.current_profile
 
             if dark_elixir is not None:
                 resource_str = f"Gold: {gold:,}, Elixir: {elixir:,}, Dark: {dark_elixir:,}"
@@ -2221,13 +2214,13 @@ def auto_switch_profile_if_needed(gold, elixir, dark_elixir=None):
             print(f"⚠️ AUTO-SWITCH: Resources ({resource_str}) suggest profile '{profile_name}'")
             print(f"   Current: {current_profile} → Switching to: {profile_name}")
             print(f"   Reason: {reason}")
-            gui.log_message(f"⚠️ Auto-switching profile: {current_profile} → {profile_name}")
-            gui.log_message(f"   Reason: {reason}")
+            runtime.gui.log_message(f"⚠️ Auto-switching profile: {current_profile} → {profile_name}")
+            runtime.gui.log_message(f"   Reason: {reason}")
             send_discord_debug_log(f"Auto-switching profile: {current_profile} → {profile_name} ({reason})", "WARNING")
 
             # Switch profile
-            gui.profile_var.set(profile_name)
-            gui.apply_profile(silent=True)
+            runtime.gui.profile_var.set(profile_name)
+            runtime.gui.apply_profile(silent=True)
 
             return True
         return False
@@ -2273,7 +2266,7 @@ def check_and_pause_if_storages_full(base_type='main_base'):
     Returns:
         bool: True if bot was paused, False otherwise
     """
-    global last_3_resources, paused
+    global last_3_resources
 
     readings = last_3_resources[base_type]
 
@@ -2303,9 +2296,9 @@ def check_and_pause_if_storages_full(base_type='main_base'):
         print(f"AUTO-PAUSING BOT - Please update profile storage maximums!")
         print(f"{'='*60}\n")
 
-        gui.log_message("⚠️ STORAGES FULL - Pausing bot")
-        gui.log_message(f"Same resources: {resource_str}")
-        gui.log_message("Update profile storage maximums!")
+        runtime.gui.log_message("⚠️ STORAGES FULL - Pausing bot")
+        runtime.gui.log_message(f"Same resources: {resource_str}")
+        runtime.gui.log_message("Update profile storage maximums!")
 
         send_discord_debug_log(
             f"🛑 Storages Full - Auto-pausing bot\n"
@@ -2315,8 +2308,8 @@ def check_and_pause_if_storages_full(base_type='main_base'):
         )
 
         # Pause the bot
-        paused = True
-        gui.toggle_pause()  # Update GUI state
+        runtime.paused = True
+        runtime.gui.toggle_pause()  # Update GUI state
 
         # Clear tracking to avoid repeated pauses
         last_3_resources[base_type] = []
@@ -2430,42 +2423,40 @@ def save_loot_data(loot_data, loop_count):
             })
 
         print(f"Loot data saved to {filename}")
-        gui.log_message(f"Loot data saved to {filename}")
+        runtime.gui.log_message(f"Loot data saved to {filename}")
 
     except Exception as e:
         print(f"Error saving loot data: {e}")
-        gui.log_message(f"Error saving loot data: {e}")
+        runtime.gui.log_message(f"Error saving loot data: {e}")
 
 # Control callbacks
 
 def update_status():
     """Update GUI status from bot state (both main status and quick status indicator)"""
-    if gui.bot_running:
-        if gui.bot_paused:
-            gui.status_label.config(text='PAUSED', foreground='orange')
-            gui.quick_status_label.config(text='● Paused', foreground='orange')
+    if runtime.gui.bot_running:
+        if runtime.gui.bot_paused:
+            runtime.gui.status_label.config(text='PAUSED', foreground='orange')
+            runtime.gui.quick_status_label.config(text='● Paused', foreground='orange')
         else:
-            gui.status_label.config(text='RUNNING', foreground='green')
-            gui.quick_status_label.config(text='● Running', foreground='green')
+            runtime.gui.status_label.config(text='RUNNING', foreground='green')
+            runtime.gui.quick_status_label.config(text='● Running', foreground='green')
     else:
-        gui.status_label.config(text='STOPPED', foreground='red')
-        gui.quick_status_label.config(text='● Stopped', foreground='red')
+        runtime.gui.status_label.config(text='STOPPED', foreground='red')
+        runtime.gui.quick_status_label.config(text='● Stopped', foreground='red')
 
 
 def toggle_pause():
-    global paused
-    paused = not paused
-    gui.bot_paused = paused
-    print(f"Paused set to {paused}")
-    gui.log_message(f"Bot {'paused' if paused else 'resumed'}")
-    root.after(0, update_status)
+    runtime.paused = not runtime.paused
+    runtime.gui.bot_paused = runtime.paused
+    print(f"Paused set to {runtime.paused}")
+    runtime.gui.log_message(f"Bot {'paused' if runtime.paused else 'resumed'}")
+    runtime.root.after(0, update_status)
 
 
 def stop_bot():
     """Stop the bot immediately without closing the GUI"""
-    global running, paused
-    running = False
-    paused = True
+    runtime.running = False
+    runtime.paused = True
 
     # Release all held keys immediately
     try:
@@ -2487,15 +2478,14 @@ def stop_bot():
     send_discord_debug_log("Bot stopped immediately by user hotkey (F2)", "INFO")
 
     # Update GUI on main thread (handles button states and status labels)
-    root.after(0, gui.stop_bot)
+    runtime.root.after(0, runtime.gui.stop_bot)
 
 
 def exit_app():
     """Stop the bot and close the entire program"""
-    global running
-    running = False
-    gui.bot_running = False
-    gui.log_message("Bot stopped - closing program")
+    runtime.running = False
+    runtime.gui.bot_running = False
+    runtime.gui.log_message("Bot stopped - closing program")
 
     # Stop connection monitor
     stop_connection_monitor()
@@ -2510,7 +2500,7 @@ def exit_app():
     # Stop any PyAutoGUI operations
     pyautogui.PAUSE = 0  # Disable pause between actions for faster shutdown
 
-    root.quit()
+    runtime.root.quit()
 
 
 def debug_save_ocr_regions():
@@ -2531,10 +2521,10 @@ def debug_save_ocr_regions():
             dark_region = getattr(config, "DARK_ELIXIR_REGION")
             dark_img = ImageGrab.grab(bbox=dark_region)
             dark_img.save(os.path.join(folder, "debug_dark_elixir_region_{:03d}.png".format(len(images)+1)))
-        gui.log_message("OCR region screenshots saved for debugging.")
+        runtime.gui.log_message("OCR region screenshots saved for debugging.")
     except Exception as e:
         print(f"Error saving OCR region screenshots: {e}")
-        gui.log_message(f"Error saving OCR region screenshots: {e}")
+        runtime.gui.log_message(f"Error saving OCR region screenshots: {e}")
 
 def debug_save_loot_ocr_regions():
     """Save screenshots of the loot OCR regions after battle for debugging bounding boxes."""
@@ -2553,10 +2543,10 @@ def debug_save_loot_ocr_regions():
             dark_region = getattr(config, "LOOT_DARK_ELIXIR_REGION")
             dark_img = ImageGrab.grab(bbox=dark_region)
             dark_img.save(os.path.join(folder, "debug_loot_dark_elixir_region_{:03d}.png".format(len(images)+1)))
-        gui.log_message("Loot OCR region screenshots saved for debugging.")
+        runtime.gui.log_message("Loot OCR region screenshots saved for debugging.")
     except Exception as e:
         print(f"Error saving loot OCR region screenshots: {e}")
-        gui.log_message(f"Error saving loot OCR region screenshots: {e}")
+        runtime.gui.log_message(f"Error saving loot OCR region screenshots: {e}")
 
 def send_discord_notification(message):
     """
@@ -2636,17 +2626,17 @@ keyboard.add_hotkey('f6', debug_save_ocr_regions)
 
 def clear_overlay_hotkey():
     """Clear all overlay drawings (F7 hotkey)."""
-    if gui.overlay and gui.overlay_enabled:
-        gui.overlay.clear()
-        gui.overlay.update()
+    if runtime.gui.overlay and runtime.gui.overlay_enabled:
+        runtime.gui.overlay.clear()
+        runtime.gui.overlay.update()
         print("[OVERLAY] Cleared via F7 hotkey")
 
 keyboard.add_hotkey('f7', clear_overlay_hotkey)
 
 def save_overlay_screenshot_hotkey():
     """Save overlay screenshot with black background (F8 hotkey)."""
-    if gui.overlay and gui.overlay_enabled:
-        gui.overlay.save_screenshot()
+    if runtime.gui.overlay and runtime.gui.overlay_enabled:
+        runtime.gui.overlay.save_screenshot()
     else:
         print("[OVERLAY] Cannot save - overlay not enabled")
 
@@ -2791,7 +2781,7 @@ def ocr_attack_resource_template_digits(img, debug=False, context=None, resource
                             resource_emoji = {'gold': '🪙', 'elixir': '💧', 'dark_elixir': '⚫'}.get(resource_type, '🔄')
                             resource_label = resource_type.upper() if resource_type else context
                             send_discord_ocr_log(f"{resource_emoji} **{resource_label}**: {tesseract_value} (Tesseract fallback, template was {value})")
-                            gui.ocr_log(resource_label, tesseract_value, raw_value=f"template:{value}")
+                            runtime.gui.ocr_log(resource_label, tesseract_value, raw_value=f"template:{value}")
                             return tesseract_value
                 except Exception as e:
                     if debug:
@@ -2803,7 +2793,7 @@ def ocr_attack_resource_template_digits(img, debug=False, context=None, resource
             digit_conf = ' '.join(f"{d}({s*100:.0f}%)" for _, d, s in final)
             avg_conf = sum(s for _, _, s in final) / len(final) * 100 if final else 0
             send_discord_ocr_log(f"{resource_emoji} **{resource_label}**: {result}  [{digit_conf}]")
-            gui.ocr_log(resource_label, value, raw_value=result, confidence=avg_conf)
+            runtime.gui.ocr_log(resource_label, value, raw_value=result, confidence=avg_conf)
             return value
         else:
             resource_emoji = {'gold': '🪙', 'elixir': '💧', 'dark_elixir': '⚫'}.get(resource_type, '❌')
@@ -2891,7 +2881,7 @@ def check_discord_commands():
     Check for Discord commands by monitoring bot_settings.json file.
     This allows the main bot to respond to Discord controller commands.
     """
-    global paused, running, last_settings_check
+    global last_settings_check
     current_time = time.time()
     if current_time - last_settings_check < settings_check_interval:
         return
@@ -2909,35 +2899,35 @@ def check_discord_commands():
         # Only apply Discord commands if the flags actually exist in the file
         if discord_running is not None and discord_paused is not None:
             # Apply Discord commands
-            if discord_running and not gui.bot_running:
-                gui.bot_running = True
-                gui.bot_paused = False
-                paused = False
-                running = True
-                gui.log_message("Bot started via Discord command")
+            if discord_running and not runtime.gui.bot_running:
+                runtime.gui.bot_running = True
+                runtime.gui.bot_paused = False
+                runtime.paused = False
+                runtime.running = True
+                runtime.gui.log_message("Bot started via Discord command")
                 print("Bot started via Discord command")
-                root.after(0, update_status)
-            elif not discord_running and gui.bot_running:
-                gui.bot_running = False
-                gui.bot_paused = True
-                paused = True
-                running = False
-                gui.log_message("Bot stopped via Discord command")
+                runtime.root.after(0, update_status)
+            elif not discord_running and runtime.gui.bot_running:
+                runtime.gui.bot_running = False
+                runtime.gui.bot_paused = True
+                runtime.paused = True
+                runtime.running = False
+                runtime.gui.log_message("Bot stopped via Discord command")
                 print("Bot stopped via Discord command")
-                root.after(0, update_status)
-            elif discord_running and gui.bot_running:
-                if discord_paused and not gui.bot_paused:
-                    gui.bot_paused = True
-                    paused = True
-                    gui.log_message("Bot paused via Discord command")
+                runtime.root.after(0, update_status)
+            elif discord_running and runtime.gui.bot_running:
+                if discord_paused and not runtime.gui.bot_paused:
+                    runtime.gui.bot_paused = True
+                    runtime.paused = True
+                    runtime.gui.log_message("Bot paused via Discord command")
                     print("Bot paused via Discord command")
-                    root.after(0, update_status)
-                elif not discord_paused and gui.bot_paused:
-                    gui.bot_paused = False
-                    paused = False
-                    gui.log_message("Bot resumed via Discord command")
+                    runtime.root.after(0, update_status)
+                elif not discord_paused and runtime.gui.bot_paused:
+                    runtime.gui.bot_paused = False
+                    runtime.paused = False
+                    runtime.gui.log_message("Bot resumed via Discord command")
                     print("Bot resumed via Discord command")
-                    root.after(0, update_status)
+                    runtime.root.after(0, update_status)
     except Exception as e:
         print(f"Error checking Discord commands: {e}")
 
@@ -2946,7 +2936,7 @@ def check_discord_commands():
 # Setup automatic break timing
 def schedule_next_break():
     # Get settings from GUI
-    settings = gui.get_settings()
+    settings = runtime.gui.get_settings()
     break_interval = settings.get('break_interval', 45)  # minutes
     auto_pause_enabled = settings.get('auto_pause_enabled', True)
     
@@ -2957,7 +2947,7 @@ def schedule_next_break():
     interval_seconds = (break_interval + random.uniform(-5, 5)) * 60
     return time.time() + interval_seconds
 
-break_time = schedule_next_break()
+runtime.break_time = schedule_next_break()
 
 def is_base_search_ready():
     """Check if base search screen is ready by detecting end_battle button"""
@@ -3215,7 +3205,7 @@ def collect_bb_loot():
     """
     print("[BB LOOT] Starting loot collection...")
     send_discord_debug_log("BB Elixir: Starting loot collection")
-    gui.log_message("BB Elixir: Collecting loot...")
+    runtime.gui.log_message("BB Elixir: Collecting loot...")
 
     # Drag camera to see right side and slightly up
     # To see RIGHT: drag LEFT. To see UP: drag DOWN.
@@ -3272,11 +3262,11 @@ def collect_bb_loot():
         time.sleep(2)
 
         print("[BB LOOT] Loot collection completed")
-        gui.log_message("BB Elixir: Loot collected successfully")
+        runtime.gui.log_message("BB Elixir: Loot collected successfully")
         send_discord_debug_log("BB Elixir: Loot collection completed")
     else:
         print("[BB LOOT] WARNING: Boat not found after 3 attempts, skipping loot collection")
-        gui.log_message("BB Elixir: Boat not found - skipping loot")
+        runtime.gui.log_message("BB Elixir: Boat not found - skipping loot")
         send_discord_debug_log("BB Elixir: Boat not found - skipping loot collection", "WARNING")
 
 def filter_out_unit_bar(coordinates):
@@ -4198,7 +4188,7 @@ def save_bb_dragon_debug_visualization(all_coords, dragon_coords, bm_coord):
 def handle_bb_elixir_mode():
     """Handle BB Elixir mode - detect deployment zone, place one unit, and surrender immediately"""
     send_discord_debug_log("BB Elixir mode: attacking any base")
-    gui.log_message("BB Elixir mode: attacking any base")
+    runtime.gui.log_message("BB Elixir mode: attacking any base")
 
     # Detect valid deployment zone (outside red lines)
     valid_coords = detect_bb_deployment_zone()
@@ -4330,7 +4320,7 @@ def handle_bb_elixir_mode():
                 time.sleep(5)  # Wait for potential auto-end
 
     send_discord_debug_log("BB Elixir: surrendered attack")
-    gui.log_message("BB Elixir: surrendered attack")
+    runtime.gui.log_message("BB Elixir: surrendered attack")
 
     # Return home - FAST CLICK for speed
     fast_click(*config.RETURN_BUTTON)  # Ultra-fast click
@@ -4341,7 +4331,7 @@ def handle_bb_elixir_mode():
 
     # Increment BB Elixir attack counter
     global bb_elixir_attack_count
-    settings = gui.get_settings()
+    settings = runtime.gui.get_settings()
     collect_interval = settings.get('bb_collect_interval', 12)
     bb_elixir_attack_count += 1
     print(f"[BB ELIXIR] Attack count: {bb_elixir_attack_count}/{collect_interval}")
@@ -4350,7 +4340,7 @@ def handle_bb_elixir_mode():
     # Collect loot every N attacks (configurable)
     if bb_elixir_attack_count >= collect_interval:
         print(f"[BB ELIXIR] {collect_interval} attacks completed - collecting loot!")
-        gui.log_message(f"BB Elixir: {collect_interval} attacks done - collecting loot")
+        runtime.gui.log_message(f"BB Elixir: {collect_interval} attacks done - collecting loot")
         send_discord_debug_log(f"BB Elixir: {collect_interval} attacks completed - starting loot collection")
 
         collect_bb_loot()
@@ -4411,7 +4401,7 @@ def deploy_bb_gold_baby_dragons(context):
         bm_coord = (1250, 650)  # Center fallback
 
     # Save debug visualization if enabled
-    if gui.get_settings().get('bb_gold_dragon_debug_positions', False):
+    if runtime.gui.get_settings().get('bb_gold_dragon_debug_positions', False):
         print("[BB DRAGONS] Debug mode enabled - saving position visualization...")
         save_bb_dragon_debug_visualization(all_coords, dragon_coords, bm_coord)
 
@@ -4435,7 +4425,7 @@ def deploy_bb_gold_baby_dragons(context):
         context['surrender_button_pos'] = surrender_pos
         context['surrender_button_type'] = button_type
         print(f"[BB DRAGONS] Battle Machine deployed successfully - {button_type} button detected")
-        gui.update_bb_gold_state('BATTLE_ACTIVE')
+        runtime.gui.update_bb_gold_state('BATTLE_ACTIVE')
     else:
         # Try fallback position for BM
         print("[BB DRAGONS] BM position failed, trying fallback...")
@@ -4454,7 +4444,7 @@ def deploy_bb_gold_baby_dragons(context):
             context['surrender_button_type'] = button_type
             bm_coord = fallback_coord
             print(f"[BB DRAGONS] BM fallback deployment successful")
-            gui.update_bb_gold_state('BATTLE_ACTIVE')
+            runtime.gui.update_bb_gold_state('BATTLE_ACTIVE')
         else:
             print("[BB DRAGONS] CRITICAL: Failed to deploy Battle Machine!")
             send_discord_debug_log("BB Dragons: CRITICAL - Failed to deploy BM", "ERROR")
@@ -4514,7 +4504,7 @@ def deploy_bb_gold_troops(context):
     - baby_dragons: 6 Baby Dragons spread out + Battle Machine (14s ability recast)
     """
     # Check troop mode setting
-    troop_mode = gui.get_settings().get('bb_gold_troop_mode', 'night_witches')
+    troop_mode = runtime.gui.get_settings().get('bb_gold_troop_mode', 'night_witches')
     print(f"[BB GOLD DEPLOY] Troop mode: {troop_mode}")
 
     # Route to appropriate deployment function based on mode
@@ -4579,7 +4569,7 @@ def deploy_bb_gold_troops(context):
             print(f"[BB GOLD DEPLOY] ✓ Cached {button_type} button at {surrender_pos} for instant surrender")
             send_discord_debug_log(f"BB Gold: Battle Machine deployed - {button_type} button cached at {surrender_pos}")
             # Update GUI to show BATTLE_ACTIVE immediately
-            gui.update_bb_gold_state('BATTLE_ACTIVE')
+            runtime.gui.update_bb_gold_state('BATTLE_ACTIVE')
             break
         else:
             print(f"[BB GOLD DEPLOY] Surrender/end battle button not found - invalid placement, trying again...")
@@ -4621,7 +4611,7 @@ def deploy_bb_gold_troops(context):
                 print(f"[BB GOLD DEPLOY] ✓ Cached {button_type} button at {surrender_pos} for instant surrender")
                 send_discord_debug_log(f"BB Gold: Success with random coords - {button_type} button cached at {surrender_pos}")
                 # Update GUI to show BATTLE_ACTIVE immediately
-                gui.update_bb_gold_state('BATTLE_ACTIVE')
+                runtime.gui.update_bb_gold_state('BATTLE_ACTIVE')
                 deployment_coord = (random_x, random_y)  # Update deployment coord for Night Witches
                 break
 
@@ -4699,7 +4689,7 @@ def monitor_bb_gold_battle(context):
     }
 
     print("[BB GOLD MONITOR] Monitoring for 2/3 stars or battle end...")
-    gui.log_message("BB Gold: Monitoring for 2/3 stars...")
+    runtime.gui.log_message("BB Gold: Monitoring for 2/3 stars...")
 
     while (time.time() - start_time) < max_wait_time:
         current_time = time.time()
@@ -4713,7 +4703,7 @@ def monitor_bb_gold_battle(context):
                 result['timeout_without_stars'] = True
                 result['return_home_pos'] = return_home_pos
                 print(f"[BB GOLD MONITOR] Return Home button detected at {return_home_pos} - battle ended without stars")
-                gui.log_message("BB Gold: Battle ended - returning home")
+                runtime.gui.log_message("BB Gold: Battle ended - returning home")
                 send_discord_debug_log("BB Gold: Return Home detected - battle ended without stars")
                 break
 
@@ -4742,21 +4732,21 @@ def monitor_bb_gold_battle(context):
 
         if two_star_verification >= 2:  # If both checks passed
             # Check if "try for 3 stars" is enabled for Baby Dragons
-            try_3_stars = gui.get_settings().get('bb_gold_try_3_stars', False)
-            troop_mode = gui.get_settings().get('bb_gold_troop_mode', 'night_witches')
+            try_3_stars = runtime.gui.get_settings().get('bb_gold_try_3_stars', False)
+            troop_mode = runtime.gui.get_settings().get('bb_gold_troop_mode', 'night_witches')
 
             if try_3_stars and troop_mode == 'baby_dragons':
                 # Skip 2-star exit, continue monitoring for 3 stars
                 if result['stars'] < 2:  # Only log once when first reaching 2 stars
                     result['stars'] = 2
                     print("[BB GOLD MONITOR] 2 STARS DETECTED! Continuing for 3 stars...")
-                    gui.log_message("BB Gold: 2 stars - trying for 3...")
+                    runtime.gui.log_message("BB Gold: 2 stars - trying for 3...")
                     send_discord_debug_log("BB Gold: 2 stars detected - continuing for 3 stars")
                 # Don't break - continue monitoring for 3 stars or Return Home
             else:
                 result['stars'] = 2
                 print("[BB GOLD MONITOR] 2 STARS DETECTED! Surrendering immediately...")
-                gui.log_message("BB Gold: 2 stars detected - surrendering")
+                runtime.gui.log_message("BB Gold: 2 stars detected - surrendering")
                 send_discord_debug_log("BB Gold: 2 stars detected - surrendering immediately")
                 break
 
@@ -4766,7 +4756,7 @@ def monitor_bb_gold_battle(context):
         if three_star_verification >= 2:  # If both checks passed
             result['stars'] = 3
             print("[BB GOLD MONITOR] 3 STARS DETECTED! (Builder Hall was last building)")
-            gui.log_message("BB Gold: 3 stars detected!")
+            runtime.gui.log_message("BB Gold: 3 stars detected!")
             send_discord_debug_log("BB Gold: 3 stars detected - waiting 7 seconds before ending")
 
             # Wait 7 seconds as requested for 3 stars
@@ -4778,7 +4768,7 @@ def monitor_bb_gold_battle(context):
 
     if result['stars'] == 0 and not result['timeout_without_stars']:
         print("[BB GOLD MONITOR] WARNING: 2/3 stars not detected after 3 minutes, ending battle anyway")
-        gui.log_message("BB Gold: Timeout - ending battle")
+        runtime.gui.log_message("BB Gold: Timeout - ending battle")
         send_discord_debug_log("BB Gold: Timeout waiting for stars - ending battle anyway", "WARNING")
 
     return result
@@ -4877,7 +4867,7 @@ def end_bb_gold_battle(stars_detected, context=None):
             # Surrender is NEGATED by 3 stars - must click end battle button instead
             result['final_stars'] = 3
             print("[BB GOLD END] 3 STARS DETECTED after surrender attempt! (Builder Hall destroyed during surrender)")
-            gui.log_message("BB Gold: 3 stars appeared during surrender")
+            runtime.gui.log_message("BB Gold: 3 stars appeared during surrender")
             send_discord_debug_log("BB Gold: 3 stars appeared after surrender - clicking end battle")
 
             # Must click end battle button since surrender was negated
@@ -4954,7 +4944,7 @@ def increment_bb_gold_counter():
     Extracts counter logic from original handle_bb_gold_mode().
     """
     global bb_gold_attack_count
-    settings = gui.get_settings()
+    settings = runtime.gui.get_settings()
     collect_interval = settings.get('bb_collect_interval', 12)
     bb_gold_attack_count += 1
 
@@ -4964,7 +4954,7 @@ def increment_bb_gold_counter():
     # Collect loot every N attacks (configurable)
     if bb_gold_attack_count >= collect_interval:
         print(f"[BB GOLD] {collect_interval} attacks completed - collecting loot!")
-        gui.log_message(f"BB Gold: {collect_interval} attacks done - collecting loot")
+        runtime.gui.log_message(f"BB Gold: {collect_interval} attacks done - collecting loot")
         send_discord_debug_log(f"BB Gold: {collect_interval} attacks completed - starting loot collection")
 
         collect_bb_loot()
@@ -4992,7 +4982,7 @@ def save_bb_gold_attack_duration(context):
     stars = context.get('final_stars', context.get('stars_detected', 0))
 
     # Get the troop mode used for this attack
-    troop_mode = gui.get_settings().get('bb_gold_troop_mode', 'night_witches')
+    troop_mode = runtime.gui.get_settings().get('bb_gold_troop_mode', 'night_witches')
     # Map internal names to display names
     troop_mode_display = {
         'night_witches': 'Night Witches',
@@ -5076,17 +5066,17 @@ def handle_bb_gold_mode_stateful():
                     print(f"[BB GOLD STATE] !! Return Home detected in {current_state.name} - transitioning to END_SCREEN")
                     context['return_home_button_pos'] = return_home_pos
                     current_state = BBGoldState.END_SCREEN
-                    gui.update_bb_gold_state(current_state.name)
+                    runtime.gui.update_bb_gold_state(current_state.name)
                     continue  # Skip to END_SCREEN handling
 
         # STATE 1: IN_BASE -> SEARCHING
         if current_state == BBGoldState.IN_BASE and context['retry_count'] == 0:
             print("[BB GOLD STATE] IN_BASE: Initiating search")
-            gui.log_message("BB Gold: Starting search")
+            runtime.gui.log_message("BB Gold: Starting search")
 
             # NEW: If queue is active, wait for storage UI to stabilize before checking
             try:
-                if 'queue_manager' in globals() and queue_manager and queue_manager.queue_active:
+                if 'queue_manager' in globals() and runtime.queue_manager and runtime.queue_manager.queue_active:
                     print("[BB GOLD STATE] Queue active - waiting for storage UI to stabilize")
                     time.sleep(1.5)  # Allow storage bars to fully render
             except NameError:
@@ -5101,7 +5091,7 @@ def handle_bb_gold_mode_stateful():
             # Update state immediately after clicking
             current_state = BBGoldState.SEARCHING
             context['search_start_time'] = time.time()
-            gui.update_bb_gold_state(current_state.name)
+            runtime.gui.update_bb_gold_state(current_state.name)
 
             # Sleep removed - state transitions are now instant
             continue
@@ -5118,7 +5108,7 @@ def handle_bb_gold_mode_stateful():
                 if check_bb_attacker_text():
                     print("[BB GOLD STATE] SEARCHING -> ATTACK_READY: Attacker text detected")
                     current_state = BBGoldState.ATTACK_READY
-                    gui.update_bb_gold_state(current_state.name)
+                    runtime.gui.update_bb_gold_state(current_state.name)
                     break
 
                 # Check for ghost attack after 10 seconds
@@ -5126,7 +5116,7 @@ def handle_bb_gold_mode_stateful():
                     if detect_ghost_attack():
                         print("[BB GOLD STATE] SEARCHING -> ERROR_RECOVERY: Ghost attack")
                         current_state = BBGoldState.ERROR_RECOVERY
-                        gui.update_bb_gold_state(current_state.name)
+                        runtime.gui.update_bb_gold_state(current_state.name)
                         break
 
                 time.sleep(config.BB_LOAD_CHECK_INTERVAL)
@@ -5135,13 +5125,13 @@ def handle_bb_gold_mode_stateful():
             if current_state == BBGoldState.SEARCHING:
                 print("[BB GOLD STATE] SEARCHING timeout - assuming ghost attack")
                 current_state = BBGoldState.ERROR_RECOVERY
-                gui.update_bb_gold_state(current_state.name)
+                runtime.gui.update_bb_gold_state(current_state.name)
             continue
 
         # STATE 3: ATTACK_READY -> BATTLE_ACTIVE
         if current_state == BBGoldState.ATTACK_READY:
             print("[BB GOLD STATE] ATTACK_READY: Deploying troops")
-            gui.log_message("BB Gold: Deploying troops")
+            runtime.gui.log_message("BB Gold: Deploying troops")
 
             # Set attack start time
             context['attack_start_time'] = time.time()
@@ -5152,18 +5142,18 @@ def handle_bb_gold_mode_stateful():
             if deployment_success:
                 context['troops_deployed'] = True
                 current_state = BBGoldState.BATTLE_ACTIVE
-                gui.update_bb_gold_state(current_state.name)
+                runtime.gui.update_bb_gold_state(current_state.name)
                 print("[BB GOLD STATE] ATTACK_READY -> BATTLE_ACTIVE: Troops deployed")
             else:
                 print("[BB GOLD STATE] ATTACK_READY -> ERROR_RECOVERY: Deployment failed")
                 current_state = BBGoldState.ERROR_RECOVERY
-                gui.update_bb_gold_state(current_state.name)
+                runtime.gui.update_bb_gold_state(current_state.name)
             continue
 
         # STATE 4: BATTLE_ACTIVE -> BATTLE_ENDING
         if current_state == BBGoldState.BATTLE_ACTIVE:
             print("[BB GOLD STATE] BATTLE_ACTIVE: Monitoring for stars")
-            gui.log_message("BB Gold: Monitoring battle...")
+            runtime.gui.log_message("BB Gold: Monitoring battle...")
 
             # Monitor for stars or Return Home button (battle ended)
             battle_result = monitor_bb_gold_battle(context)
@@ -5176,7 +5166,7 @@ def handle_bb_gold_mode_stateful():
                 context['return_home_button_pos'] = battle_result['return_home_pos']
 
             current_state = BBGoldState.BATTLE_ENDING
-            gui.update_bb_gold_state(current_state.name)
+            runtime.gui.update_bb_gold_state(current_state.name)
             print(f"[BB GOLD STATE] BATTLE_ACTIVE -> BATTLE_ENDING: {battle_result['stars']} stars, lost={battle_result['timeout_without_stars']}")
             continue
 
@@ -5231,7 +5221,7 @@ def handle_bb_gold_mode_stateful():
                         # Success - transition to END_SCREEN
                         print("[BB GOLD STATE] BATTLE_ENDING -> END_SCREEN: End screen confirmed (return home visible)")
                         current_state = BBGoldState.END_SCREEN
-                        gui.update_bb_gold_state(current_state.name)
+                        runtime.gui.update_bb_gold_state(current_state.name)
                         break
                     else:
                         # Return home button not visible - end battle/surrender didn't work
@@ -5259,7 +5249,7 @@ def handle_bb_gold_mode_stateful():
                     send_discord_debug_log("BB Gold: CRITICAL - Failed to confirm end screen after 5 attempts", "ERROR")
                     # Assume end screen present to avoid getting stuck
                     current_state = BBGoldState.END_SCREEN
-                    gui.update_bb_gold_state(current_state.name)
+                    runtime.gui.update_bb_gold_state(current_state.name)
 
             else:
                 # 0/1/2 stars - use standard end screen detection with fallback
@@ -5271,7 +5261,7 @@ def handle_bb_gold_mode_stateful():
                     if end_screen['detected']:
                         print("[BB GOLD STATE] BATTLE_ENDING -> END_SCREEN: End screen confirmed")
                         current_state = BBGoldState.END_SCREEN
-                        gui.update_bb_gold_state(current_state.name)
+                        runtime.gui.update_bb_gold_state(current_state.name)
                         context['star_bonus'] = end_screen['star_bonus']
                         # Cache return home button position if detected
                         if end_screen.get('return_button_pos'):
@@ -5282,14 +5272,14 @@ def handle_bb_gold_mode_stateful():
                 if current_state != BBGoldState.END_SCREEN:
                     print("[BB GOLD STATE] BATTLE_ENDING: End screen not detected, assuming present")
                     current_state = BBGoldState.END_SCREEN
-                    gui.update_bb_gold_state(current_state.name)
+                    runtime.gui.update_bb_gold_state(current_state.name)
 
             continue
 
         # STATE 6: END_SCREEN -> RETURNING_HOME
         if current_state == BBGoldState.END_SCREEN:
             print("[BB GOLD STATE] END_SCREEN: Detecting and clicking return button")
-            gui.log_message("BB Gold: Returning home")
+            runtime.gui.log_message("BB Gold: Returning home")
 
             # Use cached position if available (from BATTLE_ENDING state for 3 stars)
             cached_pos = context.get('return_home_button_pos')
@@ -5334,7 +5324,7 @@ def handle_bb_gold_mode_stateful():
                         print("[BB GOLD STATE] END_SCREEN: Already at base - transitioning to IN_BASE")
                         send_discord_debug_log("BB Gold: Already at base (return button not needed)")
                         current_state = BBGoldState.IN_BASE
-                        gui.update_bb_gold_state(current_state.name)
+                        runtime.gui.update_bb_gold_state(current_state.name)
                         save_bb_gold_attack_duration(context)
                         increment_bb_gold_counter()
                         return True
@@ -5351,14 +5341,14 @@ def handle_bb_gold_mode_stateful():
                             fast_click(1483, 898)
                             time.sleep(2.0)
                         current_state = BBGoldState.BATTLE_ENDING
-                        gui.update_bb_gold_state(current_state.name)
+                        runtime.gui.update_bb_gold_state(current_state.name)
                         continue
 
                     elif detected_state == 'battle_ending':
                         # Battle ending - transition to BATTLE_ENDING state
                         print("[BB GOLD STATE] END_SCREEN: Battle still ending - transitioning to BATTLE_ENDING")
                         current_state = BBGoldState.BATTLE_ENDING
-                        gui.update_bb_gold_state(current_state.name)
+                        runtime.gui.update_bb_gold_state(current_state.name)
                         continue
 
                     elif detected_state == 'end_screen':
@@ -5374,7 +5364,7 @@ def handle_bb_gold_mode_stateful():
                             print("[BB GOLD STATE] END_SCREEN: Return button still not found - entering ERROR_RECOVERY")
                             send_discord_debug_log("BB Gold: Return button inconsistent - error recovery", "ERROR")
                             current_state = BBGoldState.ERROR_RECOVERY
-                            gui.update_bb_gold_state(current_state.name)
+                            runtime.gui.update_bb_gold_state(current_state.name)
                             continue
 
                     else:  # 'unknown'
@@ -5382,14 +5372,14 @@ def handle_bb_gold_mode_stateful():
                         print("[BB GOLD STATE] END_SCREEN: Unknown state detected - entering ERROR_RECOVERY")
                         send_discord_debug_log("BB Gold: Unknown state - entering error recovery", "ERROR")
                         current_state = BBGoldState.ERROR_RECOVERY
-                        gui.update_bb_gold_state(current_state.name)
+                        runtime.gui.update_bb_gold_state(current_state.name)
                         continue
 
             # Only proceed to RETURNING_HOME if return button was actually clicked
             if clicked:
                 time.sleep(1.0)  # Brief wait for transition
                 current_state = BBGoldState.RETURNING_HOME
-                gui.update_bb_gold_state(current_state.name)
+                runtime.gui.update_bb_gold_state(current_state.name)
                 print("[BB GOLD STATE] END_SCREEN -> RETURNING_HOME: Return clicked")
             continue
 
@@ -5403,7 +5393,7 @@ def handle_bb_gold_mode_stateful():
             while time.time() - timeout_start < return_timeout:
                 if detect_in_base_state():
                     print("[BB GOLD STATE] RETURNING_HOME -> IN_BASE: Army button detected")
-                    gui.update_bb_gold_state("IN_BASE")
+                    runtime.gui.update_bb_gold_state("IN_BASE")
 
                     # Save attack duration to CSV
                     save_bb_gold_attack_duration(context)
@@ -5423,7 +5413,7 @@ def handle_bb_gold_mode_stateful():
         # STATE 8: ERROR_RECOVERY -> IN_BASE
         if current_state == BBGoldState.ERROR_RECOVERY:
             print("[BB GOLD STATE] ERROR_RECOVERY: Attempting recovery")
-            gui.log_message("BB Gold: Error recovery")
+            runtime.gui.log_message("BB Gold: Error recovery")
             send_discord_debug_log("BB Gold: Entering error recovery", "WARNING")
 
             # Quick check: Return Home button means we're on end screen (cache position for fast click)
@@ -5432,7 +5422,7 @@ def handle_bb_gold_mode_stateful():
                 print("[BB GOLD STATE] ERROR_RECOVERY: Return Home detected - on end screen")
                 context['return_home_button_pos'] = return_home_pos
                 current_state = BBGoldState.END_SCREEN
-                gui.update_bb_gold_state(current_state.name)
+                runtime.gui.update_bb_gold_state(current_state.name)
                 continue
 
             # If not on end screen, detect what state we're actually in
@@ -5446,7 +5436,7 @@ def handle_bb_gold_mode_stateful():
                 if context['retry_count'] < max_retries:
                     print(f"[BB GOLD STATE] ERROR_RECOVERY -> IN_BASE: Retry {context['retry_count']}/{max_retries}")
                     current_state = BBGoldState.IN_BASE
-                    gui.update_bb_gold_state(current_state.name)
+                    runtime.gui.update_bb_gold_state(current_state.name)
                 else:
                     print("[BB GOLD STATE] ERROR_RECOVERY: Max retries exceeded")
                     send_discord_debug_log("BB Gold: Max retries exceeded, aborting", "ERROR")
@@ -5464,7 +5454,7 @@ def handle_bb_gold_mode_stateful():
                     fast_click(1483, 898)
                     time.sleep(2.0)
                     current_state = BBGoldState.BATTLE_ENDING
-                    gui.update_bb_gold_state(current_state.name)
+                    runtime.gui.update_bb_gold_state(current_state.name)
                 else:
                     # Can't find surrender - try minimal troop deployment to enable it
                     print("[BB GOLD STATE] ERROR_RECOVERY: Surrender not found - deploying troop")
@@ -5478,7 +5468,7 @@ def handle_bb_gold_mode_stateful():
                         fast_click(1483, 898)
                         time.sleep(2.0)
                     current_state = BBGoldState.BATTLE_ENDING
-                    gui.update_bb_gold_state(current_state.name)
+                    runtime.gui.update_bb_gold_state(current_state.name)
 
             elif detected_state == 'battle_ending' or detected_state == 'end_screen':
                 # Battle ending or end screen - transition appropriately
@@ -5487,7 +5477,7 @@ def handle_bb_gold_mode_stateful():
                     current_state = BBGoldState.BATTLE_ENDING
                 else:
                     current_state = BBGoldState.END_SCREEN
-                gui.update_bb_gold_state(current_state.name)
+                runtime.gui.update_bb_gold_state(current_state.name)
 
             else:  # 'unknown'
                 # Unknown state - try clicking return button and retry
@@ -5502,7 +5492,7 @@ def handle_bb_gold_mode_stateful():
                     context['retry_count'] += 1
                     if context['retry_count'] < max_retries:
                         current_state = BBGoldState.IN_BASE
-                        gui.update_bb_gold_state(current_state.name)
+                        runtime.gui.update_bb_gold_state(current_state.name)
                     else:
                         print("[BB GOLD STATE] ERROR_RECOVERY: Max retries exceeded")
                         return False
@@ -6102,13 +6092,13 @@ def handle_sbarb_farm_mode():
     Optimized for speed and efficiency - no base evaluation, no defense/TH detection, attacks first base immediately.
     """
     send_discord_debug_log("SBarb Farm mode: starting attack")
-    gui.log_message("SBarb Farm: starting attack")
+    runtime.gui.log_message("SBarb Farm: starting attack")
 
     # Wait for attack screen to load by detecting End Battle button
     if not wait_for_attack_screen_ready(timeout=10):
         print("[SBARB FARM] Attack screen not ready - skipping base")
         send_discord_debug_log("SBarb Farm: Attack screen timeout - skipping", "WARNING")
-        gui.log_message("SBarb Farm: Attack screen timeout - skipping")
+        runtime.gui.log_message("SBarb Farm: Attack screen timeout - skipping")
         skip_base()
         return False
 
@@ -6124,7 +6114,7 @@ def handle_sbarb_farm_mode():
     print("[SBARB FARM] Zoom complete")
 
     # Get settings for deployment
-    settings = gui.get_settings()
+    settings = runtime.gui.get_settings()
     KEYS = config.KEYS
     heroes_first = settings.get('sbarb_heroes_first', False)
     turbo_deployment = settings.get('sbarb_turbo_deployment', False)
@@ -6145,10 +6135,10 @@ def handle_sbarb_farm_mode():
 
     # Draw overlay for SBarb Farm attack (no side arrow - too cluttered)
     overlay_clear()
-    if gui.overlay and gui.overlay_enabled:
-        gui.overlay.draw_text(100, 80, f"SBarb Farm: {first_side.upper()} then {opposite_side.upper()}", '#FFFF00')
-        gui.overlay.draw_text(100, 110, f"Mode: {deployment_order}", '#FFFF00')
-        gui.overlay.update()
+    if runtime.gui.overlay and runtime.gui.overlay_enabled:
+        runtime.gui.overlay.draw_text(100, 80, f"SBarb Farm: {first_side.upper()} then {opposite_side.upper()}", '#FFFF00')
+        runtime.gui.overlay.draw_text(100, 110, f"Mode: {deployment_order}", '#FFFF00')
+        runtime.gui.overlay.update()
 
     # Move camera to first side - ULTRA FAST for SBarb Farm (skip camera movement delays)
     # Ensure zoom is complete before dragging (don't drag during zoom - it blocks zoom)
@@ -6252,7 +6242,7 @@ def handle_sbarb_farm_mode():
         send_discord_debug_log("SBarb Farm: Background achievement building scan started")
 
         # Get settings from GUI
-        settings = gui.get_settings()
+        settings = runtime.gui.get_settings()
 
         # Check if 50% already reached before scanning
         if destruction_reached['value']:
@@ -6391,7 +6381,7 @@ def handle_sbarb_farm_mode():
                 elapsed = time.time() - attack_start_time
                 current_pct = destruction_reached.get('percentage', 0)
                 print(f"[SBARB FARM] Return Home detected after {elapsed:.1f}s - attack failed (troops died at {current_pct}%, before {target_destruction}%)")
-                gui.log_message(f"SBarb Farm: Attack failed - troops died at {current_pct}%")
+                runtime.gui.log_message(f"SBarb Farm: Attack failed - troops died at {current_pct}%")
                 send_discord_debug_log(f"SBarb Farm: Attack failed after {elapsed:.1f}s - Return Home detected at {current_pct}%", "WARNING")
                 destruction_reached['value'] = True  # Signal main loop to stop waiting
                 destruction_reached['return_home_pos'] = return_home_pos  # Cache position for faster click
@@ -6405,7 +6395,7 @@ def handle_sbarb_farm_mode():
                     elapsed = time.time() - attack_start_time
                     destruction_reached['value'] = True
                     print(f"[SBARB FARM] {target_destruction}% REACHED! ({current_destruction}% after {elapsed:.1f}s)")
-                    gui.log_message(f"SBarb Farm: {current_destruction}% reached - stopping deployment!")
+                    runtime.gui.log_message(f"SBarb Farm: {current_destruction}% reached - stopping deployment!")
                     send_discord_debug_log(f"SBarb Farm: {current_destruction}% destruction reached after {elapsed:.1f}s")
                     break
 
@@ -6516,7 +6506,7 @@ def handle_sbarb_farm_mode():
                 x, y, confidence = found_building
 
                 print(f"[TURBO DEPLOY] CASTING SPELLS ON: {found_type.replace('_', ' ')} at ({x}, {y})")
-                gui.log_message(f"Casting spells on {found_type.replace('_', ' ')}")
+                runtime.gui.log_message(f"Casting spells on {found_type.replace('_', ' ')}")
                 send_discord_debug_log(f"SBarb Farm: Casting spells on {found_type} (turbo mode)")
 
                 # Deploy 1 Earthquake + 10 Lightning using turbo clicks (~11 CPS)
@@ -6961,7 +6951,7 @@ def handle_sbarb_farm_mode():
 
                     x, y, confidence = found_building
                     print(f"[SBARB FARM] CASTING SPELLS ON: {found_type.replace('_', ' ').title()} at ({x}, {y}) - Confidence: {confidence:.3f}")
-                    gui.log_message(f"Casting spells on {found_type.replace('_', ' ')}")
+                    runtime.gui.log_message(f"Casting spells on {found_type.replace('_', ' ')}")
                     send_discord_debug_log(f"SBarb Farm: Casting spells on {found_type.replace('_', ' ')} at ({x}, {y})")
 
                     # Deploy 1 Earthquake spell
@@ -6991,7 +6981,7 @@ def handle_sbarb_farm_mode():
                     # Check if all 10 lightning spells were successfully cast
                     if lightning_spells_cast == 10:
                         print("[SBARB FARM] All spells deployed (1 Earthquake + 10 Lightning)!")
-                        gui.log_message("Spells deployed successfully")
+                        runtime.gui.log_message("Spells deployed successfully")
                         send_discord_debug_log("SBarb Farm: All spells deployed (1 Earthquake + 10 Lightning)")
 
                         # Track building destruction for CSV
@@ -7013,7 +7003,7 @@ def handle_sbarb_farm_mode():
                     spell_casting_active['value'] = False
                 else:
                     print("[SBARB FARM] No achievement buildings found - falling back to random spells")
-                    gui.log_message("No achievement buildings found")
+                    runtime.gui.log_message("No achievement buildings found")
                     send_discord_debug_log("SBarb Farm: No achievement buildings found, using random spells")
 
             # If achievement spells not enabled or no buildings found, deploy random spells
@@ -7079,7 +7069,7 @@ def handle_sbarb_farm_mode():
     # Wait for 50% if not reached yet (background thread still monitoring)
     if not destruction_reached['value']:
         print(f"[SBARB FARM] Waiting for {target_destruction}% destruction (60s timeout)...")
-        gui.log_message(f"SBarb Farm: Waiting for {target_destruction}%...")
+        runtime.gui.log_message(f"SBarb Farm: Waiting for {target_destruction}%...")
 
         while (time.time() - attack_start_time) < max_wait_time:
             if destruction_reached['value']:
@@ -7089,7 +7079,7 @@ def handle_sbarb_farm_mode():
         if not destruction_reached['value']:
             elapsed = time.time() - attack_start_time
             print(f"[SBARB FARM] 60s timeout reached (failsafe triggered after {elapsed:.1f}s)")
-            gui.log_message("SBarb Farm: 60s timeout - surrendering")
+            runtime.gui.log_message("SBarb Farm: 60s timeout - surrendering")
             send_discord_debug_log("SBarb Farm: 60s timeout failsafe triggered", "WARNING")
 
     # Skip surrender if Return Home was already detected (battle ended early - troops died)
@@ -7200,7 +7190,7 @@ def handle_sbarb_farm_mode():
             if not file_exists:
                 writer.writerow(['Loop #', 'Duration (seconds)', 'Timestamp', 'Building Destroyed', 'Outcome'])
             writer.writerow([
-                loop_count + 1,
+                runtime.loop_count + 1,
                 f'{attack_duration:.2f}',
                 datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
                 building_name_display,
@@ -7216,10 +7206,10 @@ def handle_sbarb_farm_mode():
 
     if attack_failed_early:
         send_discord_debug_log(f"SBarb Farm: attack failed ({attack_outcome})")
-        gui.log_message(f"SBarb Farm: attack failed ({attack_outcome})")
+        runtime.gui.log_message(f"SBarb Farm: attack failed ({attack_outcome})")
     else:
         send_discord_debug_log("SBarb Farm: surrendered attack")
-        gui.log_message("SBarb Farm: surrendered attack")
+        runtime.gui.log_message("SBarb Farm: surrendered attack")
 
     # Return home - use cached position if available (faster when detected during battle)
     if destruction_reached.get('return_home_pos'):
@@ -7236,7 +7226,7 @@ def handle_sbarb_farm_mode():
     print("[SBARB FARM] Checking for star bonus screen...")
     if detect_star_bonus_screen():
         print("[SBARB FARM] Star bonus detected! Clicking close button...")
-        gui.log_message("SBarb Farm: Star bonus collected")
+        runtime.gui.log_message("SBarb Farm: Star bonus collected")
         send_discord_debug_log("SBarb Farm: Star bonus screen detected and closed")
 
         # Click the close button (X button)
@@ -7303,7 +7293,7 @@ def read_own_base_storages():
             de_absolute = ocr_attack_resource_template_digits(base_dark_elixir_img, context='base_dark_elixir', debug=False, resource_type='dark_elixir')
 
         # Get max storage values from settings
-        settings = gui.get_settings()
+        settings = runtime.gui.get_settings()
         max_gold = settings.get('max_gold_storage', 18000000)
         max_elixir = settings.get('max_elixir_storage', 14000000)
         max_de = settings.get('max_dark_elixir_storage', 240000)
@@ -7388,7 +7378,7 @@ def read_bb_base_storages():
         elixir_absolute = ocr_attack_resource_template_digits(bb_elixir_img, context='bb_base_screen', debug=False, resource_type='elixir')
 
         # Get BB max storage values from settings
-        settings = gui.get_settings()
+        settings = runtime.gui.get_settings()
         max_bb_gold = settings.get('max_bb_gold_storage', 5000000)
         max_bb_elixir = settings.get('max_bb_elixir_storage', 5000000)
 
@@ -7434,7 +7424,7 @@ def read_bb_base_storages():
 def handle_derank_mode():
     """Handle derank mode attack - place one unit using normal deployment strategy and surrender immediately"""
     send_discord_debug_log("Derank mode: attacking any base")
-    gui.log_message("Derank mode: attacking any base")
+    runtime.gui.log_message("Derank mode: attacking any base")
     # Wait for attack screen to be ready (alt hotkey region visible)
     for _ in range(30):  # Wait up to ~6 seconds
         if is_attack_screen_ready():
@@ -7444,7 +7434,7 @@ def handle_derank_mode():
     else:
         print("[DERANK] Timeout waiting for attack screen, proceeding anyway")
     # Use normal deployment strategy: pick a random side and a valid coordinate
-    settings = gui.get_settings()
+    settings = runtime.gui.get_settings()
     chosen_side, side_coords = choose_attack_side(settings)
     print(f"[DERANK] Chosen side: {chosen_side}")
     send_discord_debug_log(f"Derank: chosen side {chosen_side}")
@@ -7474,7 +7464,7 @@ def handle_derank_mode():
     human_like_move_click(1507, 901)
     time.sleep(2)
     send_discord_debug_log("Derank: surrendered attack")
-    gui.log_message("Derank: surrendered attack")
+    runtime.gui.log_message("Derank: surrendered attack")
     # Return home
     human_like_move_click(*config.RETURN_BUTTON)
     time.sleep(config.RETURN_DELAY)
@@ -7523,13 +7513,13 @@ def should_skip_base(gold, elixir, air_defenses, settings):
     # Check air defenses
     if reinforcements_enabled and len(air_defenses) < 4:
         print(f"Only {len(air_defenses)} air defenses detected (need 4 for reinforcements), skipping base.")
-        gui.log_message(f"Only {len(air_defenses)} air defenses detected (need 4 for reinforcements), skipping base.")
+        runtime.gui.log_message(f"Only {len(air_defenses)} air defenses detected (need 4 for reinforcements), skipping base.")
         send_discord_debug_log(f"Only {len(air_defenses)} air defenses detected (need 4 for reinforcements), skipping base", "WARNING")
         return True, "insufficient_air_defenses"
     
     if not reinforcements_enabled and len(air_defenses) < 3:
         print(f"Only {len(air_defenses)} air defenses detected, skipping base.")
-        gui.log_message(f"Only {len(air_defenses)} air defenses detected, skipping base.")
+        runtime.gui.log_message(f"Only {len(air_defenses)} air defenses detected, skipping base.")
         send_discord_debug_log(f"Only {len(air_defenses)} air defenses detected, skipping base", "WARNING")
         return True, "insufficient_air_defenses"
     
@@ -7579,10 +7569,10 @@ def choose_attack_side(settings, town_hall=None):
         # Debug information
         debug_info = f"TH at ({th_x}, {th_y}), center at ({BASE_CENTER_X}, {BASE_CENTER_Y})"
         debug_info += f", x_diff={x_diff:.1f}, y_diff={y_diff:.1f}"
-        gui.debug_message(debug_info)
+        runtime.gui.debug_message(debug_info)
         
         side_coords = config.SIDE_DEPLOYMENT_COORDS[chosen_side]
-        gui.log_message(f"Chosen attack side: {chosen_side} (TH on {chosen_side} side of base center)")
+        runtime.gui.log_message(f"Chosen attack side: {chosen_side} (TH on {chosen_side} side of base center)")
         print(f"Chosen attack side: {chosen_side} (TH on {chosen_side} side of base center)")
         send_discord_debug_log(f"Attack side chosen: {chosen_side} (TH-based)")
         # Draw attack side indicator on overlay
@@ -7593,7 +7583,7 @@ def choose_attack_side(settings, town_hall=None):
         # Fallback to random
         chosen_side = random.choice(sides)
         side_coords = config.SIDE_DEPLOYMENT_COORDS[chosen_side]
-        gui.log_message(f"Chosen attack side: {chosen_side} (random)")
+        runtime.gui.log_message(f"Chosen attack side: {chosen_side} (random)")
         print(f"Chosen attack side: {chosen_side} (random)")
         send_discord_debug_log(f"Attack side chosen: {chosen_side} (random)")
         # Draw attack side indicator on overlay
@@ -7622,27 +7612,27 @@ def detect_alt_hotkeys():
             min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(res)
             
             if max_val >= 0.8:
-                gui.log_message('Alternate hotkeys enabled (template matched in region 522,1273,664,1412)')
-                gui.debug_message('USING ALTERNATE HOTKEY SETUP (template matched)')
+                runtime.gui.log_message('Alternate hotkeys enabled (template matched in region 522,1273,664,1412)')
+                runtime.gui.debug_message('USING ALTERNATE HOTKEY SETUP (template matched)')
                 print('Alternate hotkeys enabled (template matched in region 522,1273,664,1412)')
                 send_discord_debug_log('Alternate hotkeys enabled (template matched)')
                 return True
             else:
-                gui.log_message('Default hotkeys enabled (template not matched in region 522,1273,664,1412)')
-                gui.debug_message('USING DEFAULT HOTKEY SETUP (template not matched)')
+                runtime.gui.log_message('Default hotkeys enabled (template not matched in region 522,1273,664,1412)')
+                runtime.gui.debug_message('USING DEFAULT HOTKEY SETUP (template not matched)')
                 print('Default hotkeys enabled (template not matched in region 522,1273,664,1412)')
                 send_discord_debug_log('Default hotkeys enabled (template not matched)')
                 return False
         else:
-            gui.log_message('Default hotkeys enabled (screenshot/template size mismatch)')
-            gui.debug_message('USING DEFAULT HOTKEY SETUP (screenshot/template size mismatch)')
+            runtime.gui.log_message('Default hotkeys enabled (screenshot/template size mismatch)')
+            runtime.gui.debug_message('USING DEFAULT HOTKEY SETUP (screenshot/template size mismatch)')
             print('Default hotkeys enabled (screenshot/template size mismatch)')
             send_discord_debug_log('Default hotkeys enabled (screenshot/template size mismatch)')
             return False
             
     except Exception as e:
-        gui.log_message(f'Default hotkeys enabled (template matching error: {e})')
-        gui.debug_message(f'USING DEFAULT HOTKEY SETUP (template matching error: {e})')
+        runtime.gui.log_message(f'Default hotkeys enabled (template matching error: {e})')
+        runtime.gui.debug_message(f'USING DEFAULT HOTKEY SETUP (template matching error: {e})')
         print(f'Default hotkeys enabled (template matching error: {e})')
         send_discord_debug_log(f'Default hotkeys enabled (template matching error: {e})', "WARNING")
         return False
@@ -7661,24 +7651,24 @@ def check_town_hall_level(town_hall, settings):
     if town_hall:
         x, y, level, conf = town_hall
         print(f"Detected Town Hall Level {level} at ({x}, {y}) - Confidence: {conf:.2f}")
-        gui.log_message(f"Town Hall Level {level} detected")
+        runtime.gui.log_message(f"Town Hall Level {level} detected")
         
         # Check max Town Hall level from settings
         max_th_level = settings.get('max_th_level', 15)
         if level > max_th_level:
             print(f"Town Hall level {level} exceeds max allowed ({max_th_level}), skipping base.")
-            gui.log_message(f"Town Hall level {level} exceeds max allowed ({max_th_level}), skipping base.")
+            runtime.gui.log_message(f"Town Hall level {level} exceeds max allowed ({max_th_level}), skipping base.")
             send_discord_debug_log(f"Town Hall level {level} exceeds max allowed ({max_th_level}), skipping base", "WARNING")
             return True
     else:
         print("Town Hall not detected")
-        gui.log_message("Town Hall not detected")
+        runtime.gui.log_message("Town Hall not detected")
         
         # Check if we should skip when town hall detection fails
         skip_on_th_fail = get_global_skip_on_th_fail()
         if skip_on_th_fail:
             print("Town Hall detection failed and 'Skip on TH Detection Fail' is enabled - skipping base.")
-            gui.log_message("Town Hall detection failed and 'Skip on TH Detection Fail' is enabled - skipping base.")
+            runtime.gui.log_message("Town Hall detection failed and 'Skip on TH Detection Fail' is enabled - skipping base.")
             send_discord_debug_log("Town Hall detection failed and 'Skip on TH Detection Fail' is enabled - skipping base", "WARNING")
             return True
     
@@ -7688,7 +7678,7 @@ def deploy_lightning_spells(air_defenses, lightning_targets, chosen_side, settin
     """Deploy lightning spells on air defenses"""
     if not lightning_targets:
         print("No air defenses detected - skipping lightning spells")
-        gui.log_message("No air defenses detected - skipping lightning spells")
+        runtime.gui.log_message("No air defenses detected - skipping lightning spells")
         send_discord_debug_log("No air defenses detected - skipping lightning spells", "WARNING")
         return
     
@@ -7696,7 +7686,7 @@ def deploy_lightning_spells(air_defenses, lightning_targets, chosen_side, settin
     
     if reinforcements_enabled:
         print(f"Deploying 13 lightning spells on 4 air defenses (Reinforcements mode)")
-        gui.log_message(f"Deploying 13 lightning spells on 4 air defenses (Reinforcements mode)")
+        runtime.gui.log_message(f"Deploying 13 lightning spells on 4 air defenses (Reinforcements mode)")
         send_discord_debug_log("Deploying 13 lightning spells (Reinforcements mode)")
         
         position_to_level = {}
@@ -7732,11 +7722,11 @@ def deploy_lightning_spells(air_defenses, lightning_targets, chosen_side, settin
         print(f"    13th Lightning spell at random location ({random_x}, {random_y})")
         spells_used += 1
         
-        gui.log_message("Lightning spell deployment completed (Reinforcements mode)")
+        runtime.gui.log_message("Lightning spell deployment completed (Reinforcements mode)")
         send_discord_debug_log("Lightning spell deployment completed (Reinforcements mode)")
     else:
         print(f"Deploying lightning spells on top 3 air defenses (non-reinforcements mode)")
-        gui.log_message(f"Deploying lightning spells on top 3 air defenses (non-reinforcements mode)")
+        runtime.gui.log_message(f"Deploying lightning spells on top 3 air defenses (non-reinforcements mode)")
         send_discord_debug_log(f"Deploying lightning spells on top 3 air defenses (non-reinforcements mode)")
         
         position_to_level = {}
@@ -7763,13 +7753,13 @@ def deploy_lightning_spells(air_defenses, lightning_targets, chosen_side, settin
                 spells_used += 1
         
         print(f"Used {spells_used}/9 spells on 3 air defenses, {11 - spells_used} spells remaining for air sweepers")
-        gui.log_message(f"Used {spells_used}/9 spells on 3 air defenses, {11 - spells_used} spells remaining")
+        runtime.gui.log_message(f"Used {spells_used}/9 spells on 3 air defenses, {11 - spells_used} spells remaining")
         send_discord_debug_log(f"Used {spells_used}/9 spells on 3 air defenses, {11 - spells_used} spells remaining")
         
         # Handle remaining spells (should be 2 for air sweepers)
         handle_remaining_lightning_spells(spells_used, chosen_side, KEYS)
         
-        gui.log_message("Lightning spell deployment completed (non-reinforcements mode)")
+        runtime.gui.log_message("Lightning spell deployment completed (non-reinforcements mode)")
         send_discord_debug_log("Lightning spell deployment completed (non-reinforcements mode)")
 
 def handle_remaining_lightning_spells(spells_used, chosen_side, KEYS):
@@ -7782,7 +7772,7 @@ def handle_remaining_lightning_spells(spells_used, chosen_side, KEYS):
             # Perfect scenario: 2 spells for air sweepers
             sweepers = detect_air_sweepers()
             print(f"Detected {len(sweepers)} air sweepers for lightning targeting.")
-            gui.log_message(f"Detected {len(sweepers)} air sweepers for lightning targeting.")
+            runtime.gui.log_message(f"Detected {len(sweepers)} air sweepers for lightning targeting.")
             send_discord_debug_log(f"Detected {len(sweepers)} air sweepers for lightning targeting")
             
             # Map attack side to directions
@@ -7814,11 +7804,11 @@ def handle_remaining_lightning_spells(spells_used, chosen_side, KEYS):
                     pyautogui.click()
                     print(f"    Lightning spell {spells_used + i + 1}/11 at Air Sweeper ({x}, {y}) facing {direction}")
                 print("Air sweeper lightning spells deployed successfully")
-                gui.log_message("Air sweeper lightning spells deployed successfully")
+                runtime.gui.log_message("Air sweeper lightning spells deployed successfully")
                 send_discord_debug_log("Air sweeper lightning spells deployed successfully")
             else:
                 print("No air sweeper found for remaining lightning spells.")
-                gui.log_message("No air sweeper found for remaining lightning spells.")
+                runtime.gui.log_message("No air sweeper found for remaining lightning spells.")
                 send_discord_debug_log("No air sweeper found for remaining lightning spells", "WARNING")
                 # Use the 2 spells at random coordinates as fallback
                 random_coords = [
@@ -7839,7 +7829,7 @@ def handle_remaining_lightning_spells(spells_used, chosen_side, KEYS):
         else:
             # Failsafe: Use remaining lightning spells at random coordinates
             print(f"Using {remaining_spells} remaining lightning spells at random coordinates")
-            gui.log_message(f"Using {remaining_spells} remaining lightning spells at random coordinates")
+            runtime.gui.log_message(f"Using {remaining_spells} remaining lightning spells at random coordinates")
             send_discord_debug_log(f"Using {remaining_spells} remaining lightning spells at random coordinates")
             
             random_coords = [
@@ -7914,7 +7904,7 @@ def deploy_troops(side_coords, settings, KEYS):
     hero_pos = side_coords['hero']
     
     # Get individual hero ability timing from settings
-    settings = gui.get_settings()
+    settings = runtime.gui.get_settings()
     queen_timing = settings.get('queen_ability_timing', 15)
     king_timing = settings.get('king_ability_timing', 15)
     warden_timing = settings.get('warden_ability_timing', 15)
@@ -7969,7 +7959,7 @@ def wait_for_battle_end():
     """Wait until battle ends by detecting black bar region"""
     send_discord_debug_log("Waiting for battle to end...")
     check_count = 0
-    while running:
+    while runtime.running:
         img = ImageGrab.grab(bbox=config.BLACK_BAR_REGION)
         if all(pixel == config.BLACK_BAR_COLOR for pixel in img.getdata()):
             break
@@ -7985,15 +7975,15 @@ def handle_post_battle():
     """Handle post-battle activities (loot capture, return home, reinforcements)"""
     # Capture loot after battle ends
     print("Battle ended, capturing loot...")
-    gui.log_message("Battle ended, capturing loot...")
+    runtime.gui.log_message("Battle ended, capturing loot...")
     send_discord_debug_log("Battle ended, capturing loot")
     time.sleep(config.LOOT_CAPTURE_DELAY)
     
     loot_data = ocr_loot()
-    save_loot_data(loot_data, loop_count + 1)
+    save_loot_data(loot_data, runtime.loop_count + 1)
     
     # Update GUI loot statistics
-    root.after(0, lambda: gui.update_loot_stats(loot_data))
+    runtime.root.after(0, lambda: runtime.gui.update_loot_stats(loot_data))
     
     # Return home
     human_like_move_click(*config.RETURN_BUTTON)
@@ -8050,7 +8040,7 @@ def handle_post_battle():
     check_and_pause_if_storages_full(base_type='main_base')
 
     # Check if storages are full (Farming profile, at least 2 of 3 full)
-    settings = gui.get_settings()
+    settings = runtime.gui.get_settings()
     current_profile = settings.get('current_profile', '')
     if current_profile == 'Farming':
         # Get max values from settings (fall back to defaults if missing)
@@ -8075,7 +8065,7 @@ def handle_post_battle():
         if full_count >= 2:
             msg = f"<@everyone> Storages are full! Gold: {base_gold:,}/{max_gold:,}, Elixir: {base_elixir:,}/{max_elixir:,}, Dark Elixir: {base_dark_elixir:,}/{max_dark:,}. Bot paused."
             send_discord_notification(msg)
-            gui.log_message("At least 2 storages are full. Bot paused.")
+            runtime.gui.log_message("At least 2 storages are full. Bot paused.")
             return True  # Signal to pause bot
     
     # Check if storages are full (legacy logic)
@@ -8088,7 +8078,7 @@ def handle_post_battle():
     reinforcements_enabled = get_global_reinforcements_enabled()
     if reinforcements_enabled:
         print("Requesting reinforcements...")
-        gui.log_message("Requesting reinforcements...")
+        runtime.gui.log_message("Requesting reinforcements...")
         send_discord_debug_log("Requesting reinforcements")
 
         # Detect and click army button
@@ -8106,11 +8096,11 @@ def handle_post_battle():
             time.sleep(1.0)
 
             print("Reinforcements requested successfully")
-            gui.log_message("Reinforcements requested successfully")
+            runtime.gui.log_message("Reinforcements requested successfully")
             send_discord_debug_log("Reinforcements requested successfully")
         else:
             print("Failed to detect army button - skipping reinforcements")
-            gui.log_message("Failed to detect army button - skipping reinforcements")
+            runtime.gui.log_message("Failed to detect army button - skipping reinforcements")
             send_discord_debug_log("Failed to detect army button - skipping reinforcements", "WARNING")
 
     return False  # No need to pause
@@ -8349,10 +8339,10 @@ def perform_achievement_farm_attack():
     """Perform Achievement Farm attack with 3 targeting modes: Target, Clumps, First Detected"""
     print("=== ENTERING ACHIEVEMENT FARM MODE ===")
     send_discord_debug_log("=== ENTERING ACHIEVEMENT FARM MODE ===")
-    gui.log_message("Achievement Farm mode activated")
+    runtime.gui.log_message("Achievement Farm mode activated")
 
     # Get current settings from GUI
-    settings = gui.get_settings()
+    settings = runtime.gui.get_settings()
 
     # Get priority building type, targeting mode, and priority list from settings
     priority_building = settings.get('achievement_target_building', 'eagle_artillery')
@@ -8373,21 +8363,21 @@ def perform_achievement_farm_attack():
 
     if not enabled_buildings:
         print("[ACH FARM] ERROR: No buildings enabled for scanning! Please enable at least one building type.")
-        gui.log_message("No buildings enabled - aborting")
+        runtime.gui.log_message("No buildings enabled - aborting")
         send_discord_debug_log("Achievement Farm: No buildings enabled for scanning", "ERROR")
         return False
 
     print(f"Targeting Mode: {target_mode.replace('_', ' ').title()}")
     print(f"Priority target: {priority_building.replace('_', ' ').title()}")
     print(f"Enabled buildings: {', '.join([b.replace('_', ' ').title() for b in enabled_buildings])}")
-    gui.log_message(f"Mode: {target_mode.replace('_', ' ').title()}")
+    runtime.gui.log_message(f"Mode: {target_mode.replace('_', ' ').title()}")
     send_discord_debug_log(f"Achievement Farm: Mode={target_mode}, Target={priority_building.replace('_', ' ')}, Enabled={len(enabled_buildings)}")
 
     # Wait for attack screen to load by detecting End Battle button
     if not wait_for_attack_screen_ready(timeout=10):
         print("[ACH FARM] Attack screen not ready - skipping base")
         send_discord_debug_log("Achievement Farm: Attack screen timeout - skipping", "WARNING")
-        gui.log_message("Achievement Farm: Attack screen timeout - skipping")
+        runtime.gui.log_message("Achievement Farm: Attack screen timeout - skipping")
         skip_base()
         return False
 
@@ -8407,7 +8397,6 @@ def perform_achievement_farm_attack():
 
     # Determine attack target based on targeting mode
     x, y = None, None
-    global skipped_bases
 
     if target_mode == 'target':
         # MODE 1: Target - Try buildings in priority order until one is found
@@ -8418,7 +8407,7 @@ def perform_achievement_farm_attack():
 
         if not priority_enabled:
             print(f"[TARGET MODE] No enabled buildings in priority list!")
-            gui.log_message(f"No enabled buildings - surrendering")
+            runtime.gui.log_message(f"No enabled buildings - surrendering")
             send_discord_debug_log(f"Achievement Farm [TARGET]: No enabled buildings", "WARNING")
             # Surrender immediately
             fast_click(152, 1136)
@@ -8427,7 +8416,7 @@ def perform_achievement_farm_attack():
             time.sleep(0.3)
             fast_click(*config.RETURN_BUTTON)
             time.sleep(1.5)
-            skipped_bases += 1
+            runtime.skipped_bases += 1
             return False
 
         # Try each building in priority order
@@ -8443,7 +8432,7 @@ def perform_achievement_farm_attack():
                 x = x + bw // 2
                 y = y + bh // 2
                 print(f"FOUND at center ({x}, {y})")
-                gui.log_message(f"Target {building_type.replace('_', ' ')} found - attacking!")
+                runtime.gui.log_message(f"Target {building_type.replace('_', ' ')} found - attacking!")
                 send_discord_debug_log(f"Achievement Farm [TARGET]: {building_type.replace('_', ' ')} at ({x}, {y})")
                 # Draw spell target on overlay at building center
                 overlay_draw_spell_target(x, y, f"TARGET: {building_type.replace('_', ' ')}")
@@ -8454,12 +8443,12 @@ def perform_achievement_farm_attack():
 
         if not found:
             print(f"[TARGET MODE] No buildings detected in priority list - skipping base")
-            gui.log_message(f"No targets found - skipping base")
+            runtime.gui.log_message(f"No targets found - skipping base")
             send_discord_debug_log(f"Achievement Farm [TARGET]: No buildings found - skipping base")
             # Skip base and continue searching
             fast_click(*config.SKIP_BUTTON)
             time.sleep(config.SKIP_DELAY)
-            skipped_bases += 1
+            runtime.skipped_bases += 1
             return False  # Continue to next base
 
     elif target_mode == 'first_detected':
@@ -8489,37 +8478,37 @@ def perform_achievement_farm_attack():
             x = x + bw // 2
             y = y + bh // 2
             print(f"FIRST DETECTED: {found_type.replace('_', ' ').title()} at center ({x}, {y}) - Confidence: {confidence:.3f}")
-            gui.log_message(f"First detected: {found_type.replace('_', ' ')} - attacking!")
+            runtime.gui.log_message(f"First detected: {found_type.replace('_', ' ')} - attacking!")
             send_discord_debug_log(f"Achievement Farm [FIRST]: {found_type.replace('_', ' ')} at ({x}, {y})")
             # Draw spell target on overlay at building center
             overlay_draw_spell_target(x, y, f"FIRST: {found_type.replace('_', ' ')}")
         else:
             print(f"No buildings detected after scanning priority list - skipping base")
-            gui.log_message(f"No buildings detected - skipping base")
+            runtime.gui.log_message(f"No buildings detected - skipping base")
             send_discord_debug_log(f"Achievement Farm [FIRST]: No buildings detected - skipping base")
             # Skip base and continue searching
             fast_click(*config.SKIP_BUTTON)
             time.sleep(config.SKIP_DELAY)
-            skipped_bases += 1
+            runtime.skipped_bases += 1
             return False
 
     else:  # target_mode == 'clumps'
         # MODE 2: Clumps - Look for clusters, prefer priority building if no cluster
         print(f"[CLUMPS MODE] Scanning enabled building types for clusters...")
         overlay_clear()  # Clear overlay before scanning
-        if gui.overlay and gui.overlay_enabled:
-            gui.overlay.draw_text(100, 50, "CLUMPS MODE: Scanning all building types...", '#FFFF00')
-            gui.overlay.update()
+        if runtime.gui.overlay and runtime.gui.overlay_enabled:
+            runtime.gui.overlay.draw_text(100, 50, "CLUMPS MODE: Scanning all building types...", '#FFFF00')
+            runtime.gui.overlay.update()
         all_buildings = detect_all_achievement_buildings(enabled_buildings)
 
         if not all_buildings:
             print(f"No achievement buildings found - skipping base")
-            gui.log_message(f"No achievement buildings found - skipping base")
+            runtime.gui.log_message(f"No achievement buildings found - skipping base")
             send_discord_debug_log(f"Achievement Farm [CLUMPS]: No buildings found - skipping base")
             # Skip base and continue searching
             fast_click(*config.SKIP_BUTTON)
             time.sleep(config.SKIP_DELAY)
-            skipped_bases += 1
+            runtime.skipped_bases += 1
             return False  # Continue to next base
 
         # Combine all buildings into single list with type labels
@@ -8548,7 +8537,7 @@ def perform_achievement_farm_attack():
             print(f"CLUSTER FOUND: {len(biggest_cluster)} buildings clustered together!")
             print(f"  Cluster contains: {type_summary}")
             print(f"  Attack center: ({x}, {y})")
-            gui.log_message(f"Cluster: {type_summary} - attacking all!")
+            runtime.gui.log_message(f"Cluster: {type_summary} - attacking all!")
             send_discord_debug_log(f"Achievement Farm [CLUMPS]: {type_summary} at ({x}, {y})")
             # Draw cluster center on overlay
             overlay_draw_spell_target(x, y, f"CLUSTER ({len(biggest_cluster)})")
@@ -8573,7 +8562,7 @@ def perform_achievement_farm_attack():
                 center_x = x + bw // 2
                 center_y = y + bh // 2
                 print(f"PRIORITY TARGET: {target_type.replace('_', ' ').title()} at ({center_x}, {center_y}) - Confidence: {confidence:.3f}")
-                gui.log_message(f"Single {target_type.replace('_', ' ')} (priority #{priority_list.index(target_type)+1}) - attacking")
+                runtime.gui.log_message(f"Single {target_type.replace('_', ' ')} (priority #{priority_list.index(target_type)+1}) - attacking")
                 send_discord_debug_log(f"Achievement Farm [CLUMPS-PRIORITY]: {target_type.replace('_', ' ')} at ({center_x}, {center_y})")
                 # Draw priority target on overlay at building center
                 overlay_draw_spell_target(center_x, center_y, f"PRIORITY: {target_type.replace('_', ' ')}")
@@ -8588,7 +8577,7 @@ def perform_achievement_farm_attack():
                 center_x = x + bw // 2
                 center_y = y + bh // 2
                 print(f"FALLBACK TARGET: {target_type.replace('_', ' ').title()} at ({center_x}, {center_y}) - Confidence: {confidence:.3f}")
-                gui.log_message(f"Single {target_type.replace('_', ' ')} (fallback) - attacking")
+                runtime.gui.log_message(f"Single {target_type.replace('_', ' ')} (fallback) - attacking")
                 send_discord_debug_log(f"Achievement Farm [CLUMPS-FALLBACK]: {target_type.replace('_', ' ')} at ({center_x}, {center_y})")
                 # Draw fallback target on overlay at building center
                 overlay_draw_spell_target(center_x, center_y, f"FALLBACK: {target_type.replace('_', ' ')}")
@@ -8626,7 +8615,7 @@ def perform_achievement_farm_attack():
     print(f"[ACH FARM] Cast 11 spells in {spell_elapsed*1000:.0f}ms (~{11/spell_elapsed:.0f} CPS)")
 
     print("[ACH FARM] All spells deployed - surrendering...")
-    gui.log_message("Spells deployed - surrendering")
+    runtime.gui.log_message("Spells deployed - surrendering")
     send_discord_debug_log("Achievement Farm: All spells deployed - surrendering")
 
     time.sleep(0.3)  # Reduced wait time
@@ -8638,7 +8627,7 @@ def perform_achievement_farm_attack():
     time.sleep(0.2)
 
     send_discord_debug_log("Achievement Farm: Surrendered attack")
-    gui.log_message("Achievement Farm: Attack surrendered")
+    runtime.gui.log_message("Achievement Farm: Attack surrendered")
 
     # Return home
     fast_click(*config.RETURN_BUTTON)
@@ -8650,7 +8639,7 @@ def perform_achievement_farm_attack():
 def perform_normal_attack():
     """Perform a normal attack (non-derank mode)"""
     # SANITY CHECK: Verify we should be here
-    settings = gui.get_settings()
+    settings = runtime.gui.get_settings()
     current_profile = settings.get('current_profile', 'Unknown')
     sbarb_mode_check = settings.get('sbarb_farm_mode', False)
 
@@ -8664,7 +8653,7 @@ def perform_normal_attack():
         send_discord_debug_log(f"ERROR: perform_normal_attack() called with sbarb_farm_mode=True! Profile: {current_profile}", "ERROR")
 
     # Get current settings from GUI
-    settings = gui.get_settings()
+    settings = runtime.gui.get_settings()
 
     # OCR resources
     gold, elixir = evaluate_base_resources()
@@ -8750,16 +8739,16 @@ def perform_sgoblin_farm_attack():
     """Perform SGoblin Farm attack - split army on opposite sides and surrender after 10s"""
     print("=== ENTERING SGOBLIN FARM MODE ===")
     send_discord_debug_log("=== ENTERING SGOBLIN FARM MODE ===")
-    gui.log_message("SGoblin Farm mode activated")
+    runtime.gui.log_message("SGoblin Farm mode activated")
 
     # Get current settings from GUI
-    settings = gui.get_settings()
+    settings = runtime.gui.get_settings()
 
     # Wait for attack screen to load by detecting End Battle button
     if not wait_for_attack_screen_ready(timeout=10):
         print("[SGOBLIN] Attack screen not ready - skipping base")
         send_discord_debug_log("SGoblin Farm: Attack screen timeout - skipping", "WARNING")
-        gui.log_message("SGoblin Farm: Attack screen timeout - skipping")
+        runtime.gui.log_message("SGoblin Farm: Attack screen timeout - skipping")
         skip_base()
         return "skipped"
 
@@ -8806,7 +8795,7 @@ def perform_sgoblin_farm_attack():
 
     print(f"SGoblin Farm: Deploying on {chosen_side} and {opposite_side}")
     send_discord_debug_log(f"SGoblin Farm: Deploying on {chosen_side} and {opposite_side}")
-    gui.log_message(f"SGoblin Farm: Attacking from {chosen_side} and {opposite_side}")
+    runtime.gui.log_message(f"SGoblin Farm: Attacking from {chosen_side} and {opposite_side}")
 
     # Use standard hotkeys (no alternate hotkey detection for SGoblin Farm speed)
     KEYS = config.KEYS
@@ -9084,7 +9073,7 @@ def perform_sgoblin_farm_attack():
         # Scan for achievement buildings using parallel priority scan
         print("[PRIORITY SCAN] Scanning for achievement buildings...")
         send_discord_debug_log("SGoblin: Scanning achievement buildings")
-        gui.log_message("Scanning for achievement buildings...")
+        runtime.gui.log_message("Scanning for achievement buildings...")
 
         # PARALLEL SCAN using GUI priority list (3-5x faster than sequential)
         result = scan_achievement_buildings_parallel_priority(settings)
@@ -9096,7 +9085,7 @@ def perform_sgoblin_farm_attack():
             center_x = x + bw // 2
             center_y = y + bh // 2
             print(f"CASTING SPELLS ON: {building_type.replace('_', ' ').title()} at ({center_x}, {center_y}) - Confidence: {confidence:.3f}")
-            gui.log_message(f"Casting spells on {building_type.replace('_', ' ')}")
+            runtime.gui.log_message(f"Casting spells on {building_type.replace('_', ' ')}")
             send_discord_debug_log(f"SGoblin: Casting on {building_type} at ({center_x}, {center_y})")
 
             # Deploy 1 Earthquake spell
@@ -9119,11 +9108,11 @@ def perform_sgoblin_farm_attack():
                 print(f"  Lightning {i+1}/10 deployed")
 
             print(f"Spell casting complete on {building_type.replace('_', ' ')}")
-            gui.log_message("Spells deployed successfully")
+            runtime.gui.log_message("Spells deployed successfully")
             send_discord_debug_log(f"SGoblin: 1 EQ + 10 Lightning on {building_type}")
         else:
             print("[PRIORITY SCAN] No achievement buildings found")
-            gui.log_message("No achievement buildings detected")
+            runtime.gui.log_message("No achievement buildings detected")
             send_discord_debug_log("SGoblin: No buildings found")
 
     # Calculate remaining time to reach 10 seconds total
@@ -9230,9 +9219,8 @@ def perform_sgoblin_farm_attack():
 
 def check_auto_pause():
     """Check if auto-pause condition is met and pause bot if needed"""
-    global paused, loop_count
 
-    settings = gui.get_settings()
+    settings = runtime.gui.get_settings()
     auto_pause_mode = settings.get('auto_pause_mode', 'manual')
     auto_pause_value = settings.get('auto_pause_value', 50)
 
@@ -9244,22 +9232,22 @@ def check_auto_pause():
 
     if auto_pause_mode == 'loops':
         # Check if loop count reached target
-        if loop_count >= auto_pause_value:
+        if runtime.loop_count >= auto_pause_value:
             should_pause = True
             pause_reason = f"Auto-pause: {auto_pause_value} attacks completed"
 
     elif auto_pause_mode == 'time':
         # Check if time limit reached (read from GUI to avoid circular import)
-        if hasattr(gui, 'auto_pause_start_time') and gui.auto_pause_start_time is not None:
-            elapsed_minutes = (time.time() - gui.auto_pause_start_time) / 60
+        if hasattr(runtime.gui, 'auto_pause_start_time') and runtime.gui.auto_pause_start_time is not None:
+            elapsed_minutes = (time.time() - runtime.gui.auto_pause_start_time) / 60
             if elapsed_minutes >= auto_pause_value:
                 should_pause = True
                 pause_reason = f"Auto-pause: {auto_pause_value} minutes elapsed"
 
     elif auto_pause_mode == 'storage_full':
         # Check if storages are full based on current profile and user-selected resources
-        current_profile = gui.current_profile
-        settings = gui.get_settings()
+        current_profile = runtime.gui.current_profile
+        settings = runtime.gui.get_settings()
         check_gold = settings.get('storage_full_gold', True)
         check_elixir = settings.get('storage_full_elixir', True)
         check_de = settings.get('storage_full_de', False)
@@ -9346,70 +9334,67 @@ def check_auto_pause():
                     pause_reason = f"Auto-pause: {'+'.join(resources_to_check)} full using '{storage_full_preset}' preset (Gold: {gold_percent}%, Elixir: {elixir_percent}%, DE: {de_percent}%)"
 
     if should_pause:
-        paused = True
-        gui.bot_paused = True
+        runtime.paused = True
+        runtime.gui.bot_paused = True
         print(f"[AUTO-PAUSE] {pause_reason}")
-        gui.log_message(pause_reason)
+        runtime.gui.log_message(pause_reason)
         send_discord_debug_log(pause_reason, "INFO")
-        root.after(0, update_status)
+        runtime.root.after(0, update_status)
         return True
 
     return False
 
 def main_loop():
-    global loop_count, paused, running
-    global skipped_bases, attacked_bases
     
     # Each iteration covers one full attack cycle
-    while running:
+    while runtime.running:
         # Check for Discord commands
         check_discord_commands()
         
         # Check if GUI wants to stop
-        if not gui.bot_running:
-            running = False
+        if not runtime.gui.bot_running:
+            runtime.running = False
             send_discord_debug_log("Bot stopped by GUI", "INFO")
             break
             
         # Check if GUI wants to pause
-        paused = gui.bot_paused
+        runtime.paused = runtime.gui.bot_paused
         
         # Automatic break check
-        global break_time
-        if break_time is not None and time.time() >= break_time:
+        if runtime.break_time is not None and time.time() >= runtime.break_time:
             print("Taking scheduled break.")
-            paused = True
-            gui.bot_paused = True
-            gui.log_message("Taking scheduled break")
+            runtime.paused = True
+            runtime.gui.bot_paused = True
+            runtime.gui.log_message("Taking scheduled break")
             send_discord_debug_log("Taking scheduled break", "INFO")
-            root.after(0, update_status)
+            runtime.root.after(0, update_status)
             
             # Get break duration from settings and schedule auto-resume
-            settings = gui.get_settings()
+            settings = runtime.gui.get_settings()
             break_duration = settings.get('break_duration', 5)  # minutes
-            root.after(0, lambda: gui.schedule_auto_resume(break_duration))
+            runtime.root.after(0, lambda: runtime.gui.schedule_auto_resume(break_duration))
             
             # schedule next break after auto-resume
-            break_time = schedule_next_break()
+            runtime.break_time = schedule_next_break()
         
         time.sleep(0.1)
-        if paused:
+        if runtime.paused:
             continue
         time.sleep(0.2)
-        if paused:
+        if runtime.paused:
             continue
 
         # ===== UNIVERSAL: Return Home Recovery for Main Base Modes =====
         # If stuck on end screen (Return Home button visible), click it and recover
         # BB modes are excluded - they have their own state machine recovery
-        settings_check = gui.get_settings()
+        settings_check = runtime.gui.get_settings()
         bb_mode_active = settings_check.get('bb_elixir_mode', False) or settings_check.get('bb_gold_mode', False)
 
         if not bb_mode_active:
             return_home_pos = detect_return_home_button(quiet=True)
             if return_home_pos:
                 print(f"[MAIN LOOP] !! Return Home detected at loop start - recovering from stuck end screen")
-                gui.log_message("Recovery: Clicking Return Home (stuck on end screen)")
+                runtime.gui.log_message("Recovery: Clicking Return Home (stuck on end screen)")
                 send_discord_debug_log("Main Loop: Return Home recovery triggered", "WARNING")
 
                 # Click Return Home button
@@ -9430,38 +9415,38 @@ def main_loop():
 
         try:
             # Start of attack cycle
-            send_discord_debug_log(f"Starting attack cycle {loop_count + 1}")
+            send_discord_debug_log(f"Starting attack cycle {runtime.loop_count + 1}")
 
             # Get current settings from GUI
-            settings = gui.get_settings()
+            settings = runtime.gui.get_settings()
 
             # DEBUG: Check overlay status at start of each cycle
-            if gui.overlay_enabled:
-                print(f"[OVERLAY] Cycle {loop_count + 1}: Overlay is ENABLED, drawing test marker...")
+            if runtime.gui.overlay_enabled:
+                print(f"[OVERLAY] Cycle {runtime.loop_count + 1}: Overlay is ENABLED, drawing test marker...")
                 overlay_clear()
                 # Draw a test marker so we know the overlay is working
-                if gui.overlay:
-                    gui.overlay.draw_text(100, 50, f"Bot Cycle: {loop_count + 1}", '#00FF00')
-                    gui.overlay.update()
+                if runtime.gui.overlay:
+                    runtime.gui.overlay.draw_text(100, 50, f"Bot Cycle: {runtime.loop_count + 1}", '#00FF00')
+                    runtime.gui.overlay.update()
             else:
-                if loop_count == 0:  # Only print once
+                if runtime.loop_count == 0:  # Only print once
                     print("[OVERLAY] Overlay is disabled (checkbox not checked)")
 
             # Check if queue system is active
             queue_enabled = settings.get('queue_enabled', False)
 
-            if queue_enabled and 'queue_manager' in globals() and queue_manager:
+            if queue_enabled and 'queue_manager' in globals() and runtime.queue_manager:
                 # Ensure queue is started (handles race condition from web GUI)
-                if not queue_manager.queue_active:
-                    queue_manager.start_queue()
+                if not runtime.queue_manager.queue_active:
+                    runtime.queue_manager.start_queue()
 
                 # Get next mode from queue system
-                next_mode = queue_manager.get_next_mode()
+                next_mode = runtime.queue_manager.get_next_mode()
 
                 if next_mode is None:
                     # Queue complete - stop bot
                     print("[QUEUE] Queue execution complete")
-                    running = False
+                    runtime.running = False
                     break
 
                 # Set mode flags based on queue's selected mode
@@ -9474,11 +9459,11 @@ def main_loop():
                 achievement_farm_mode = (next_mode == 'Achievement Farm')
 
                 # Update GUI profile to match queue mode
-                if gui.current_profile != next_mode:
+                if runtime.gui.current_profile != next_mode:
                     print(f"[QUEUE] Switching profile to: {next_mode}")
-                    gui.current_profile = next_mode
-                    gui.profile_var.set(next_mode)
-                    gui.apply_current_profile(silent=True)  # Silent mode for queue auto-switching
+                    runtime.gui.current_profile = next_mode
+                    runtime.gui.profile_var.set(next_mode)
+                    runtime.gui.apply_current_profile(silent=True)  # Silent mode for queue auto-switching
             else:
                 # Normal mode - use profile settings
                 derank_mode = settings.get('derank_mode', False)
@@ -9491,7 +9476,7 @@ def main_loop():
             # CRITICAL DEBUG: Print ALL settings to verify
             current_profile = settings.get('current_profile', 'Unknown')
 
-            send_discord_debug_log(f"Cycle {loop_count+1} | Profile: {current_profile}")
+            send_discord_debug_log(f"Cycle {runtime.loop_count+1} | Profile: {current_profile}")
 
             # Handle potential star bonus screen and other popups (blind click - no detection)
             # This handles star bonus for BB Gold mode after returning to base
@@ -9520,12 +9505,12 @@ def main_loop():
                         # Click BB search button
                         click_in_square(config.BB_SEARCH_BUTTON)
                         print(f"[{mode_name}] Using Builder Base search button")
-                        gui.log_message(f"{mode_name}: Searching for base...")
+                        runtime.gui.log_message(f"{mode_name}: Searching for base...")
                         send_discord_debug_log(f"{mode_name}: Using Builder Base search button")
 
                         # Poll for "Attacker" text with timeout
                         print(f"[{mode_name}] Checking for Attacker text...")
-                        gui.log_message(f"{mode_name}: Checking for Attacker text...")
+                        runtime.gui.log_message(f"{mode_name}: Checking for Attacker text...")
                         send_discord_debug_log(f"{mode_name}: Checking for Attacker text")
 
                         start_time = time.time()
@@ -9536,7 +9521,7 @@ def main_loop():
                                 found = True
                                 base_loaded = True
                                 print(f"[{mode_name}] ✓ Attacker text detected - base loaded!")
-                                gui.log_message(f"{mode_name}: Base loaded!")
+                                runtime.gui.log_message(f"{mode_name}: Base loaded!")
                                 send_discord_debug_log(f"{mode_name}: Attacker text detected - base loaded")
                                 time.sleep(0.5)
                                 break
@@ -9545,11 +9530,11 @@ def main_loop():
                         # If timeout, click return and retry
                         if not found:
                             print(f"[{mode_name}] ⚠️ Base load timeout - no Attacker text found")
-                            gui.log_message(f"{mode_name}: Base load timeout")
+                            runtime.gui.log_message(f"{mode_name}: Base load timeout")
                             send_discord_debug_log(f"{mode_name}: Base load timeout - no Attacker text found", "WARNING")
 
                             print(f"[{mode_name}] Clicking return button to recover from ghost attack")
-                            gui.log_message(f"{mode_name}: Returning to base...")
+                            runtime.gui.log_message(f"{mode_name}: Returning to base...")
                             send_discord_debug_log(f"{mode_name}: Clicking return button to recover from ghost attack")
                             click_in_square(config.BB_RETURN_BUTTON_GHOST)
                             time.sleep(config.BB_RETRY_WAIT_TIME)
@@ -9558,11 +9543,11 @@ def main_loop():
 
                             if retry_count < config.BB_LOAD_MAX_RETRIES:
                                 print(f"[{mode_name}] Retrying search... (attempt {retry_count + 1}/{config.BB_LOAD_MAX_RETRIES})")
-                                gui.log_message(f"{mode_name}: Retry {retry_count + 1}/{config.BB_LOAD_MAX_RETRIES}")
+                                runtime.gui.log_message(f"{mode_name}: Retry {retry_count + 1}/{config.BB_LOAD_MAX_RETRIES}")
                                 send_discord_debug_log(f"{mode_name}: Retrying search (attempt {retry_count + 1}/{config.BB_LOAD_MAX_RETRIES})")
                             else:
                                 print(f"[{mode_name}] ❌ Base load failed after {config.BB_LOAD_MAX_RETRIES} retries - skipping to next search")
-                                gui.log_message(f"{mode_name}: Max retries exceeded - skipping")
+                                runtime.gui.log_message(f"{mode_name}: Max retries exceeded - skipping")
                                 send_discord_debug_log(f"{mode_name}: Base load failed after {config.BB_LOAD_MAX_RETRIES} retries - skipping", "ERROR")
                                 # Skip to next search iteration - don't proceed with attack
                                 continue
@@ -9573,14 +9558,14 @@ def main_loop():
 
                 # Wait for army selection screen to appear
                 print("Waiting for army selection screen...")
-                gui.log_message("Waiting for army screen...")
+                runtime.gui.log_message("Waiting for army screen...")
                 send_discord_debug_log("Waiting for army selection screen")
 
                 # Simple fixed delay for army selection screen to load
                 time.sleep(0.2)  # Fast delay for army selection screen
 
                 print("Army selection screen should be ready")
-                gui.log_message("Army screen ready")
+                runtime.gui.log_message("Army screen ready")
                 send_discord_debug_log("Army selection screen ready")
 
                 # Click START_ATTACK_BUTTON (green "Attack!" button) for all home base modes
@@ -9602,13 +9587,13 @@ def main_loop():
                 print(f"[DEBUG] ✓ derank_mode matched - using handle_derank_mode()")
                 # Derank: attack every base with one troop
                 if handle_derank_mode():
-                    loop_count += 1
-                    gui.update_loop_count(loop_count)
-                    state_manager.set("loop_count", loop_count)
-                    state_manager.set("bases_attacked", attacked_bases + 1)
-                    gui.log_message(f"Derank attack {loop_count} completed")
-                    attacked_bases += 1
-                    send_discord_debug_log(f"Derank attack {loop_count} completed")
+                    runtime.loop_count += 1
+                    runtime.gui.update_loop_count(runtime.loop_count)
+                    runtime.state_manager.set("loop_count", runtime.loop_count)
+                    runtime.state_manager.set("bases_attacked", runtime.attacked_bases + 1)
+                    runtime.gui.log_message(f"Derank attack {runtime.loop_count} completed")
+                    runtime.attacked_bases += 1
+                    send_discord_debug_log(f"Derank attack {runtime.loop_count} completed")
                 continue  # Skip to next attack cycle immediately
 
             elif sbarb_farm_mode:
@@ -9617,13 +9602,13 @@ def main_loop():
                 send_discord_debug_log("SBarb Farm: Mode ACTIVE - NO evaluation, attacking immediately")
                 # SBarb Farm: NO EVALUATION, NO SKIPPING - Attack every base immediately
                 if handle_sbarb_farm_mode():
-                    loop_count += 1
-                    gui.update_loop_count(loop_count)
-                    state_manager.set("loop_count", loop_count)
-                    state_manager.set("bases_attacked", attacked_bases + 1)
-                    gui.log_message(f"SBarb Farm attack {loop_count} completed")
-                    attacked_bases += 1
-                    send_discord_debug_log(f"SBarb Farm attack {loop_count} completed")
+                    runtime.loop_count += 1
+                    runtime.gui.update_loop_count(runtime.loop_count)
+                    runtime.state_manager.set("loop_count", runtime.loop_count)
+                    runtime.state_manager.set("bases_attacked", runtime.attacked_bases + 1)
+                    runtime.gui.log_message(f"SBarb Farm attack {runtime.loop_count} completed")
+                    runtime.attacked_bases += 1
+                    send_discord_debug_log(f"SBarb Farm attack {runtime.loop_count} completed")
 
                     # Check auto-pause condition
                     if check_auto_pause():
@@ -9633,13 +9618,13 @@ def main_loop():
             elif bb_elixir_mode:
                 # BB Elixir: attack every BB base with one troop
                 if handle_bb_elixir_mode():
-                    loop_count += 1
-                    gui.update_loop_count(loop_count)
-                    state_manager.set("loop_count", loop_count)
-                    state_manager.set("bases_attacked", attacked_bases + 1)
-                    gui.log_message(f"BB Elixir attack {loop_count} completed")
-                    attacked_bases += 1
-                    send_discord_debug_log(f"BB Elixir attack {loop_count} completed")
+                    runtime.loop_count += 1
+                    runtime.gui.update_loop_count(runtime.loop_count)
+                    runtime.state_manager.set("loop_count", runtime.loop_count)
+                    runtime.state_manager.set("bases_attacked", runtime.attacked_bases + 1)
+                    runtime.gui.log_message(f"BB Elixir attack {runtime.loop_count} completed")
+                    runtime.attacked_bases += 1
+                    send_discord_debug_log(f"BB Elixir attack {runtime.loop_count} completed")
 
                     # Check auto-pause condition
                     if check_auto_pause():
@@ -9649,13 +9634,13 @@ def main_loop():
             elif bb_gold_mode:
                 # BB Gold: deploy troops, wait for 2 stars, surrender
                 if handle_bb_gold_mode():
-                    loop_count += 1
-                    gui.update_loop_count(loop_count)
-                    state_manager.set("loop_count", loop_count)
-                    state_manager.set("bases_attacked", attacked_bases + 1)
-                    gui.log_message(f"BB Gold attack {loop_count} completed")
-                    attacked_bases += 1
-                    send_discord_debug_log(f"BB Gold attack {loop_count} completed")
+                    runtime.loop_count += 1
+                    runtime.gui.update_loop_count(runtime.loop_count)
+                    runtime.state_manager.set("loop_count", runtime.loop_count)
+                    runtime.state_manager.set("bases_attacked", runtime.attacked_bases + 1)
+                    runtime.gui.log_message(f"BB Gold attack {runtime.loop_count} completed")
+                    runtime.attacked_bases += 1
+                    send_discord_debug_log(f"BB Gold attack {runtime.loop_count} completed")
 
                     # Check auto-pause condition
                     if check_auto_pause():
@@ -9666,21 +9651,21 @@ def main_loop():
                 # Achievement Farm: search for specific building and attack
                 should_pause = perform_achievement_farm_attack()
                 if should_pause:
-                    paused = True
-                    gui.bot_paused = True
-                    gui.log_message("Bot paused due to full storages. Discord notification sent.")
+                    runtime.paused = True
+                    runtime.gui.bot_paused = True
+                    runtime.gui.log_message("Bot paused due to full storages. Discord notification sent.")
                     send_discord_debug_log("Bot paused due to full storages", "WARNING")
-                    root.after(0, update_status)
+                    runtime.root.after(0, update_status)
                     break  # Exit main loop
 
-                loop_count += 1
-                gui.update_loop_count(loop_count)
-                state_manager.set("loop_count", loop_count)
-                state_manager.set("bases_attacked", attacked_bases + 1)
-                gui.log_message(f"Achievement Farm attack {loop_count} completed")
-                attacked_bases += 1
-                send_discord_debug_log(f"Achievement Farm attack {loop_count} completed successfully")
-                root.after(0, lambda: gui.update_skipped_stats(skipped_bases, attacked_bases))
+                runtime.loop_count += 1
+                runtime.gui.update_loop_count(runtime.loop_count)
+                runtime.state_manager.set("loop_count", runtime.loop_count)
+                runtime.state_manager.set("bases_attacked", runtime.attacked_bases + 1)
+                runtime.gui.log_message(f"Achievement Farm attack {runtime.loop_count} completed")
+                runtime.attacked_bases += 1
+                send_discord_debug_log(f"Achievement Farm attack {runtime.loop_count} completed successfully")
+                runtime.root.after(0, lambda: runtime.gui.update_skipped_stats(runtime.skipped_bases, runtime.attacked_bases))
 
                 # Check auto-pause condition
                 if check_auto_pause():
@@ -9691,25 +9676,25 @@ def main_loop():
             # These modes check resources/defenses and may skip bases
             print(f"[DEBUG] ❌ No fast modes matched - entering evaluation loop")
             print(f"[DEBUG] Will check: SGoblin Farm or Normal Attack")
-            while running:
+            while runtime.running:
                 if sgoblin_farm_mode:
                     print(f"[DEBUG] ✓ sgoblin_farm_mode matched - using perform_sgoblin_farm_attack()")
                     # Handle SGoblin Farm mode (no TH/AD detection, resource-based only)
                     result = perform_sgoblin_farm_attack()
                     if result == True:
                         # Pause bot due to full storages
-                        paused = True
-                        gui.bot_paused = True
-                        gui.log_message("Bot paused due to full storages. Discord notification sent.")
+                        runtime.paused = True
+                        runtime.gui.bot_paused = True
+                        runtime.gui.log_message("Bot paused due to full storages. Discord notification sent.")
                         send_discord_debug_log("Bot paused due to full storages", "WARNING")
-                        root.after(0, update_status)
+                        runtime.root.after(0, update_status)
                         break  # Exit inner while loop
                     elif result == "skipped":
                         # Base was skipped, increment skipped counter and wait for next base
-                        skipped_bases += 1
-                        gui.log_message(f"Base skipped (total: {skipped_bases})")
-                        send_discord_debug_log(f"SGoblin Farm: Base skipped (total: {skipped_bases})")
-                        root.after(0, lambda: gui.update_skipped_stats(skipped_bases, attacked_bases))
+                        runtime.skipped_bases += 1
+                        runtime.gui.log_message(f"Base skipped (total: {runtime.skipped_bases})")
+                        send_discord_debug_log(f"SGoblin Farm: Base skipped (total: {runtime.skipped_bases})")
+                        runtime.root.after(0, lambda: runtime.gui.update_skipped_stats(runtime.skipped_bases, runtime.attacked_bases))
 
                         # Wait for next base to load automatically (skip initiates auto-search)
                         print("Waiting for next base after skip...")
@@ -9721,14 +9706,14 @@ def main_loop():
                             if is_base_search_ready():
                                 base_found = True
                                 print("Next base loaded after skip!")
-                                gui.log_message("Next base loaded")
+                                runtime.gui.log_message("Next base loaded")
                                 time.sleep(0.1)  # Small delay to ensure screen is stable
                                 break
                             time.sleep(0.2)  # Check every 200ms
 
                         if not base_found:
                             print("WARNING: Base search timed out after skip")
-                            gui.log_message("Base search timeout after skip")
+                            runtime.gui.log_message("Base search timeout after skip")
                             send_discord_debug_log("Base search timeout after skip", "WARNING")
                             time.sleep(1)
 
@@ -9736,61 +9721,61 @@ def main_loop():
                         continue
                     else:
                         # Attack completed successfully
-                        loop_count += 1
-                        gui.update_loop_count(loop_count)
-                        state_manager.set("loop_count", loop_count)
-                        state_manager.set("bases_attacked", attacked_bases + 1)
-                        gui.log_message(f"SGoblin Farm attack {loop_count} completed")
-                        attacked_bases += 1
-                        send_discord_debug_log(f"SGoblin Farm attack {loop_count} completed successfully")
-                        root.after(0, lambda: gui.update_skipped_stats(skipped_bases, attacked_bases))
+                        runtime.loop_count += 1
+                        runtime.gui.update_loop_count(runtime.loop_count)
+                        runtime.state_manager.set("loop_count", runtime.loop_count)
+                        runtime.state_manager.set("bases_attacked", runtime.attacked_bases + 1)
+                        runtime.gui.log_message(f"SGoblin Farm attack {runtime.loop_count} completed")
+                        runtime.attacked_bases += 1
+                        send_discord_debug_log(f"SGoblin Farm attack {runtime.loop_count} completed successfully")
+                        runtime.root.after(0, lambda: runtime.gui.update_skipped_stats(runtime.skipped_bases, runtime.attacked_bases))
                         break  # Exit inner while loop to start a new attack cycle
                 else:
                     print(f"[DEBUG] Using NORMAL ATTACK mode (will evaluate and may skip)")
                     # Handle normal attack mode
                     should_pause = perform_normal_attack()
                     if should_pause:
-                        paused = True
-                        gui.bot_paused = True
-                        gui.log_message("Bot paused due to full storages. Discord notification sent.")
+                        runtime.paused = True
+                        runtime.gui.bot_paused = True
+                        runtime.gui.log_message("Bot paused due to full storages. Discord notification sent.")
                         send_discord_debug_log("Bot paused due to full storages", "WARNING")
-                        root.after(0, update_status)
+                        runtime.root.after(0, update_status)
                         break  # Exit inner while loop
 
                     # Update loop count and continue
-                    loop_count += 1
-                    gui.update_loop_count(loop_count)
-                    state_manager.set("loop_count", loop_count)
-                    state_manager.set("bases_attacked", attacked_bases + 1)
-                    gui.log_message(f"Attack {loop_count} completed")
-                    attacked_bases += 1
-                    send_discord_debug_log(f"Attack {loop_count} completed successfully")
+                    runtime.loop_count += 1
+                    runtime.gui.update_loop_count(runtime.loop_count)
+                    runtime.state_manager.set("loop_count", runtime.loop_count)
+                    runtime.state_manager.set("bases_attacked", runtime.attacked_bases + 1)
+                    runtime.gui.log_message(f"Attack {runtime.loop_count} completed")
+                    runtime.attacked_bases += 1
+                    send_discord_debug_log(f"Attack {runtime.loop_count} completed successfully")
 
                     # Update skipped/ratio statistics in GUI
-                    root.after(0, lambda: gui.update_skipped_stats(skipped_bases, attacked_bases))
+                    runtime.root.after(0, lambda: runtime.gui.update_skipped_stats(runtime.skipped_bases, runtime.attacked_bases))
                     break  # Exit inner while loop to start a new attack cycle
 
         except pytesseract.pytesseract.TesseractNotFoundError:
             print("OCR engine missing. Pausing.")
-            paused = True
-            gui.bot_paused = True
-            gui.log_message("ERROR: OCR engine missing")
+            runtime.paused = True
+            runtime.gui.bot_paused = True
+            runtime.gui.log_message("ERROR: OCR engine missing")
             send_discord_debug_log("OCR engine missing - bot paused", "ERROR")
-            root.after(0, update_status)
+            runtime.root.after(0, update_status)
             time.sleep(5)
         except Exception as e:
             print(f"Error during loop: {e}")
             import traceback
             traceback.print_exc()  # Print full stack trace
-            paused = True
-            gui.bot_paused = True
+            runtime.paused = True
+            runtime.gui.bot_paused = True
             try:
-                gui.log_message(f"ERROR: {str(e)}")
+                runtime.gui.log_message(f"ERROR: {str(e)}")
             except:
                 print("[ERROR] Failed to log message to GUI")
             send_discord_debug_log(f"Error during attack loop: {str(e)}", "ERROR")
             try:
-                root.after(0, update_status)
+                runtime.root.after(0, update_status)
             except:
                 print("[ERROR] Failed to update status")
             # --- Error screenshot saving ---
@@ -9802,43 +9787,42 @@ def main_loop():
                 img = ImageGrab.grab()
                 img.save(screenshot_path)
                 print(f"Error screenshot saved: {screenshot_path}")
-                gui.log_message(f"Error screenshot saved: {screenshot_path}")
+                runtime.gui.log_message(f"Error screenshot saved: {screenshot_path}")
                 send_discord_debug_log(f"Error screenshot saved: {screenshot_path}", "WARNING")
             except Exception as err:
                 print(f"Failed to save error screenshot: {err}")
-                gui.log_message(f"Failed to save error screenshot: {err}")
+                runtime.gui.log_message(f"Failed to save error screenshot: {err}")
                 send_discord_debug_log(f"Failed to save error screenshot: {err}", "ERROR")
 
-    if attacked_bases > 0:
-        skip_ratio = skipped_bases / attacked_bases
+    if runtime.attacked_bases > 0:
+        skip_ratio = runtime.skipped_bases / runtime.attacked_bases
     else:
         skip_ratio = 0
-    print(f"Bases skipped: {skipped_bases}, Attacks: {attacked_bases}, Skip/Attack ratio: {skip_ratio:.2f}")
-    gui.log_message(f"Bases skipped: {skipped_bases}, Attacks: {attacked_bases}, Skip/Attack ratio: {skip_ratio:.2f}")
-    send_discord_debug_log(f"Session summary: {skipped_bases} skipped, {attacked_bases} attacked, ratio: {skip_ratio:.2f}")
+    print(f"Bases skipped: {runtime.skipped_bases}, Attacks: {runtime.attacked_bases}, Skip/Attack ratio: {skip_ratio:.2f}")
+    runtime.gui.log_message(f"Bases skipped: {runtime.skipped_bases}, Attacks: {runtime.attacked_bases}, Skip/Attack ratio: {skip_ratio:.2f}")
+    send_discord_debug_log(f"Session summary: {runtime.skipped_bases} skipped, {runtime.attacked_bases} attacked, ratio: {skip_ratio:.2f}")
 
 # Override GUI's run_bot method with our main loop
 def gui_run_bot():
-    global running, paused
-    running = True
-    paused = False
-    gui.bot_running = True
-    gui.bot_paused = False
-    gui.log_message("Bot thread started")
+    runtime.running = True
+    runtime.paused = False
+    runtime.gui.bot_running = True
+    runtime.gui.bot_paused = False
+    runtime.gui.log_message("Bot thread started")
     # Update web state
-    state_manager.set("running", True)
-    state_manager.set("paused", False)
-    state_manager.set("status", "RUNNING")
+    runtime.state_manager.set("running", True)
+    runtime.state_manager.set("paused", False)
+    runtime.state_manager.set("status", "RUNNING")
     main_loop()
 
-gui.run_bot = gui_run_bot
+runtime.gui.run_bot = gui_run_bot
 
 # Set Queue Manager callbacks now that all functions are defined
-if queue_manager:
-    queue_manager.set_callbacks(read_own_base_storages, read_bb_base_storages, switch_village)
+if runtime.queue_manager:
+    runtime.queue_manager.set_callbacks(read_own_base_storages, read_bb_base_storages, switch_village)
 
 # Add window close handler to ensure cleanup
-root.protocol("WM_DELETE_WINDOW", exit_app)
+runtime.root.protocol("WM_DELETE_WINDOW", exit_app)
 
 # Pre-load achievement building templates for faster detection (SBarb Farm optimization)
 print("\n" + "="*70)
@@ -9867,7 +9851,7 @@ print("STARTING WEB GUI SERVER")
 print("="*70)
 web_thread = threading.Thread(
     target=start_web_server,
-    args=(state_manager, "127.0.0.1", 8000),
+    args=(runtime.state_manager, "127.0.0.1", 8000),
     daemon=True
 )
 web_thread.start()
@@ -9875,6 +9859,6 @@ print("[MAIN] Web GUI available at http://localhost:8000")
 print("="*70 + "\n")
 
 # Start the GUI
-root.mainloop()
+runtime.root.mainloop()
 
 
