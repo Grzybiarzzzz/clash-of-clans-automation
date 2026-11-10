@@ -2,7 +2,6 @@ import discord
 from discord.ext import commands
 import json
 import os
-import threading
 import time
 from datetime import datetime
 import requests

@@ -14,15 +14,10 @@ import config  # external constants
 from bot_gui import BotGUI
 import tkinter as tk
 import requests  # Add for Discord webhook notifications
-from PIL import ImageOps
 import json # Added for wall coordinate saving/loading
-from math import sqrt
 import glob
-# import easyocr # Added for EasyOCR
-# easyocr_reader = easyocr.Reader(['en'], gpu=False)
 from imutils.object_detection import non_max_suppression
-import matplotlib.pyplot as plt  # For plotting statistics
-from datetime import datetime, timedelta
+from datetime import datetime
 from enum import Enum, auto
 
 # Web GUI server
@@ -35,7 +30,6 @@ from humanized_input import (
     random_sleep,
     thinking_pause,
     reading_pause,
-    reaction_delay,
     humanized_sleep,
     mouse_drift_idle,
     fast_click  # Ultra-fast click for speed-critical operations
@@ -387,18 +381,6 @@ def overlay_draw_spell_target(x, y, spell_name):
         print(f"[OVERLAY] Drawing spell target: {spell_name} at ({x},{y})")
         gui.overlay.draw_crosshair(x, y, 25, config.OVERLAY_COLORS.get('spell_target', '#FF00FF'), spell_name)
 
-def overlay_draw_deployment(x, y):
-    """Draw a troop deployment position if overlay is enabled."""
-    if gui.overlay and gui.overlay_enabled:
-        print(f"[OVERLAY] Drawing deployment at ({x},{y})")
-        gui.overlay.draw_circle(x, y, 8, config.OVERLAY_COLORS.get('deployment', '#FFFF00'))
-
-def overlay_debug_status():
-    """Print overlay status for debugging."""
-    print(f"[OVERLAY DEBUG] gui.overlay exists: {gui.overlay is not None}")
-    print(f"[OVERLAY DEBUG] gui.overlay_enabled: {gui.overlay_enabled}")
-    if gui.overlay:
-        print(f"[OVERLAY DEBUG] overlay.enabled: {gui.overlay.enabled}")
 
 # Initialize Queue Manager (callbacks will be set later after functions are defined)
 try:
@@ -474,11 +456,6 @@ def click_in_square(coord):  # coord: (x1,y1,x2,y2)
 
 # random_sleep is now imported from humanized_input module
 # This provides realistic timing distributions (lognormal/gamma) instead of uniform
-
-
-def get_pixel_color(x, y):
-    img = ImageGrab.grab()
-    return img.getpixel((x, y))
 
 
 def detect_air_defenses():
@@ -1675,35 +1652,6 @@ def wait_for_base_screen(timeout=15):
     return False
 
 
-def detect_battle_active_state():
-    """
-    Detect if battle is currently active (troops deployed, not yet ended).
-    Battle is active if:
-    - Surrender button IS visible (attack started)
-    - End battle button NOT visible (battle hasn't ended)
-    - Star bonus NOT visible (battle hasn't ended)
-
-    Returns:
-        bool: True if battle active, False otherwise
-    """
-    try:
-        surrender_visible = detect_surrender_button() is not None
-        end_battle_visible = detect_end_battle_button() is not None
-        star_bonus_visible = detect_star_bonus()
-
-        # Battle active = surrender exists but end screens don't
-        is_active = surrender_visible and not end_battle_visible and not star_bonus_visible
-
-        if is_active:
-            print("[BB STATE] BATTLE_ACTIVE confirmed (surrender visible, no end screens)")
-
-        return is_active
-
-    except Exception as e:
-        print(f"[BB STATE] Error detecting BATTLE_ACTIVE: {e}")
-        return False
-
-
 def detect_end_screen_state():
     """
     Detect if battle ended and end screen is displayed (post-battle screen with resources).
@@ -1795,62 +1743,6 @@ def detect_ghost_attack():
     except Exception as e:
         print(f"[BB STATE] Error detecting ghost attack: {e}")
         return False
-
-
-def detect_bb_confirm_button():
-    """
-    Detect the green confirmation button in Builder Base surrender dialog.
-    Returns (x, y) coordinates of the button center if found, None otherwise.
-    Searches only in center dialog area to avoid matching other buttons.
-    """
-    # Search only in center region where dialog appears (avoid bottom corners with other buttons)
-    # Dialog appears roughly in center: X=640-1920, Y=600-1000
-    search_region = (640, 600, 1920, 1000)
-    screen_img = ImageGrab.grab(bbox=search_region)
-    screen_cv = cv2.cvtColor(np.array(screen_img), cv2.COLOR_RGB2BGR)
-
-    # Check if templates directory exists
-    template_dir = "screenshots/reference/builder_base/"
-    if not os.path.exists(template_dir):
-        print(f"BB confirm button templates directory not found: {template_dir}")
-        send_discord_debug_log(f"BB confirm button templates directory not found: {template_dir}", "WARNING")
-        return None
-
-    # Load the confirm button template
-    template_path = os.path.join(template_dir, "confirm.png")
-    if not os.path.exists(template_path):
-        print(f"BB confirm button template not found: {template_path}")
-        send_discord_debug_log(f"BB confirm button template not found: {template_path}", "WARNING")
-        return None
-
-    template = cv2.imread(template_path)
-    if template is None:
-        print(f"Failed to load BB confirm button template: {template_path}")
-        send_discord_debug_log(f"Failed to load BB confirm button template: {template_path}", "WARNING")
-        return None
-
-    # Perform template matching
-    result = cv2.matchTemplate(screen_cv, template, cv2.TM_CCOEFF_NORMED)
-    min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result)
-
-    if max_val >= 0.75:  # 75% confidence threshold (higher to avoid false positives)
-        # Calculate center of the button (convert to global coordinates)
-        template_height, template_width = template.shape[:2]
-        center_x = max_loc[0] + template_width // 2 + search_region[0]
-        center_y = max_loc[1] + template_height // 2 + search_region[1]
-
-        # Additional sanity check: confirm button should be in center area, not at bottom corners
-        if center_y > 1100:  # Too low on screen (near return button at y=1225)
-            print(f"BB confirm button rejected - too low on screen (y={center_y}), likely matched wrong button")
-            send_discord_debug_log(f"BB confirm rejected - matched button at y={center_y} (too low)", "WARNING")
-            return None
-
-        print(f"BB confirm button detected at ({center_x}, {center_y}) with confidence {max_val:.2f}")
-        send_discord_debug_log(f"BB confirm button detected at ({center_x}, {center_y}) with confidence {max_val:.2f}")
-        return (center_x, center_y)
-    else:
-        print(f"BB confirm button not detected (best match confidence: {max_val:.2f})")
-        return None
 
 
 def detect_return_home_button(quiet=False):
@@ -2105,20 +1997,6 @@ def get_lightning_spell_targets(air_defenses):
     # Sort by level (highest first) and return positions
     sorted_defenses = sorted(air_defenses, key=lambda x: x[2], reverse=True)
     return [(x, y) for x, y, _, _ in sorted_defenses]
-
-
-def thin_digits(img):
-    """
-    Thin bold/thick digits using morphological erosion (OpenCV).
-    """
-    try:
-        import cv2
-        img_np = np.array(img)
-        kernel = np.ones((2, 2), np.uint8)
-        eroded = cv2.erode(img_np, kernel, iterations=1)
-        return Image.fromarray(eroded)
-    except ImportError:
-        return img  # Fallback: return original if OpenCV not available
 
 
 def ocr_resources(region, debug=False):
@@ -2774,120 +2652,6 @@ def save_overlay_screenshot_hotkey():
 
 keyboard.add_hotkey('f8', save_overlay_screenshot_hotkey)
 
-def ocr_attack_resource(img, debug=False):
-    """
-    Robust OCR for attack resource numbers (white digits, dark background).
-    Tries adaptive thresholding, simple threshold, and raw grayscale.
-    """
-    import numpy as np
-    try:
-        import cv2
-        img = img.convert('L')
-        img_np = np.array(img)
-        # Try adaptive thresholding
-        bin_img = cv2.adaptiveThreshold(
-            img_np, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
-            cv2.THRESH_BINARY, 11, 2
-        )
-        bin_img_pil = Image.fromarray(bin_img)
-        if debug:
-            bin_img_pil.show(title="Adaptive Threshold")
-        text = pytesseract.image_to_string(bin_img_pil, config='--psm 7 -c tessedit_char_whitelist=0123456789')
-        cleaned = ''.join(ch for ch in text if ch.isdigit())
-        if cleaned:
-            return int(cleaned)
-        # Fallback: simple threshold
-        _, bin_img2 = cv2.threshold(img_np, 180, 255, cv2.THRESH_BINARY)
-        bin_img2_pil = Image.fromarray(bin_img2)
-        if debug:
-            bin_img2_pil.show(title="Simple Threshold 180")
-        text2 = pytesseract.image_to_string(bin_img2_pil, config='--psm 7 -c tessedit_char_whitelist=0123456789')
-        cleaned2 = ''.join(ch for ch in text2 if ch.isdigit())
-        if cleaned2:
-            return int(cleaned2)
-        # Fallback: raw grayscale
-        text3 = pytesseract.image_to_string(img, config='--psm 7 -c tessedit_char_whitelist=0123456789')
-        cleaned3 = ''.join(ch for ch in text3 if ch.isdigit())
-        if cleaned3:
-            return int(cleaned3)
-        return 0
-    except ImportError:
-        # Fallback: PIL only
-        img = img.convert('L')
-        text = pytesseract.image_to_string(img, config='--psm 7 -c tessedit_char_whitelist=0123456789')
-        cleaned = ''.join(ch for ch in text if ch.isdigit())
-        return int(cleaned) if cleaned else 0
-    except Exception as e:
-        if debug:
-            print(f"[OCR Error] {e}")
-        return 0
-def plot_statistics():
-    """
-    Plot loot and loops completed over the past day, week, and month from loot_tracking.csv.
-    """
-    import pandas as pd
-    try:
-        df = pd.read_csv('data/loot_tracking.csv', parse_dates=['timestamp'])
-    except Exception as e:
-        print(f"Error reading loot_tracking.csv: {e}")
-        return
-    if df.empty:
-        print("No data to plot.")
-        return
-    now = datetime.now()
-    periods = {
-        'Day': now - timedelta(days=1),
-        'Week': now - timedelta(weeks=1),
-        'Month': now - timedelta(days=30)
-    }
-    plt.figure(figsize=(15, 10))
-    for i, (label, start_time) in enumerate(periods.items(), 1):
-        plt.subplot(2, 2, i)
-        mask = df['timestamp'] >= start_time.strftime('%Y-%m-%d %H:%M:%S')
-        sub = df[mask]
-        if sub.empty:
-            plt.title(f"No data for last {label.lower()}")
-            continue
-        plt.plot(sub['timestamp'], sub['total_loot'], marker='o', label='Total Loot')
-        plt.xlabel('Time')
-        plt.ylabel('Total Loot')
-        plt.title(f'Total Loot in the last {label.lower()}')
-        plt.xticks(rotation=45)
-        plt.legend()
-    # Plot loops completed (attack_number)
-    plt.subplot(2, 2, 4)
-    plt.plot(df['timestamp'], df['attack_number'], marker='x', color='orange', label='Loops Completed')
-    plt.xlabel('Time')
-    plt.ylabel('Loop #')
-    plt.title('Loops Completed Over Time')
-    plt.xticks(rotation=45)
-    plt.legend()
-    plt.tight_layout()
-    plt.show()
-# def ocr_attack_resource_easyocr(img, debug=False):
-#     """
-#     OCR for attack resource numbers using EasyOCR, mimicking the simple usage pattern.
-#     Accepts a PIL image, converts to BGR numpy array, and restricts to digits only.
-#     """
-#     import numpy as np
-#     import cv2
-#     # Convert PIL image to BGR numpy array
-#     img_np = np.array(img.convert('RGB'))
-#     img_bgr = cv2.cvtColor(img_np, cv2.COLOR_RGB2BGR)
-#     if debug:
-#         cv2.imshow('Attack Resource OCR Input', img_bgr)
-#         cv2.waitKey(500)
-#         cv2.destroyAllWindows()
-#     # Use EasyOCR to extract only digits
-#     results = easyocr_reader.readtext(
-#         img_bgr,
-#         detail=0,
-#         allowlist='0123456789'
-#     )
-#     digits = ''.join(str(r) for r in results)
-#     if debug:
-#         print("EasyOCR result:", digits)
-#     return int(digits) if digits.isdigit() else 0
 
 def ocr_attack_resource_template_digits(img, debug=False, context=None, resource_type=None):
     """
@@ -3054,34 +2818,6 @@ def ocr_attack_resource_template_digits(img, debug=False, context=None, resource
         send_discord_ocr_log(f"{resource_emoji} **{resource_label}**: Exception {e}")
         return 0
 
-def ocr_base_resource(img, debug=False):
-    """
-    Specialized OCR for base resource numbers (white digits, dark background).
-    Uses a high threshold and erosion. If debug=True, shows processed image and prints raw OCR.
-    """
-    import numpy as np
-    try:
-        import cv2
-        img = img.convert('L')
-        img_np = np.array(img)
-        # Use a high threshold to isolate white digits (tune if needed)
-        _, bin_img = cv2.threshold(img_np, 235, 255, cv2.THRESH_BINARY)
-        kernel = np.ones((2, 2), np.uint8)
-        bin_img = cv2.erode(bin_img, kernel, iterations=1)
-        bin_img_pil = Image.fromarray(bin_img)
-    except ImportError:
-        img = img.convert('L')
-        bin_img_pil = img.point(lambda x: 255 if x > 235 else 0, '1')
-    if debug:
-        bin_img_pil.show()
-    text = pytesseract.image_to_string(bin_img_pil, config='--psm 7 -c tessedit_char_whitelist=0123456789')
-    if debug:
-        print(f"Raw OCR: '{text}'")
-    cleaned = ''.join(ch for ch in text if ch.isdigit())
-    return int(cleaned) if cleaned else 0
-
-
-
 
 def detect_air_sweepers():
     """
@@ -3150,30 +2886,6 @@ def calculate_lightning_spells_needed(air_defense_level, lightning_damage):
     return max(1, spells_needed)  # Minimum 1 spell
 
 
-
-
-
-def collect_resources():
-    """
-    Click resource collection coordinates to collect resources from generators.
-    """
-    print("Collecting resources from generators...")
-    gui.log_message("Collecting resources from generators...")
-    
-    for i, (x, y) in enumerate(config.RESOURCE_COLLECTION_COORDS):
-        human_like_move_click(x, y)
-        # Use humanized sleep for natural timing
-        humanized_sleep(0.2, variance=0.3)
-        print(f"  Collected from coordinate {i+1}: ({x}, {y})")
-    
-    time.sleep(1)  # Wait for collection animation
-    print("Resource collection completed")
-    gui.log_message("Resource collection completed")
-
-
-
-
-
 def check_discord_commands():
     """
     Check for Discord commands by monitoring bot_settings.json file.
@@ -3226,22 +2938,8 @@ def check_discord_commands():
                     gui.log_message("Bot resumed via Discord command")
                     print("Bot resumed via Discord command")
                     root.after(0, update_status)
-        # --- Commented out: Discord settings update functionality ---
-        # gui_settings = gui.get_settings()
-        # settings_changed = False
-        # for key, value in file_settings.items():
-        #     if key not in ['discord_running', 'discord_paused'] and key in gui_settings:
-        #         if gui_settings[key] != value:
-        #             settings_changed = True
-        #             gui.log_message(f"Setting updated via Discord: {key} = {value}")
-        #             print(f"Setting updated via Discord: {key} = {value}")
-        # if settings_changed:
-        #     root.after(0, gui.update_settings_from_file)
     except Exception as e:
         print(f"Error checking Discord commands: {e}")
-
-
-
 
 
 # Main action loop
@@ -5275,375 +4973,6 @@ def increment_bb_gold_counter():
         bb_gold_attack_count = 0
         print("[BB GOLD] Counter reset - starting new cycle")
         send_discord_debug_log("BB Gold: Loot collected, counter reset to 0")
-
-
-def handle_bb_gold_mode_legacy():
-    """
-    Handle BB Gold mode - deploy Battle Machine + Night Witches far from red lines,
-    wait for 2 stars, then surrender immediately.
-
-    LEGACY VERSION - Kept as backup. Use handle_bb_gold_mode_stateful() instead.
-    """
-    send_discord_debug_log("BB Gold mode: starting attack")
-    gui.log_message("BB Gold mode: starting attack")
-
-    # Detect valid deployment zone (outside red lines)
-    valid_coords = detect_bb_deployment_zone()
-
-    # Filter out unit bar area (x=1-2553, y=1209-1431)
-    valid_coords = filter_out_unit_bar(valid_coords)
-
-    # Safety check: if all coords were filtered out, use fallback
-    if not valid_coords:
-        print("[BB GOLD] WARNING: All coordinates filtered out, using fallback positions")
-        send_discord_debug_log("BB Gold: All coords filtered - using fallback", "WARNING")
-        valid_coords = [(300, 300), (300, 1000), (2200, 300), (2200, 1000)]
-
-    # Randomly choose deployment position from valid coordinates
-    if valid_coords:
-        deployment_coord = random.choice(valid_coords)  # Random position each attack
-        print(f"[BB GOLD] Using deployment position: {deployment_coord} (randomly selected from {len(valid_coords)} options)")
-        send_discord_debug_log(f"BB Gold: Deploying at randomly selected position {deployment_coord}")
-    else:
-        deployment_coord = (300, 300)  # Fallback to top-left corner
-        print("[BB GOLD] WARNING: No valid coords detected, using fallback corner")
-        send_discord_debug_log("BB Gold: Using fallback corner position", "WARNING")
-
-    KEYS = config.KEYS
-
-    # Try deploying at the chosen coordinate until surrender button appears
-    surrender_pos = None
-    deployment_attempt = 0
-
-    print("[BB GOLD] Deploying Battle Machine...")
-    send_discord_debug_log("BB Gold: Deploying Battle Machine")
-
-    # Phase 1: Try valid coordinates first (up to 10 attempts)
-    while not surrender_pos and deployment_attempt < 10:
-        deployment_attempt += 1
-        print(f"[BB GOLD] Deployment attempt {deployment_attempt}/10 at {deployment_coord}")
-
-        # Deploy Battle Machine (q)
-        keyboard.send(KEYS['queen'])  # 'q' key for Battle Machine
-        time.sleep(0.2)
-        human_like_move_click(deployment_coord[0], deployment_coord[1])
-        time.sleep(0.5)
-
-        # Check if surrender or end battle button appeared (meaning troop was successfully placed)
-        button_type, button_x, button_y = detect_surrender_or_end_battle()
-
-        if button_type:
-            surrender_pos = (button_x, button_y)
-            print(f"[BB GOLD] Battle Machine deployed successfully at {deployment_coord} ({button_type} button detected)")
-            send_discord_debug_log(f"BB Gold: Battle Machine deployed - {button_type} button found")
-            break
-        else:
-            print(f"[BB GOLD] Surrender/end battle button not found - invalid placement, trying again...")
-            # Try a different random valid coordinate for next attempt
-            if valid_coords:
-                deployment_coord = random.choice(valid_coords)
-
-    # Phase 2: If still no success, try random coordinates across entire screen until success
-    if not surrender_pos:
-        print("[BB GOLD] Valid coords failed - trying random screen coordinates until success...")
-        send_discord_debug_log("BB Gold: Switching to random coordinate mode", "WARNING")
-
-        max_random_attempts = 20  # Safety limit (reduced from 50)
-        while not surrender_pos and deployment_attempt < 30:  # 10 + 20 = 30 total max
-            deployment_attempt += 1
-
-            # Generate random coordinate (avoid edges and unit bar)
-            random_x = random.randint(300, 2200)
-            random_y = random.randint(200, 1100)  # Avoid unit bar at bottom
-
-            print(f"[BB GOLD] Random attempt {deployment_attempt - 10}/{max_random_attempts} at ({random_x}, {random_y})")
-
-            # Deploy Battle Machine
-            keyboard.send(KEYS['queen'])
-            time.sleep(0.2)
-            human_like_move_click(random_x, random_y)
-            time.sleep(0.5)
-
-            # Check if surrender or end battle button appeared
-            button_type, button_x, button_y = detect_surrender_or_end_battle()
-
-            if button_type:
-                surrender_pos = (button_x, button_y)
-                print(f"[BB GOLD] SUCCESS! Battle Machine deployed at random coordinate ({random_x}, {random_y}), {button_type} button detected")
-                send_discord_debug_log(f"BB Gold: Success with random coords - {button_type} button found")
-                deployment_coord = (random_x, random_y)  # Update deployment coord for Night Witches
-                break
-
-    # Track Battle Machine ability activation time
-    battle_machine_ability_time = None
-    last_return_home_check = 0  # Track last Return Home button check time
-
-    if not surrender_pos:
-        print("[BB GOLD] CRITICAL: Failed to deploy Battle Machine after 30 attempts!")
-        print("[BB GOLD] Likely still at base - restarting attack sequence...")
-        send_discord_debug_log("BB Gold: CRITICAL - Failed to deploy after 30 attempts, restarting sequence", "ERROR")
-        gui.log_message("BB Gold: Deployment failed - restarting")
-        return False  # Signal to restart attack sequence
-    else:
-        # Activate Battle Machine ability immediately after deployment
-        print("[BB GOLD] Activating Battle Machine ability...")
-        send_discord_debug_log("BB Gold: Activating Battle Machine ability")
-        keyboard.send('q')  # Battle Machine ability key
-        battle_machine_ability_time = time.time()  # Track when ability was used
-        time.sleep(0.2)
-
-    # Deploy all 6 Night Witches at the same position - FAST DEPLOYMENT
-    print("[BB GOLD] Deploying 6 Night Witches...")
-    send_discord_debug_log("BB Gold: Deploying 6 Night Witches")
-
-    for witch_num in range(1, 7):
-        keyboard.send(str(witch_num))  # Keys 1-6
-        time.sleep(0.02)  # Minimal delay
-        fast_click(deployment_coord[0], deployment_coord[1])  # Ultra-fast click
-        time.sleep(0.02)  # Minimal delay
-
-    print("[BB GOLD] All Night Witches deployed")
-    send_discord_debug_log("BB Gold: All 6 Night Witches deployed")
-
-    # Wait 3 seconds before casting abilities
-    print("[BB GOLD] Waiting 3 seconds before casting abilities...")
-    time.sleep(3)
-
-    # Cast abilities for all 6 Night Witches - FAST CASTING
-    print("[BB GOLD] Casting Night Witch abilities...")
-    send_discord_debug_log("BB Gold: Casting abilities")
-
-    for ability_num in range(1, 7):
-        keyboard.send(str(ability_num))  # Keys 1-6
-        time.sleep(0.02)  # Minimal delay
-
-    print("[BB GOLD] All abilities cast")
-    send_discord_debug_log("BB Gold: All abilities cast - monitoring for 2/3 stars")
-
-    # Monitor for 2 or 3 stars with verification
-    max_wait_time = 180  # Maximum 3 minutes to get stars
-    start_time = time.time()
-    stars_detected = False
-    three_stars_detected = False
-    battle_lost = False  # Flag for battle ended (Return Home button detected)
-    return_home_check_interval = 2.0  # Check every 2 seconds to reduce overhead
-    cached_return_home_pos = None  # Cache detected Return Home button position
-
-    print("[BB GOLD] Monitoring for 2/3 stars or battle end...")
-    gui.log_message("BB Gold: Monitoring for 2/3 stars...")
-
-    while not stars_detected and (time.time() - start_time) < max_wait_time:
-        current_time = time.time()
-
-        # Check for Return Home button (battle ended without 2+ stars)
-        # This replaces the fixed 80-second timeout with immediate detection
-        if current_time - last_return_home_check >= return_home_check_interval:
-            last_return_home_check = current_time
-            return_home_pos = detect_return_home_button(quiet=True)
-            if return_home_pos:
-                battle_lost = True
-                cached_return_home_pos = return_home_pos
-                print(f"[BB GOLD] Return Home button detected at {return_home_pos} - battle ended without stars")
-                gui.log_message("BB Gold: Battle ended - returning home")
-                send_discord_debug_log("BB Gold: Return Home detected - battle ended without stars")
-                break
-
-        # Re-activate Battle Machine ability every 15 seconds if battle is still ongoing
-        if (battle_machine_ability_time is not None and
-            current_time - battle_machine_ability_time >= 15):
-            print("[BB GOLD] 15 seconds elapsed - re-activating Battle Machine ability...")
-            send_discord_debug_log("BB Gold: Re-activating Battle Machine ability after 15 seconds")
-            keyboard.send('q')  # Re-activate Battle Machine ability
-            battle_machine_ability_time = current_time  # Reset timer for next activation
-            time.sleep(0.2)
-
-        # Check for 2 stars first (most common case) with triple verification
-        two_star_verification = 0
-        for _ in range(3):
-            if detect_two_stars():
-                two_star_verification += 1
-            # time.sleep(0.2)
-
-        if two_star_verification >= 2:  # If 2 out of 3 checks passed
-            stars_detected = True
-            print("[BB GOLD] 2 STARS DETECTED! Surrendering immediately...")
-            gui.log_message("BB Gold: 2 stars detected - surrendering")
-            send_discord_debug_log("BB Gold: 2 stars detected - surrendering immediately")
-            break
-
-        # Check for 3 stars (rare edge case - Builder Hall destroyed last before 2nd star appears)
-        three_star_verification = 0
-        for _ in range(3):
-            if detect_three_stars():
-                three_star_verification += 1
-            # time.sleep(0.2)
-
-        if three_star_verification >= 2:  # If 2 out of 3 checks passed
-            stars_detected = True
-            three_stars_detected = True
-            print("[BB GOLD] 3 STARS DETECTED! (Builder Hall was last building)")
-            gui.log_message("BB Gold: 3 stars detected!")
-            send_discord_debug_log("BB Gold: 3 stars detected - waiting 7 seconds before ending")
-
-            # Wait 7 seconds as requested for 3 stars
-            print("[BB GOLD] Waiting 7 seconds...")
-            time.sleep(7)
-            break
-
-        time.sleep(0.5)  # Check every ~0.5 seconds
-
-    if not stars_detected and not battle_lost:
-        print("[BB GOLD] WARNING: 2/3 stars not detected after 3 minutes, ending battle anyway")
-        gui.log_message("BB Gold: Timeout - ending battle")
-        send_discord_debug_log("BB Gold: Timeout waiting for stars - ending battle anyway", "WARNING")
-
-    # Skip surrender/end battle if battle ended (Return Home detected) - battle already over, go straight to return home
-    if not battle_lost:
-        # Separate handling for 3 stars vs 2 stars
-        if three_stars_detected:
-            # 3 STAR PATH - use end battle button (surrender not available with 3 stars)
-            print("[BB GOLD] 3 stars achieved - detecting end battle button...")
-            send_discord_debug_log("BB Gold: 3 stars - using end battle button")
-
-            end_battle_pos = detect_end_battle_button()
-
-            if end_battle_pos:
-                print(f"[BB GOLD] Clicking end battle button at {end_battle_pos}")
-                send_discord_debug_log(f"BB Gold: Clicking end battle at {end_battle_pos}")
-                fast_click(*end_battle_pos)
-            else:
-                print("[BB GOLD] WARNING: End battle button not detected! Using fallback...")
-                send_discord_debug_log("BB Gold: No end battle detected, using fallback", "WARNING")
-                fast_click(144, 1080)  # Fallback BB end battle position
-
-            # Click confirm button
-            print("[BB GOLD] Clicking end battle confirmation...")
-            send_discord_debug_log("BB Gold: Clicking end battle confirmation")
-            fast_click(1483, 898)
-            time.sleep(1.5)
-
-            print("[BB GOLD] 3-star battle ended successfully")
-            send_discord_debug_log("BB Gold: 3-star battle ended")
-
-        else:
-            # 2 STAR PATH - use surrender or end battle button
-            print("[BB GOLD] 2 stars achieved - detecting surrender/end battle button...")
-            send_discord_debug_log("BB Gold: 2 stars - detecting surrender/end battle button")
-
-            button_type, button_x, button_y = detect_surrender_or_end_battle()
-
-            # Click surrender/end battle button - FAST CLICK for speed
-            if button_type:
-                print(f"[BB GOLD] Clicking {button_type} button at ({button_x}, {button_y})")
-                send_discord_debug_log(f"BB Gold: Clicking {button_type} at ({button_x}, {button_y})")
-                fast_click(button_x, button_y)
-
-                # Click confirm button
-                print(f"[BB GOLD] Clicking {button_type} confirmation...")
-                send_discord_debug_log(f"BB Gold: Clicking {button_type} confirmation")
-                fast_click(1483, 898)
-                time.sleep(1.5)
-            else:
-                # NO FALLBACK - Log error and continue (legacy code path)
-                print("[BB GOLD] ERROR: Surrender/end battle button not detected - continuing anyway")
-                send_discord_debug_log("BB Gold: No surrender/end battle button found", "ERROR")
-                time.sleep(2)  # Wait for potential auto-end
-
-            # After surrender attempt, check if 3 stars appeared (Builder Hall destroyed during surrender)
-            print("[BB GOLD] Checking if 3 stars appeared after surrender attempt...")
-            three_star_check = 0
-            for _ in range(3):
-                if detect_three_stars():
-                    three_star_check += 1
-
-            if three_star_check >= 2:
-                # Edge case: Builder Hall was destroyed while clicking surrender
-                # Surrender is NEGATED by 3 stars - must click end battle button instead
-                three_stars_detected = True
-                print("[BB GOLD] 3 STARS DETECTED after surrender attempt! (Builder Hall destroyed during surrender)")
-                gui.log_message("BB Gold: 3 stars appeared during surrender")
-                send_discord_debug_log("BB Gold: 3 stars appeared after surrender - clicking end battle")
-
-                # Must click end battle button since surrender was negated
-                print("[BB GOLD] Detecting end battle button (surrender negated by 3 stars)...")
-                end_battle_pos = detect_end_battle_button()
-
-                if end_battle_pos:
-                    print(f"[BB GOLD] Clicking end battle button at {end_battle_pos}")
-                    send_discord_debug_log(f"BB Gold: Clicking end battle at {end_battle_pos}")
-                    fast_click(*end_battle_pos)
-                else:
-                    print("[BB GOLD] WARNING: End battle button not detected! Using fallback...")
-                    send_discord_debug_log("BB Gold: No end battle detected, using fallback", "WARNING")
-                    fast_click(144, 1080)  # Fallback BB end battle position
-
-                # Click confirm button
-                print("[BB GOLD] Clicking end battle confirmation...")
-                send_discord_debug_log("BB Gold: Clicking end battle confirmation")
-                fast_click(1483, 898)
-                time.sleep(1.5)
-
-                print("[BB GOLD] Post-surrender 3-star battle ended successfully")
-                send_discord_debug_log("BB Gold: Post-surrender 3-star battle ended")
-            else:
-                print("[BB GOLD] Surrender successful (2 stars)")
-                send_discord_debug_log("BB Gold: surrendered successfully with 2 stars")
-
-    gui.log_message("BB Gold: attack completed")
-
-    # Return home - FAST CLICK for speed
-    fast_click(*config.RETURN_BUTTON)  # Ultra-fast click
-    time.sleep(1.5)  # Reduced delay (was config.RETURN_DELAY which is 7s)
-
-    # Check for star bonus screen with retry loop
-    print("[BB GOLD] Checking for star bonus screen...")
-    star_bonus_found = False
-    max_retries = 4
-    for attempt in range(max_retries):
-        if detect_star_bonus():
-            print(f"[BB GOLD] Star bonus screen detected on attempt {attempt + 1}! Clicking to close at (1282, 1101)...")
-            gui.log_message("BB Gold: Closing star bonus screen")
-            send_discord_debug_log(f"BB Gold: Star bonus screen detected (attempt {attempt + 1}) - closing")
-            fast_click(1282, 1101)
-            time.sleep(1.0)  # Wait for screen to close
-            print("[BB GOLD] Star bonus screen closed")
-            send_discord_debug_log("BB Gold: Star bonus screen closed")
-            star_bonus_found = True
-            break
-        else:
-            if attempt < max_retries - 1:
-                print(f"[BB GOLD] Star bonus not found (attempt {attempt + 1}/{max_retries}), retrying...")
-                time.sleep(0.8)  # Wait before retry
-
-    if not star_bonus_found:
-        print("[BB GOLD] No star bonus screen detected after all attempts")
-
-    # Read BB storages for full storage detection
-    # Note: track_resources and check_and_pause_if_storages_full are called internally
-    bb_storages = read_bb_base_storages()
-
-    # Increment BB Gold attack counter (similar to BB Elixir)
-    global bb_gold_attack_count
-    settings = gui.get_settings()
-    collect_interval = settings.get('bb_collect_interval', 12)
-    bb_gold_attack_count += 1
-    print(f"[BB GOLD] Attack count: {bb_gold_attack_count}/{collect_interval}")
-    send_discord_debug_log(f"BB Gold: Attack {bb_gold_attack_count}/{collect_interval} completed")
-
-    # Collect loot every N attacks (configurable)
-    if bb_gold_attack_count >= collect_interval:
-        print(f"[BB GOLD] {collect_interval} attacks completed - collecting loot!")
-        gui.log_message(f"BB Gold: {collect_interval} attacks done - collecting loot")
-        send_discord_debug_log(f"BB Gold: {collect_interval} attacks completed - starting loot collection")
-
-        collect_bb_loot()
-
-        # Reset counter
-        bb_gold_attack_count = 0
-        print("[BB GOLD] Counter reset - starting new cycle")
-        send_discord_debug_log("BB Gold: Loot collected, counter reset to 0")
-
-    return True  # Attack completed
 
 
 def save_bb_gold_attack_duration(context):
@@ -10161,23 +9490,6 @@ def main_loop():
 
             # CRITICAL DEBUG: Print ALL settings to verify
             current_profile = settings.get('current_profile', 'Unknown')
-            # Debug logging disabled - uncomment below to re-enable attack cycle debug info
-            # print(f"\n{'='*70}")
-            # print(f"[DEBUG] === ATTACK CYCLE {loop_count + 1} ===")
-            # print(f"[DEBUG] Current profile: {current_profile}")
-            # print(f"[DEBUG] Mode flags loaded from settings:")
-            # print(f"  - derank_mode: {derank_mode}")
-            # print(f"  - sgoblin_farm_mode: {sgoblin_farm_mode}")
-            # print(f"  - sbarb_farm_mode: {sbarb_farm_mode} {'← SHOULD BE TRUE FOR SBARB FARM!' if current_profile == 'SBarb Farm' else ''}")
-            # print(f"  - bb_elixir_mode: {bb_elixir_mode}")
-            # print(f"  - bb_gold_mode: {bb_gold_mode}")
-            # print(f"  - achievement_farm_mode: {achievement_farm_mode}")
-            # active_count = sum([derank_mode, sgoblin_farm_mode, sbarb_farm_mode, bb_elixir_mode, bb_gold_mode, achievement_farm_mode])
-            # if active_count == 0:
-            #     print(f"[WARNING] ⚠️  NO MODES ACTIVE - Will use normal attack (with evaluation)!")
-            # elif active_count > 1:
-            #     print(f"[ERROR] ❌ {active_count} MODES ACTIVE - Should only be 1!")
-            # print(f"{'='*70}\n")
 
             send_discord_debug_log(f"Cycle {loop_count+1} | Profile: {current_profile}")
 
@@ -10564,11 +9876,5 @@ print("="*70 + "\n")
 
 # Start the GUI
 root.mainloop()
-
-
-
-
-
-
 
 

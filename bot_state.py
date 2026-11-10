@@ -5,7 +5,7 @@ Allows multiple GUIs (Tkinter, Web) to share and sync state.
 
 import json
 import threading
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List
 
 
 class BotStateManager:

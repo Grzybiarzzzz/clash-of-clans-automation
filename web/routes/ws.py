@@ -4,7 +4,6 @@ WebSocket handler for real-time state sync.
 
 import asyncio
 import queue
-import threading
 from typing import Set, Optional
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect

@@ -473,7 +473,6 @@ class VisualizationOverlay:
 
 # Standalone test
 if __name__ == '__main__':
-    import sys
 
     print("=" * 60)
     print("VISUALIZATION OVERLAY TEST")

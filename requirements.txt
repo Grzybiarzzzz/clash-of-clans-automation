@@ -1,6 +1,5 @@
 requests>=2.25.1 
 discord.py>=2.0.0
-flask>=2.0.0 
 matplotlib>=3.0.0 
 pandas>=1.0.0 
 pyautogui>=0.9.53

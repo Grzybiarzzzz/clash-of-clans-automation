@@ -10,10 +10,6 @@ import csv
 from PIL import Image, ImageTk
 import matplotlib.pyplot as plt
 import pandas as pd
-import requests
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-from matplotlib.figure import Figure
-import config
 
 # Optional visualization overlay import
 try:
@@ -2559,7 +2555,6 @@ class BotGUI:
     def capture_console_output(self):
         """Capture console output and redirect to debug log"""
         import sys
-        import io
         
         class ConsoleCapture:
             def __init__(self, gui):
