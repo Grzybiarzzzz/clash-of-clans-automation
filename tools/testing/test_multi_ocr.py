@@ -51,7 +51,7 @@ print(formatted)
 print("\n" + "="*50)
 # Test Discord webhook
 try:
-    from main import send_discord_ocr_log
+    from coc_bot.discord_log import send_discord_ocr_log
     print("Sending to Discord...")
     send_discord_ocr_log(formatted)
     print("✅ Sent to Discord! Check your webhook channel.")
