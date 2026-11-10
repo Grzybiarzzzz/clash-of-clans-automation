@@ -318,7 +318,7 @@ def detect_queen_arrow_projectile():
         extrapolated_end_y = int(start_y + dy * extension_factor)
 
         print(f"[QUEEN ARROW] Extrapolated path end: ({extrapolated_end_x},{extrapolated_end_y})")
-        send_discord_debug_log(f"Queen arrow: Glow trail detected ({len(all_glow_points)} points, {max_distance:.0f}px trail)")
+        send_discord_debug_log(f"Queen arrow: Glow trail detected ({len(all_glow_points)} points, {trail_length:.0f}px trail)")
 
         return [(start_x, start_y), (extrapolated_end_x, extrapolated_end_y)]
 
