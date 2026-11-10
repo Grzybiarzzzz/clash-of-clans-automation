@@ -2,6 +2,7 @@
 
 import config
 
+
 def interpolate_points(p1, p2, num_points):
     """Generate intermediate points between two coordinates for turbo deployment."""
     points = []
@@ -137,13 +138,8 @@ def calculate_deployment_step(troop_count, coord_count):
 
 def get_opposite_side(side):
     """Get the opposite side for camera movement"""
-    opposite_map = {
-        'left': 'right',
-        'right': 'left',
-        'up': 'down',
-        'down': 'up'
-    }
-    return opposite_map.get(side, 'right')  # Default to right if unknown
+    opposite_map = {"left": "right", "right": "left", "up": "down", "down": "up"}
+    return opposite_map.get(side, "right")  # Default to right if unknown
 
 
 def get_lightning_spell_targets(air_defenses):
@@ -153,21 +149,21 @@ def get_lightning_spell_targets(air_defenses):
     """
     if not air_defenses:
         return []
-    
+
     # Sort by level (highest first) and return positions
     sorted_defenses = sorted(air_defenses, key=lambda x: x[2], reverse=True)
     return [(x, y) for x, y, _, _ in sorted_defenses]
 
 
 def get_air_defense_proximity_sorter(side):
-    if side == 'left':
+    if side == "left":
         return lambda ad: ad[0]  # x coordinate, smaller is closer to left
-    elif side == 'right':
-        return lambda ad: -ad[0] # x coordinate, larger is closer to right
-    elif side == 'up':
+    elif side == "right":
+        return lambda ad: -ad[0]  # x coordinate, larger is closer to right
+    elif side == "up":
         return lambda ad: ad[1]  # y coordinate, smaller is closer to top
-    elif side == 'down':
-        return lambda ad: -ad[1] # y coordinate, larger is closer to bottom
+    elif side == "down":
+        return lambda ad: -ad[1]  # y coordinate, larger is closer to bottom
     else:
         return lambda ad: 0
 

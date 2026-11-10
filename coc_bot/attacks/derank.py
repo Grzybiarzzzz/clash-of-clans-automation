@@ -13,6 +13,7 @@ from coc_bot.humanized_input import human_like_move_click
 from coc_bot.input.camera import move_camera_to_side
 from coc_bot.vision.screens import detect_alt_hotkeys, is_attack_screen_ready
 
+
 def handle_derank_mode():
     """Handle derank mode attack - place one unit using normal deployment strategy and surrender immediately"""
     send_discord_debug_log("Derank mode: attacking any base")
@@ -35,12 +36,12 @@ def handle_derank_mode():
     # Move camera to the chosen side
     move_camera_to_side(chosen_side)
     # Pick a random valid deployment coordinate from side_coords['units']
-    if side_coords['units']:
-        chosen_coord = random.choice(side_coords['units'])
+    if side_coords["units"]:
+        chosen_coord = random.choice(side_coords["units"])
     else:
         # Fallback to a corner if for some reason units list is empty
         chosen_coord = (400, 400)
-    troop_key = getattr(config, 'KEYS', {}).get('eDragon', '1') if hasattr(config, 'KEYS') else '1'
+    troop_key = getattr(config, "KEYS", {}).get("eDragon", "1") if hasattr(config, "KEYS") else "1"
     keyboard.send(troop_key)
     time.sleep(0.3)
     human_like_move_click(chosen_coord[0], chosen_coord[1])

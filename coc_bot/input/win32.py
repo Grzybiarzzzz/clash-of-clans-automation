@@ -32,12 +32,7 @@ user32 = ctypes.windll.user32
 
 def create_mouse_input(flags):
     """Create a mouse input event for Windows API."""
-    return INPUT(
-        type=INPUT_MOUSE,
-        mi=MOUSEINPUT(
-            dx=0, dy=0, mouseData=0, dwFlags=flags, time=0, dwExtraInfo=None
-        )
-    )
+    return INPUT(type=INPUT_MOUSE, mi=MOUSEINPUT(dx=0, dy=0, mouseData=0, dwFlags=flags, time=0, dwExtraInfo=None))
 
 
 def turbo_fast_click():

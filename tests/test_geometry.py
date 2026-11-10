@@ -1,4 +1,5 @@
 """Characterisation tests for the pure helpers in coc_bot.geometry."""
+
 import config
 from coc_bot.geometry import (
     calculate_deployment_step,

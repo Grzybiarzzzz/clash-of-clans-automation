@@ -7,8 +7,8 @@ module refers to the same objects: always access them as ``runtime.<name>``
 """
 
 # Application objects, created once in coc_bot.app.main()
-root = None           # tk.Tk root window
-gui = None            # BotGUI instance
+root = None  # tk.Tk root window
+gui = None  # BotGUI instance
 state_manager = None  # BotStateManager shared with the web server
 queue_manager = None  # QueueManager, or None when unavailable
 

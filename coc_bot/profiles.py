@@ -5,12 +5,13 @@ import json
 from coc_bot import runtime
 from coc_bot.discord_log import send_discord_debug_log
 
+
 def get_global_reinforcements_enabled():
     """Get the global reinforcements enabled setting from bot_settings.json"""
     try:
-        with open('bot_settings.json', 'r', encoding='utf-8') as f:
+        with open("bot_settings.json", "r", encoding="utf-8") as f:
             data = json.load(f)
-        return data.get('reinforcements_enabled', False)
+        return data.get("reinforcements_enabled", False)
     except Exception:
         return False
 
@@ -18,9 +19,9 @@ def get_global_reinforcements_enabled():
 def get_global_skip_on_th_fail():
     """Get the global skip on town hall detection fail setting from bot_settings.json"""
     try:
-        with open('bot_settings.json', 'r', encoding='utf-8') as f:
+        with open("bot_settings.json", "r", encoding="utf-8") as f:
             data = json.load(f)
-        return data.get('skip_on_th_fail', False)
+        return data.get("skip_on_th_fail", False)
     except Exception:
         return False
 
@@ -42,9 +43,9 @@ def find_best_matching_profile(gold, elixir, dark_elixir=None):
     all_profiles = runtime.gui.profiles
 
     current_settings = all_profiles.get(current_profile, {})
-    current_max_gold = current_settings.get('max_gold_storage', 18000000)
-    current_max_elixir = current_settings.get('max_elixir_storage', 14000000)
-    current_max_dark = current_settings.get('max_dark_elixir_storage', 240000)
+    current_max_gold = current_settings.get("max_gold_storage", 18000000)
+    current_max_elixir = current_settings.get("max_elixir_storage", 14000000)
+    current_max_dark = current_settings.get("max_dark_elixir_storage", 240000)
 
     best_match = None
     best_score = 0
@@ -57,9 +58,9 @@ def find_best_matching_profile(gold, elixir, dark_elixir=None):
         if profile_name == current_profile:
             continue  # Skip current profile
 
-        max_gold = profile_settings.get('max_gold_storage', 18000000)
-        max_elixir = profile_settings.get('max_elixir_storage', 14000000)
-        max_dark = profile_settings.get('max_dark_elixir_storage', 240000)
+        max_gold = profile_settings.get("max_gold_storage", 18000000)
+        max_elixir = profile_settings.get("max_elixir_storage", 14000000)
+        max_dark = profile_settings.get("max_dark_elixir_storage", 240000)
 
         score = 0
         reasons = []
@@ -86,11 +87,7 @@ def find_best_matching_profile(gold, elixir, dark_elixir=None):
             dark_pct = dark_elixir / max_dark if max_dark > 0 else 0
 
             # Check if all 3 resources are at/near max for this profile
-            at_max_count = sum([
-                gold_pct >= FULL_THRESHOLD,
-                elixir_pct >= FULL_THRESHOLD,
-                dark_pct >= FULL_THRESHOLD
-            ])
+            at_max_count = sum([gold_pct >= FULL_THRESHOLD, elixir_pct >= FULL_THRESHOLD, dark_pct >= FULL_THRESHOLD])
 
             if at_max_count >= 2 and exceeds_current and fits_this_profile:
                 score = at_max_count * 100  # Prioritize profiles where most resources are full
@@ -105,10 +102,7 @@ def find_best_matching_profile(gold, elixir, dark_elixir=None):
             gold_pct = gold / max_gold if max_gold > 0 else 0
             elixir_pct = elixir / max_elixir if max_elixir > 0 else 0
 
-            at_max_count = sum([
-                gold_pct >= FULL_THRESHOLD,
-                elixir_pct >= FULL_THRESHOLD
-            ])
+            at_max_count = sum([gold_pct >= FULL_THRESHOLD, elixir_pct >= FULL_THRESHOLD])
 
             if at_max_count >= 1 and exceeds_current and fits_this_profile:
                 score = at_max_count * 100

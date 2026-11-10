@@ -10,6 +10,7 @@ from coc_bot.discord_log import send_discord_debug_log
 from coc_bot.geometry import get_opposite_side
 from coc_bot.humanized_input import human_like_move_click
 
+
 def click_in_square(coord):  # coord: (x1,y1,x2,y2)
     x1, y1, x2, y2 = coord
     rand_x = random.randint(x1, x2)
@@ -29,19 +30,19 @@ def move_camera_to_opposite_side(current_side, fast_mode=False):
     center_x, center_y = 1280, 720  # Screen center (adjust if needed)
     drag_distance = 800  # pixels to drag - increased for more reliable camera movement
 
-    if opposite_side == 'left':
+    if opposite_side == "left":
         # Drag from center to right (moves camera left)
         start_x, start_y = center_x, center_y
         end_x, end_y = center_x + drag_distance, center_y
-    elif opposite_side == 'right':
+    elif opposite_side == "right":
         # Drag from center to left (moves camera right)
         start_x, start_y = center_x, center_y
         end_x, end_y = center_x - drag_distance, center_y
-    elif opposite_side == 'up':
+    elif opposite_side == "up":
         # Drag from center down (moves camera up)
         start_x, start_y = center_x, center_y
         end_x, end_y = center_x, center_y + drag_distance
-    elif opposite_side == 'down':
+    elif opposite_side == "down":
         # Drag from center up (moves camera down)
         start_x, start_y = center_x, center_y
         end_x, end_y = center_x, center_y - drag_distance
@@ -69,10 +70,10 @@ def move_camera_to_side(chosen_side, fast_mode=False):
     """Move camera to the chosen attack side"""
     send_discord_debug_log(f"Moving camera to {chosen_side} side")
     drag_map = {
-        'left': ((600, 700), (1500, 700)),    # Drag right to see left
-        'right': ((2000, 700), (1000, 700)),  # Drag left to see right
-        'up': ((1280, 300), (1280, 900)),     # Drag down to see up (top)
-        'down': ((1280, 1100), (1280, 700)),  # Drag up to see down (bottom)
+        "left": ((600, 700), (1500, 700)),  # Drag right to see left
+        "right": ((2000, 700), (1000, 700)),  # Drag left to see right
+        "up": ((1280, 300), (1280, 900)),  # Drag down to see up (top)
+        "down": ((1280, 1100), (1280, 700)),  # Drag up to see down (bottom)
     }
     drag_start, drag_end = drag_map[chosen_side]
     pyautogui.moveTo(*drag_start, duration=config.DRAG_DURATION_START)

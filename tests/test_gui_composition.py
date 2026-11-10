@@ -1,15 +1,28 @@
 """BotGUI is assembled from mixins; these tests guard the composition."""
+
 import itertools
 
 from coc_bot.gui import BotGUI
 
 # Methods that the bot thread calls on the GUI object.
 USED_BY_BOT = [
-    "log_message", "debug_message", "ocr_log", "get_settings", "update_loop_count",
-    "update_bb_gold_state", "update_skipped_stats", "update_loot_stats",
-    "update_settings_from_file", "apply_current_profile", "toggle_pause", "stop_bot",
-    "run_bot", "set_control_callback", "schedule_auto_resume",
-    "_sync_state_to_manager", "_on_state_change",
+    "log_message",
+    "debug_message",
+    "ocr_log",
+    "get_settings",
+    "update_loop_count",
+    "update_bb_gold_state",
+    "update_skipped_stats",
+    "update_loot_stats",
+    "update_settings_from_file",
+    "apply_current_profile",
+    "toggle_pause",
+    "stop_bot",
+    "run_bot",
+    "set_control_callback",
+    "schedule_auto_resume",
+    "_sync_state_to_manager",
+    "_on_state_change",
 ]
 
 

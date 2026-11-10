@@ -28,7 +28,9 @@ def detect_army_button():
     # Check if templates directory exists
     if not os.path.exists(config.ARMY_BUTTON_TEMPLATE_DIR):
         print(f"Army button templates directory not found: {config.ARMY_BUTTON_TEMPLATE_DIR}")
-        send_discord_debug_log(f"Army button templates directory not found: {config.ARMY_BUTTON_TEMPLATE_DIR}", "WARNING")
+        send_discord_debug_log(
+            f"Army button templates directory not found: {config.ARMY_BUTTON_TEMPLATE_DIR}", "WARNING"
+        )
         return None
 
     # Load the army button template
@@ -80,7 +82,7 @@ def detect_surrender_button():
         return None
 
     # Load from cache (or fallback to disk)
-    template = _bb_gold_template_cache.get('surrender')
+    template = _bb_gold_template_cache.get("surrender")
     if template is None:
         # Cache miss - load from disk as fallback
         template_path = os.path.join(surrender_template_dir, "surrender.png")
@@ -154,8 +156,12 @@ def wait_for_attack_screen_ready(timeout=10):
 
         if max_val >= 0.7:  # 70% confidence threshold
             elapsed = time.time() - start_time
-            print(f"[ATTACK SCREEN] End Battle button detected! (confidence: {max_val:.2f}, checks: {check_count}, time: {elapsed:.2f}s)")
-            send_discord_debug_log(f"Attack screen ready - End Battle detected (conf={max_val:.2f}, {check_count} checks, {elapsed:.2f}s)")
+            print(
+                f"[ATTACK SCREEN] End Battle button detected! (confidence: {max_val:.2f}, checks: {check_count}, time: {elapsed:.2f}s)"
+            )
+            send_discord_debug_log(
+                f"Attack screen ready - End Battle detected (conf={max_val:.2f}, {check_count} checks, {elapsed:.2f}s)"
+            )
             return True
 
         # Wait 0.1 seconds before next check
@@ -164,7 +170,9 @@ def wait_for_attack_screen_ready(timeout=10):
     # Timeout reached
     elapsed = time.time() - start_time
     print(f"[ATTACK SCREEN] TIMEOUT after {elapsed:.2f}s and {check_count} checks (best confidence: {max_val:.2f})")
-    send_discord_debug_log(f"Attack screen timeout - End Battle not detected ({check_count} checks, best conf={max_val:.2f})", "WARNING")
+    send_discord_debug_log(
+        f"Attack screen timeout - End Battle not detected ({check_count} checks, best conf={max_val:.2f})", "WARNING"
+    )
     return False
 
 
@@ -209,7 +217,9 @@ def detect_star_bonus_screen():
 
     # Verify template is smaller than search region
     if template_width > region_width or template_height > region_height:
-        print(f"[SBARB FARM] Template ({template_width}x{template_height}) is larger than search region ({region_width}x{region_height}), using full screen")
+        print(
+            f"[SBARB FARM] Template ({template_width}x{template_height}) is larger than search region ({region_width}x{region_height}), using full screen"
+        )
         # Fall back to full screen search
         screen_img = ImageGrab.grab()
         screen_cv = cv2.cvtColor(np.array(screen_img), cv2.COLOR_RGB2BGR)
@@ -251,7 +261,7 @@ def detect_two_stars():
         return False
 
     # Load from cache (or fallback to disk)
-    template = _bb_gold_template_cache.get('2_stars')
+    template = _bb_gold_template_cache.get("2_stars")
     if template is None:
         # Cache miss - load from disk as fallback
         template_path = os.path.join(stars_template_dir, "2_stars.png")
@@ -295,7 +305,7 @@ def detect_three_stars():
         return False
 
     # Load from cache (or fallback to disk)
-    template = _bb_gold_template_cache.get('3_stars')
+    template = _bb_gold_template_cache.get("3_stars")
     if template is None:
         # Cache miss - load from disk as fallback
         template_path = os.path.join(stars_template_dir, "3_stars.png")
@@ -369,14 +379,14 @@ def load_bb_gold_templates():
     global _bb_gold_template_cache
 
     templates = {
-        '2_stars': 'screenshots/reference/builder_base/2_stars.png',
-        '3_stars': 'screenshots/reference/builder_base/3_stars.png',
-        'surrender': 'screenshots/reference/attack/surrender.png',  # Fixed: attack/ not builder_base/
-        'end_battle': 'screenshots/reference/attack/end_battle.png',
-        'return_home': 'screenshots/reference/builder_base/return_home.png',
-        'army_button': 'screenshots/reference/reinforcements/army_button.png',
-        'connection_lost': 'screenshots/reference/general/connection_lost.png',
-        'try_again': 'screenshots/reference/general/try_again.png'
+        "2_stars": "screenshots/reference/builder_base/2_stars.png",
+        "3_stars": "screenshots/reference/builder_base/3_stars.png",
+        "surrender": "screenshots/reference/attack/surrender.png",  # Fixed: attack/ not builder_base/
+        "end_battle": "screenshots/reference/attack/end_battle.png",
+        "return_home": "screenshots/reference/builder_base/return_home.png",
+        "army_button": "screenshots/reference/reinforcements/army_button.png",
+        "connection_lost": "screenshots/reference/general/connection_lost.png",
+        "try_again": "screenshots/reference/general/try_again.png",
     }
 
     for name, path in templates.items():
@@ -404,7 +414,7 @@ def detect_in_base_state():
     """
     try:
         # Use full screen if region not specified
-        search_region = getattr(config, 'ARMY_BUTTON_SEARCH_REGION', None)
+        search_region = getattr(config, "ARMY_BUTTON_SEARCH_REGION", None)
         if search_region:
             screenshot = ImageGrab.grab(bbox=search_region)
         else:
@@ -413,10 +423,10 @@ def detect_in_base_state():
         screenshot_cv = cv2.cvtColor(np.array(screenshot), cv2.COLOR_RGB2BGR)
 
         # Load from cache (or fallback to disk)
-        template = _bb_gold_template_cache.get('army_button')
+        template = _bb_gold_template_cache.get("army_button")
         if template is None:
             # Cache miss - load from disk as fallback
-            template_dir = getattr(config, 'ARMY_BUTTON_TEMPLATE_DIR', 'screenshots/reference/reinforcements')
+            template_dir = getattr(config, "ARMY_BUTTON_TEMPLATE_DIR", "screenshots/reference/reinforcements")
             template_path = os.path.join(template_dir, "army_button.png")
             if os.path.exists(template_path):
                 template = cv2.imread(template_path)
@@ -427,7 +437,7 @@ def detect_in_base_state():
         result = cv2.matchTemplate(screenshot_cv, template, cv2.TM_CCOEFF_NORMED)
         min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result)
 
-        threshold = getattr(config, 'ARMY_BUTTON_DETECTION_THRESHOLD', 0.8)
+        threshold = getattr(config, "ARMY_BUTTON_DETECTION_THRESHOLD", 0.8)
         detected = max_val >= threshold
 
         if detected:
@@ -457,9 +467,9 @@ def detect_connection_lost():
         screenshot_cv = cv2.cvtColor(np.array(screenshot), cv2.COLOR_RGB2BGR)
 
         # Step 1: Detect the connection lost popup
-        popup_template = _bb_gold_template_cache.get('connection_lost')
+        popup_template = _bb_gold_template_cache.get("connection_lost")
         if popup_template is None:
-            template_path = 'screenshots/reference/general/connection_lost.png'
+            template_path = "screenshots/reference/general/connection_lost.png"
             if os.path.exists(template_path):
                 popup_template = cv2.imread(template_path)
 
@@ -476,9 +486,9 @@ def detect_connection_lost():
         print(f"[CONNECTION] Connection lost popup detected (confidence: {max_val:.2f})")
 
         # Step 2: Find the "TRY AGAIN" button using template matching
-        try_again_template = _bb_gold_template_cache.get('try_again')
+        try_again_template = _bb_gold_template_cache.get("try_again")
         if try_again_template is None:
-            template_path = 'screenshots/reference/general/try_again.png'
+            template_path = "screenshots/reference/general/try_again.png"
             if os.path.exists(template_path):
                 try_again_template = cv2.imread(template_path)
 
@@ -498,7 +508,9 @@ def detect_connection_lost():
             try_again_x = btn_max_loc[0] + btn_width // 2
             try_again_y = btn_max_loc[1] + btn_height // 2
 
-            print(f"[CONNECTION] TRY AGAIN button found at ({try_again_x}, {try_again_y}) (confidence: {btn_max_val:.2f})")
+            print(
+                f"[CONNECTION] TRY AGAIN button found at ({try_again_x}, {try_again_y}) (confidence: {btn_max_val:.2f})"
+            )
             return (try_again_x, try_again_y)
         else:
             print(f"[CONNECTION] TRY AGAIN button not found (best: {btn_max_val:.2f}), using fallback")
@@ -552,49 +564,49 @@ def detect_end_screen_state():
     """
     try:
         result = {
-            'detected': False,
-            'stars': 0,
-            'star_bonus': False,
-            'return_button_visible': False,
-            'return_button_pos': None
+            "detected": False,
+            "stars": 0,
+            "star_bonus": False,
+            "return_button_visible": False,
+            "return_button_pos": None,
         }
 
         # Primary indicator: Return home button (appears on post-battle screen)
         return_button = detect_return_home_button()
         if return_button:
-            result['detected'] = True
-            result['return_button_visible'] = True
-            result['return_button_pos'] = return_button
+            result["detected"] = True
+            result["return_button_visible"] = True
+            result["return_button_pos"] = return_button
             print(f"[BB STATE] END_SCREEN confirmed (return home button at {return_button})")
 
         # Fallback: Check if battle UI elements are gone (if template doesn't exist yet)
-        if not result['detected']:
+        if not result["detected"]:
             surrender_visible = detect_surrender_button() is not None
             end_battle_visible = detect_end_battle_button() is not None
 
             # If battle UI is gone, we're likely at end screen
             if not surrender_visible and not end_battle_visible:
-                result['detected'] = True
+                result["detected"] = True
                 print("[BB STATE] END_SCREEN confirmed (battle UI elements gone - fallback method)")
 
         # Check for star bonus (appears AFTER end screen when user clicks through)
         if detect_star_bonus():
-            result['star_bonus'] = True
+            result["star_bonus"] = True
             print("[BB STATE] END_SCREEN: Star bonus visible")
 
         # Check star count (may still be visible on end screen)
         if detect_three_stars():
-            result['stars'] = 3
+            result["stars"] = 3
             print("[BB STATE] END_SCREEN: 3 stars detected")
         elif detect_two_stars():
-            result['stars'] = 2
+            result["stars"] = 2
             print("[BB STATE] END_SCREEN: 2 stars detected")
 
         return result
 
     except Exception as e:
         print(f"[BB STATE] Error detecting END_SCREEN: {e}")
-        return {'detected': False, 'stars': 0, 'star_bonus': False, 'return_button_visible': False}
+        return {"detected": False, "stars": 0, "star_bonus": False, "return_button_visible": False}
 
 
 def detect_ghost_attack():
@@ -652,7 +664,7 @@ def detect_return_home_button(quiet=False):
         return None
 
     # Load from cache (or fallback to disk)
-    template = _bb_gold_template_cache.get('return_home')
+    template = _bb_gold_template_cache.get("return_home")
     if template is None:
         # Cache miss - load from disk as fallback
         template_path = os.path.join(template_dir, "return_home.png")
@@ -698,7 +710,7 @@ def detect_end_battle_button():
         return None
 
     # Load from cache (or fallback to disk)
-    template = _bb_gold_template_cache.get('end_battle')
+    template = _bb_gold_template_cache.get("end_battle")
     if template is None:
         # Cache miss - load from disk as fallback
         template_path = os.path.join(template_dir, "end_battle.png")
@@ -736,12 +748,12 @@ def detect_surrender_or_end_battle():
     # First try to detect surrender button
     surrender_pos = detect_surrender_button()
     if surrender_pos:
-        return ('surrender', surrender_pos[0], surrender_pos[1])
+        return ("surrender", surrender_pos[0], surrender_pos[1])
 
     # If surrender not found, try end battle button
     end_battle_pos = detect_end_battle_button()
     if end_battle_pos:
-        return ('end_battle', end_battle_pos[0], end_battle_pos[1])
+        return ("end_battle", end_battle_pos[0], end_battle_pos[1])
 
     # Neither found
     return (None, None, None)
@@ -765,30 +777,30 @@ def detect_current_game_state():
     # 1. Check if we're at base
     if detect_in_base_state():
         print("[STATE DETECT] ✓ Detected: IN_BASE (army button visible)")
-        return 'in_base'
+        return "in_base"
 
     # 2. Check if we're at end screen
     if detect_return_home_button():
         print("[STATE DETECT] ✓ Detected: END_SCREEN (return home button visible)")
-        return 'end_screen'
+        return "end_screen"
 
     # 3. Check if we're in active battle
     button_type, x, y = detect_surrender_or_end_battle()
-    if button_type == 'surrender':
+    if button_type == "surrender":
         print("[STATE DETECT] ✓ Detected: BATTLE_ACTIVE (surrender button visible)")
-        return 'battle_active'
-    elif button_type == 'end_battle':
+        return "battle_active"
+    elif button_type == "end_battle":
         print("[STATE DETECT] ✓ Detected: BATTLE_ENDING (end battle button visible)")
-        return 'battle_ending'
+        return "battle_ending"
 
     # 4. Unknown state
     print("[STATE DETECT] ✗ Could not determine state (no recognizable UI elements)")
-    return 'unknown'
+    return "unknown"
 
 
 def is_base_search_ready():
     """Check if base search screen is ready by detecting end_battle button"""
-    template_path = 'screenshots/reference/attack/end_battle.png'
+    template_path = "screenshots/reference/attack/end_battle.png"
     # Search in bottom-left area where end_battle button appears
     region = (0, 1100, 600, 1440)
     threshold = 0.75
@@ -815,7 +827,7 @@ def is_base_search_ready():
 
 def is_attack_screen_ready():
     # Use the alt hotkey template and region as the cue
-    template_path = 'assets/alt_hotkey_template.png'
+    template_path = "assets/alt_hotkey_template.png"
     region = (522, 1273, 664, 1412)
     try:
         template = cv2.imread(template_path)
@@ -937,8 +949,12 @@ def detect_bb_boat():
                     cart_x = trees_center_x + 248
                     cart_y = trees_center_y + 200
 
-                    print(f"[BB BOAT] Trees detected at ({trees_center_x}, {trees_center_y}), using elixir cart at ({cart_x}, {cart_y})")
-                    send_discord_debug_log(f"BB boat fallback: trees at ({trees_center_x}, {trees_center_y}), elixir cart at ({cart_x}, {cart_y})")
+                    print(
+                        f"[BB BOAT] Trees detected at ({trees_center_x}, {trees_center_y}), using elixir cart at ({cart_x}, {cart_y})"
+                    )
+                    send_discord_debug_log(
+                        f"BB boat fallback: trees at ({trees_center_x}, {trees_center_y}), elixir cart at ({cart_x}, {cart_y})"
+                    )
                     return (cart_x, cart_y, True)
                 else:
                     print(f"[BB BOAT] Trees fallback failed (confidence: {trees_max_val:.2f})")
@@ -953,46 +969,46 @@ def detect_bb_boat():
 
 def detect_alt_hotkeys():
     """Detect if alternate hotkeys should be used based on template matching"""
-    template_path = 'assets/alt_hotkey_template.png'
+    template_path = "assets/alt_hotkey_template.png"
     region = (522, 1273, 664, 1412)
-    
+
     try:
         template = cv2.imread(template_path)
         if template is None:
             print(f"[DEBUG] Failed to load template: {template_path}")
             return False
-        
+
         h, w, _ = template.shape
         screenshot = ImageGrab.grab(bbox=region)
         screenshot_cv = cv2.cvtColor(np.array(screenshot), cv2.COLOR_RGB2BGR)
-        
+
         # Ensure screenshot and template are the same size
         if screenshot_cv.shape[0] == h and screenshot_cv.shape[1] == w:
             res = cv2.matchTemplate(screenshot_cv, template, cv2.TM_CCOEFF_NORMED)
             min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(res)
-            
+
             if max_val >= 0.8:
-                runtime.gui.log_message('Alternate hotkeys enabled (template matched in region 522,1273,664,1412)')
-                runtime.gui.debug_message('USING ALTERNATE HOTKEY SETUP (template matched)')
-                print('Alternate hotkeys enabled (template matched in region 522,1273,664,1412)')
-                send_discord_debug_log('Alternate hotkeys enabled (template matched)')
+                runtime.gui.log_message("Alternate hotkeys enabled (template matched in region 522,1273,664,1412)")
+                runtime.gui.debug_message("USING ALTERNATE HOTKEY SETUP (template matched)")
+                print("Alternate hotkeys enabled (template matched in region 522,1273,664,1412)")
+                send_discord_debug_log("Alternate hotkeys enabled (template matched)")
                 return True
             else:
-                runtime.gui.log_message('Default hotkeys enabled (template not matched in region 522,1273,664,1412)')
-                runtime.gui.debug_message('USING DEFAULT HOTKEY SETUP (template not matched)')
-                print('Default hotkeys enabled (template not matched in region 522,1273,664,1412)')
-                send_discord_debug_log('Default hotkeys enabled (template not matched)')
+                runtime.gui.log_message("Default hotkeys enabled (template not matched in region 522,1273,664,1412)")
+                runtime.gui.debug_message("USING DEFAULT HOTKEY SETUP (template not matched)")
+                print("Default hotkeys enabled (template not matched in region 522,1273,664,1412)")
+                send_discord_debug_log("Default hotkeys enabled (template not matched)")
                 return False
         else:
-            runtime.gui.log_message('Default hotkeys enabled (screenshot/template size mismatch)')
-            runtime.gui.debug_message('USING DEFAULT HOTKEY SETUP (screenshot/template size mismatch)')
-            print('Default hotkeys enabled (screenshot/template size mismatch)')
-            send_discord_debug_log('Default hotkeys enabled (screenshot/template size mismatch)')
+            runtime.gui.log_message("Default hotkeys enabled (screenshot/template size mismatch)")
+            runtime.gui.debug_message("USING DEFAULT HOTKEY SETUP (screenshot/template size mismatch)")
+            print("Default hotkeys enabled (screenshot/template size mismatch)")
+            send_discord_debug_log("Default hotkeys enabled (screenshot/template size mismatch)")
             return False
-            
+
     except Exception as e:
-        runtime.gui.log_message(f'Default hotkeys enabled (template matching error: {e})')
-        runtime.gui.debug_message(f'USING DEFAULT HOTKEY SETUP (template matching error: {e})')
-        print(f'Default hotkeys enabled (template matching error: {e})')
-        send_discord_debug_log(f'Default hotkeys enabled (template matching error: {e})', "WARNING")
+        runtime.gui.log_message(f"Default hotkeys enabled (template matching error: {e})")
+        runtime.gui.debug_message(f"USING DEFAULT HOTKEY SETUP (template matching error: {e})")
+        print(f"Default hotkeys enabled (template matching error: {e})")
+        send_discord_debug_log(f"Default hotkeys enabled (template matching error: {e})", "WARNING")
         return False

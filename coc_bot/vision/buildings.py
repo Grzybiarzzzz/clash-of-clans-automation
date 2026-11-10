@@ -25,44 +25,50 @@ def detect_air_defenses():
     Returns list of (x, y, level, confidence) tuples sorted by priority.
     """
     air_defenses = []
-    
+
     # Capture the base view region
     base_img = ImageGrab.grab(bbox=config.BASE_VIEW_REGION)
     base_cv = cv2.cvtColor(np.array(base_img), cv2.COLOR_RGB2BGR)
-    
+
     # Check if templates directory exists
     if not os.path.exists(config.AIR_DEFENSE_TEMPLATES_DIR):
         print(f"Air defense templates directory not found: {config.AIR_DEFENSE_TEMPLATES_DIR}")
-        send_discord_debug_log(f"Air defense templates directory not found: {config.AIR_DEFENSE_TEMPLATES_DIR}", "WARNING")
+        send_discord_debug_log(
+            f"Air defense templates directory not found: {config.AIR_DEFENSE_TEMPLATES_DIR}", "WARNING"
+        )
         return air_defenses
-    
-    print(f"Testing {len([f for f in os.listdir(config.AIR_DEFENSE_TEMPLATES_DIR) if f.lower().endswith(('.png', '.jpg', '.jpeg'))])} templates...")
-    send_discord_debug_log(f"Testing {len([f for f in os.listdir(config.AIR_DEFENSE_TEMPLATES_DIR) if f.lower().endswith(('.png', '.jpg', '.jpeg'))])} air defense templates")
-    
+
+    print(
+        f"Testing {len([f for f in os.listdir(config.AIR_DEFENSE_TEMPLATES_DIR) if f.lower().endswith(('.png', '.jpg', '.jpeg'))])} templates..."
+    )
+    send_discord_debug_log(
+        f"Testing {len([f for f in os.listdir(config.AIR_DEFENSE_TEMPLATES_DIR) if f.lower().endswith(('.png', '.jpg', '.jpeg'))])} air defense templates"
+    )
+
     # Load and match each template
     for template_file in os.listdir(config.AIR_DEFENSE_TEMPLATES_DIR):
-        if template_file.lower().endswith(('.png', '.jpg', '.jpeg')):
+        if template_file.lower().endswith((".png", ".jpg", ".jpeg")):
             template_path = os.path.join(config.AIR_DEFENSE_TEMPLATES_DIR, template_file)
             template = cv2.imread(template_path)
-            
+
             if template is None:
                 print(f"Failed to load template: {template_file}")
                 send_discord_debug_log(f"Failed to load air defense template: {template_file}", "WARNING")
                 continue
-                
+
             # Perform template matching
             result = cv2.matchTemplate(base_cv, template, cv2.TM_CCOEFF_NORMED)
             locations = np.where(result >= config.AIR_DEFENSE_DETECTION_THRESHOLD)
-            
+
             # Extract level from filename (e.g., "air_defense_level_5.png" -> 5)
             level = 1  # default
-            if 'level_' in template_file.lower():
+            if "level_" in template_file.lower():
                 try:
-                    level_str = template_file.lower().split('level_')[1].split('.')[0]
+                    level_str = template_file.lower().split("level_")[1].split(".")[0]
                     level = int(level_str)
                 except (ValueError, IndexError):
                     pass
-            
+
             # Add detected positions
             matches_found = 0
             for pt in zip(*locations[::-1]):  # Switch columns and rows
@@ -70,20 +76,22 @@ def detect_air_defenses():
                 # Convert to global coordinates
                 global_x = x + config.BASE_VIEW_REGION[0]
                 global_y = y + config.BASE_VIEW_REGION[1]
-                
+
                 # Get confidence score
                 confidence = result[y, x]
-                
+
                 air_defenses.append((global_x, global_y, level, confidence))
                 matches_found += 1
-            
+
             if matches_found > 0:
                 print(f"  {template_file}: {matches_found} matches (max conf: {np.max(result):.3f})")
-                send_discord_debug_log(f"Air defense {template_file}: {matches_found} matches (max conf: {np.max(result):.3f})")
+                send_discord_debug_log(
+                    f"Air defense {template_file}: {matches_found} matches (max conf: {np.max(result):.3f})"
+                )
             else:
                 max_conf = np.max(result)
                 print(f"  {template_file}: No matches (max conf: {max_conf:.3f})")
-    
+
     # Remove duplicates (positions too close to each other)
     filtered_defenses = []
     for defense in air_defenses:
@@ -99,22 +107,27 @@ def detect_air_defenses():
             filtered_defenses.append(defense)
 
     # Sort by priority (higher level = higher priority, then by confidence)
-    filtered_defenses.sort(key=lambda x: (config.AIR_DEFENSE_PRIORITY.get(f'level_{x[2]}', 1), x[3]), reverse=True)
+    filtered_defenses.sort(key=lambda x: (config.AIR_DEFENSE_PRIORITY.get(f"level_{x[2]}", 1), x[3]), reverse=True)
 
     # If more than max count detected, prioritize by confidence score
     if len(filtered_defenses) > config.AIR_DEFENSE_MAX_COUNT:
-        print(f"Detected {len(filtered_defenses)} air defenses, targeting top {config.AIR_DEFENSE_MAX_COUNT} by confidence")
-        send_discord_debug_log(f"Detected {len(filtered_defenses)} air defenses, targeting top {config.AIR_DEFENSE_MAX_COUNT} by confidence")
+        print(
+            f"Detected {len(filtered_defenses)} air defenses, targeting top {config.AIR_DEFENSE_MAX_COUNT} by confidence"
+        )
+        send_discord_debug_log(
+            f"Detected {len(filtered_defenses)} air defenses, targeting top {config.AIR_DEFENSE_MAX_COUNT} by confidence"
+        )
         # Re-sort by confidence score (highest first)
         filtered_defenses.sort(key=lambda x: x[3], reverse=True)
 
     send_discord_debug_log(f"Air defense detection completed: {len(filtered_defenses)} defenses found")
 
     # Draw air defense detections on overlay
-    result = filtered_defenses[:config.AIR_DEFENSE_MAX_COUNT]
+    result = filtered_defenses[: config.AIR_DEFENSE_MAX_COUNT]
     for x, y, level, conf in result:
-        overlay_draw_detection(x, y, 60, 60, "Air Defense", level, conf,
-                               config.OVERLAY_COLORS.get('air_defense', '#FF4444'))
+        overlay_draw_detection(
+            x, y, 60, 60, "Air Defense", level, conf, config.OVERLAY_COLORS.get("air_defense", "#FF4444")
+        )
 
     return result
 
@@ -129,7 +142,18 @@ def load_achievement_building_templates():
     """
     global achievement_building_templates
 
-    building_types = ['eagle_artillery', 'monolith', 'xbow', 'inferno_tower', 'scattershot', 'spell_tower', 'multi_archer_tower', 'ricochet_cannon', 'firespitter', 'multi_gear_tower']
+    building_types = [
+        "eagle_artillery",
+        "monolith",
+        "xbow",
+        "inferno_tower",
+        "scattershot",
+        "spell_tower",
+        "multi_archer_tower",
+        "ricochet_cannon",
+        "firespitter",
+        "multi_gear_tower",
+    ]
     templates_loaded = 0
 
     print("[TEMPLATE CACHE] Loading achievement building templates...")
@@ -142,7 +166,7 @@ def load_achievement_building_templates():
             achievement_building_templates[building_type] = []
             continue
 
-        template_files = [f for f in os.listdir(templates_dir) if f.lower().endswith(('.png', '.jpg', '.jpeg'))]
+        template_files = [f for f in os.listdir(templates_dir) if f.lower().endswith((".png", ".jpg", ".jpeg"))]
 
         if not template_files:
             print(f"[TEMPLATE CACHE] No {building_type} templates found")
@@ -197,10 +221,12 @@ def detect_achievement_building(building_type):
 
         if not os.path.exists(templates_dir):
             print(f"{building_type.replace('_', ' ').title()} templates directory not found: {templates_dir}")
-            send_discord_debug_log(f"{building_type.replace('_', ' ').title()} templates directory not found: {templates_dir}", "WARNING")
+            send_discord_debug_log(
+                f"{building_type.replace('_', ' ').title()} templates directory not found: {templates_dir}", "WARNING"
+            )
             return []
 
-        template_files = [f for f in os.listdir(templates_dir) if f.lower().endswith(('.png', '.jpg', '.jpeg'))]
+        template_files = [f for f in os.listdir(templates_dir) if f.lower().endswith((".png", ".jpg", ".jpeg"))]
 
         if not template_files:
             print(f"No {building_type.replace('_', ' ')} templates found")
@@ -218,7 +244,6 @@ def detect_achievement_building(building_type):
 
     # Match each template (now using cached templates)
     for template, template_name in templates_list:
-
         # Perform template matching (GPU if available, else CPU)
         result = gpu_match_template(base_cv, template)
 
@@ -267,19 +292,35 @@ def detect_achievement_building(building_type):
 
     # Draw LOW confidence buildings in RED (for debugging threshold tuning)
     # Check if user wants to hide low confidence detections
-    hide_low_conf = runtime.gui.get_settings().get('overlay_hide_low_conf', False) if runtime.gui else False
+    hide_low_conf = runtime.gui.get_settings().get("overlay_hide_low_conf", False) if runtime.gui else False
     if not hide_low_conf:
         for x, y, conf in low_conf_buildings:
-            overlay_draw_detection(x, y, box_w, box_h, f"{building_type.replace('_', ' ').title()} (LOW)", None, conf,
-                                   config.OVERLAY_COLORS.get('achievement_low', '#FF0000'))
+            overlay_draw_detection(
+                x,
+                y,
+                box_w,
+                box_h,
+                f"{building_type.replace('_', ' ').title()} (LOW)",
+                None,
+                conf,
+                config.OVERLAY_COLORS.get("achievement_low", "#FF0000"),
+            )
 
     # Draw HIGH confidence buildings in CYAN (these are used for attacks)
     if high_conf_buildings:
         print(f"{building_type.replace('_', ' ').title()}: {len(high_conf_buildings)} building(s) detected")
         for i, (x, y, conf) in enumerate(high_conf_buildings):
-            print(f"  {i+1}. Position ({x}, {y}) - Confidence: {conf:.3f}")
-            overlay_draw_detection(x, y, box_w, box_h, building_type.replace('_', ' ').title(), None, conf,
-                                   config.OVERLAY_COLORS.get('achievement', '#00FFFF'))
+            print(f"  {i + 1}. Position ({x}, {y}) - Confidence: {conf:.3f}")
+            overlay_draw_detection(
+                x,
+                y,
+                box_w,
+                box_h,
+                building_type.replace("_", " ").title(),
+                None,
+                conf,
+                config.OVERLAY_COLORS.get("achievement", "#00FFFF"),
+            )
         if low_conf_buildings:
             print(f"  + {len(low_conf_buildings)} low-confidence detections (0.6-{high_threshold}) shown in red")
         send_discord_debug_log(f"{building_type.replace('_', ' ').title()}: {len(high_conf_buildings)} detected")
@@ -319,7 +360,7 @@ def detect_achievement_building_from_image(building_type, base_cv):
             print(f"  [{building_type}] Templates directory not found: {templates_dir}")
             return []
 
-        template_files = [f for f in os.listdir(templates_dir) if f.lower().endswith(('.png', '.jpg', '.jpeg'))]
+        template_files = [f for f in os.listdir(templates_dir) if f.lower().endswith((".png", ".jpg", ".jpeg"))]
 
         if not template_files:
             print(f"  [{building_type}] No templates found")
@@ -385,24 +426,42 @@ def detect_achievement_building_from_image(building_type, base_cv):
 
     # Draw LOW confidence buildings in RED (for debugging threshold tuning)
     # Check if user wants to hide low confidence detections
-    hide_low_conf = runtime.gui.get_settings().get('overlay_hide_low_conf', False) if runtime.gui else False
+    hide_low_conf = runtime.gui.get_settings().get("overlay_hide_low_conf", False) if runtime.gui else False
     if not hide_low_conf:
         for x, y, conf in low_conf_buildings:
-            overlay_draw_detection(x, y, box_w, box_h, f"{building_type.replace('_', ' ').title()} (LOW)", None, conf,
-                                   config.OVERLAY_COLORS.get('achievement_low', '#FF0000'))
+            overlay_draw_detection(
+                x,
+                y,
+                box_w,
+                box_h,
+                f"{building_type.replace('_', ' ').title()} (LOW)",
+                None,
+                conf,
+                config.OVERLAY_COLORS.get("achievement_low", "#FF0000"),
+            )
 
     # Draw HIGH confidence buildings in CYAN (these are used for attacks)
     if high_conf_buildings:
         print(f"  [{building_type}] {len(high_conf_buildings)} building(s) detected")
         for x, y, conf in high_conf_buildings:
-            overlay_draw_detection(x, y, box_w, box_h, building_type.replace('_', ' ').title(), None, conf,
-                                   config.OVERLAY_COLORS.get('achievement', '#00FFFF'))
+            overlay_draw_detection(
+                x,
+                y,
+                box_w,
+                box_h,
+                building_type.replace("_", " ").title(),
+                None,
+                conf,
+                config.OVERLAY_COLORS.get("achievement", "#00FFFF"),
+            )
         if low_conf_buildings:
             print(f"  [{building_type}] + {len(low_conf_buildings)} low-confidence (0.6-{high_threshold}) shown in red")
     else:
         print(f"  [{building_type}] No buildings detected (>= {high_threshold})")
         if low_conf_buildings:
-            print(f"  [{building_type}] Note: {len(low_conf_buildings)} low-confidence (0.6-{high_threshold}) shown in red")
+            print(
+                f"  [{building_type}] Note: {len(low_conf_buildings)} low-confidence (0.6-{high_threshold}) shown in red"
+            )
 
     # Only return high confidence buildings for attack logic
     return high_conf_buildings
@@ -416,54 +475,55 @@ def detect_town_hall():
     # Capture the Town Hall region
     th_img = ImageGrab.grab(bbox=config.TOWN_HALL_REGION)
     th_cv = cv2.cvtColor(np.array(th_img), cv2.COLOR_RGB2BGR)
-    
+
     # Check if templates directory exists
     if not os.path.exists(config.TOWN_HALL_TEMPLATES_DIR):
         print(f"Town Hall templates directory not found: {config.TOWN_HALL_TEMPLATES_DIR}")
         send_discord_debug_log(f"Town Hall templates directory not found: {config.TOWN_HALL_TEMPLATES_DIR}", "WARNING")
         return None
-    
+
     best_match = None
     best_confidence = 0
-    
+
     # Load and match each template
     for template_file in os.listdir(config.TOWN_HALL_TEMPLATES_DIR):
-        if template_file.lower().endswith(('.png', '.jpg', '.jpeg')):
+        if template_file.lower().endswith((".png", ".jpg", ".jpeg")):
             template_path = os.path.join(config.TOWN_HALL_TEMPLATES_DIR, template_file)
             template = cv2.imread(template_path)
-            
+
             if template is None:
                 continue
-                
+
             # Perform template matching
             result = cv2.matchTemplate(th_cv, template, cv2.TM_CCOEFF_NORMED)
             min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result)
-            
+
             # Extract level from filename (e.g., "town_hall_level_12.png" -> 12)
             level = 1  # default
-            if 'level_' in template_file.lower():
+            if "level_" in template_file.lower():
                 try:
-                    level_str = template_file.lower().split('level_')[1].split('.')[0]
+                    level_str = template_file.lower().split("level_")[1].split(".")[0]
                     level = int(level_str)
                 except (ValueError, IndexError):
                     pass
-            
+
             # Check if this is the best match so far
             if max_val >= config.TOWN_HALL_DETECTION_THRESHOLD and max_val > best_confidence:
                 x, y = max_loc
                 # Convert to global coordinates
                 global_x = x + config.TOWN_HALL_REGION[0]
                 global_y = y + config.TOWN_HALL_REGION[1]
-                
+
                 best_match = (global_x, global_y, level, max_val)
                 best_confidence = max_val
-    
+
     if best_match:
         x, y, level, conf = best_match
         send_discord_debug_log(f"Town Hall Level {level} detected at ({x}, {y}) with confidence {conf:.3f}")
         # Draw town hall detection on overlay (100x100 bounding box for TH)
-        overlay_draw_detection(x, y, 100, 100, "Town Hall", level, conf,
-                               config.OVERLAY_COLORS.get('town_hall', '#AA00FF'))
+        overlay_draw_detection(
+            x, y, 100, 100, "Town Hall", level, conf, config.OVERLAY_COLORS.get("town_hall", "#AA00FF")
+        )
     else:
         send_discord_debug_log("No Town Hall detected", "WARNING")
 
@@ -527,7 +587,18 @@ def detect_all_achievement_buildings(enabled_buildings=None):
         Dictionary with building type as key and list of (x, y, confidence) tuples as value
     """
     if enabled_buildings is None:
-        enabled_buildings = ['eagle_artillery', 'monolith', 'xbow', 'inferno_tower', 'scattershot', 'spell_tower', 'multi_archer_tower', 'ricochet_cannon', 'firespitter', 'multi_gear_tower']
+        enabled_buildings = [
+            "eagle_artillery",
+            "monolith",
+            "xbow",
+            "inferno_tower",
+            "scattershot",
+            "spell_tower",
+            "multi_archer_tower",
+            "ricochet_cannon",
+            "firespitter",
+            "multi_gear_tower",
+        ]
 
     print(f"[PARALLEL SCAN] Scanning {len(enabled_buildings)} building types simultaneously...")
     start_time = time.time()
@@ -587,12 +658,21 @@ def _scan_achievement_buildings_parallel_internal(settings):
     """
     # 1. Extract enabled buildings from checkboxes
     enabled_buildings = []
-    all_types = ['eagle_artillery', 'monolith', 'xbow', 'inferno_tower',
-                 'scattershot', 'spell_tower', 'multi_archer_tower',
-                 'ricochet_cannon', 'firespitter', 'multi_gear_tower']
+    all_types = [
+        "eagle_artillery",
+        "monolith",
+        "xbow",
+        "inferno_tower",
+        "scattershot",
+        "spell_tower",
+        "multi_archer_tower",
+        "ricochet_cannon",
+        "firespitter",
+        "multi_gear_tower",
+    ]
 
     for building_type in all_types:
-        checkbox_key = f'achievement_scan_{building_type}'
+        checkbox_key = f"achievement_scan_{building_type}"
         if settings.get(checkbox_key, True):  # Default enabled if not found
             enabled_buildings.append(building_type)
 
@@ -603,7 +683,7 @@ def _scan_achievement_buildings_parallel_internal(settings):
     print(f"[PARALLEL SCAN] Scanning {len(enabled_buildings)} enabled building types in parallel...")
 
     # 2. Get priority list from settings
-    priority_list = settings.get('achievement_priority_list', all_types)
+    priority_list = settings.get("achievement_priority_list", all_types)
 
     # 3. Filter to only enabled buildings in priority order
     priority_enabled = [b for b in priority_list if b in enabled_buildings]
@@ -621,7 +701,9 @@ def _scan_achievement_buildings_parallel_internal(settings):
             # Get highest confidence match of this type
             best_match = max(all_buildings[building_type], key=lambda x: x[2])
             x, y, confidence = best_match
-            print(f"[PARALLEL SCAN] Selected: {building_type.replace('_', ' ').title()} (Priority #{priority_enabled.index(building_type)+1}, Confidence: {confidence:.3f})")
+            print(
+                f"[PARALLEL SCAN] Selected: {building_type.replace('_', ' ').title()} (Priority #{priority_enabled.index(building_type) + 1}, Confidence: {confidence:.3f})"
+            )
             return (x, y, confidence, building_type)
 
     # Fallback: return highest confidence overall (shouldn't happen if priority list is complete)
@@ -636,7 +718,9 @@ def _scan_achievement_buildings_parallel_internal(settings):
                 best_type = btype
 
     if best_overall:
-        print(f"[PARALLEL SCAN] Fallback: Selected {best_type.replace('_', ' ').title()} (highest confidence: {best_conf:.3f})")
+        print(
+            f"[PARALLEL SCAN] Fallback: Selected {best_type.replace('_', ' ').title()} (highest confidence: {best_conf:.3f})"
+        )
         return (best_overall[0], best_overall[1], best_overall[2], best_type)
 
     return None
@@ -665,7 +749,7 @@ def scan_achievement_buildings_parallel_priority(settings):
         or None if no buildings detected
     """
     # Check if user enabled parallel scanning (default: False for stability)
-    use_parallel = settings.get('achievement_parallel_scan', False)
+    use_parallel = settings.get("achievement_parallel_scan", False)
 
     if use_parallel:
         print("[SCAN MODE] Using parallel scanning (fast, higher CPU)")
@@ -697,12 +781,21 @@ def scan_achievement_buildings_sequential(settings):
     """
     # 1. Extract enabled buildings from checkboxes
     enabled_buildings = []
-    all_types = ['eagle_artillery', 'monolith', 'xbow', 'inferno_tower',
-                 'scattershot', 'spell_tower', 'multi_archer_tower',
-                 'ricochet_cannon', 'firespitter', 'multi_gear_tower']
+    all_types = [
+        "eagle_artillery",
+        "monolith",
+        "xbow",
+        "inferno_tower",
+        "scattershot",
+        "spell_tower",
+        "multi_archer_tower",
+        "ricochet_cannon",
+        "firespitter",
+        "multi_gear_tower",
+    ]
 
     for building_type in all_types:
-        checkbox_key = f'achievement_scan_{building_type}'
+        checkbox_key = f"achievement_scan_{building_type}"
         if settings.get(checkbox_key, True):
             enabled_buildings.append(building_type)
 
@@ -711,7 +804,7 @@ def scan_achievement_buildings_sequential(settings):
         return None
 
     # 2. Get priority list from settings
-    priority_list = settings.get('achievement_priority_list', all_types)
+    priority_list = settings.get("achievement_priority_list", all_types)
 
     # 3. Filter to only enabled buildings in priority order
     priority_enabled = [b for b in priority_list if b in enabled_buildings]
@@ -725,7 +818,7 @@ def scan_achievement_buildings_sequential(settings):
 
     # 5. Scan each building type sequentially (one at a time)
     for i, building_type in enumerate(priority_enabled):
-        print(f"  [{i+1}/{len(priority_enabled)}] Checking {building_type.replace('_', ' ')}...")
+        print(f"  [{i + 1}/{len(priority_enabled)}] Checking {building_type.replace('_', ' ')}...")
 
         # Call detection function with shared screenshot
         buildings = detect_achievement_building_from_image(building_type, base_cv)
@@ -734,8 +827,10 @@ def scan_achievement_buildings_sequential(settings):
             # FOUND! Return first match immediately (early exit)
             best_match = max(buildings, key=lambda x: x[2])  # Highest confidence
             x, y, confidence = best_match
-            print(f"  ✓ FOUND! {building_type.replace('_', ' ').title()} (Priority #{i+1}, Confidence: {confidence:.3f})")
-            send_discord_debug_log(f"Sequential scan found: {building_type} (priority #{i+1})")
+            print(
+                f"  ✓ FOUND! {building_type.replace('_', ' ').title()} (Priority #{i + 1}, Confidence: {confidence:.3f})"
+            )
+            send_discord_debug_log(f"Sequential scan found: {building_type} (priority #{i + 1})")
             return (x, y, confidence, building_type)
         else:
             print("  ✗ Not found, continuing...")

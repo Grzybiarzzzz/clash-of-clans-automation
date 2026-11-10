@@ -9,6 +9,7 @@ from coc_bot.discord_log import send_discord_debug_log
 from coc_bot.humanized_input import human_like_move_click
 from coc_bot.vision.screens import detect_bb_boat, detect_main_base_boat
 
+
 def switch_village(target_village):
     """
     Switch between Main Base and Builder Base.
@@ -24,7 +25,7 @@ def switch_village(target_village):
 
     try:
         # Determine which boat to look for based on target village
-        if target_village == 'builder_base':
+        if target_village == "builder_base":
             # Currently on Main Base, need to find Main Base boat
             print("[VILLAGE SWITCH] Preparing to detect boat on Main Base...")
 
@@ -39,7 +40,7 @@ def switch_village(target_village):
             start_x, start_y = 1280, 720  # Screen center
             end_x, end_y = start_x + 600, start_y - 400  # Drag right and up
             pyautogui.moveTo(start_x, start_y, duration=0.3)
-            pyautogui.drag(end_x - start_x, end_y - start_y, duration=0.5, button='left')
+            pyautogui.drag(end_x - start_x, end_y - start_y, duration=0.5, button="left")
             time.sleep(1)
 
             # Now detect boat
@@ -63,7 +64,7 @@ def switch_village(target_village):
                 start_x, start_y = 1280, 720
                 end_x, end_y = start_x - 800, start_y + 800
                 pyautogui.moveTo(start_x, start_y, duration=0.3)
-                pyautogui.drag(end_x - start_x, end_y - start_y, duration=0.5, button='left')
+                pyautogui.drag(end_x - start_x, end_y - start_y, duration=0.5, button="left")
                 time.sleep(1)
 
                 # Try detection again

@@ -10,15 +10,15 @@ from coc_bot.input.win32 import turbo_fast_click, turbo_move_cursor
 
 # Turbo deployment corner coordinates (extracted from full SIDE_DEPLOYMENT_COORDS)
 TURBO_SIDE_CORNERS = {
-    'up': [
-        (229, 903),    # Left edge start
-        (1299, 121),   # Apex (middle-top)
-        (2330, 894),   # Right edge end
+    "up": [
+        (229, 903),  # Left edge start
+        (1299, 121),  # Apex (middle-top)
+        (2330, 894),  # Right edge end
     ],
-    'down': [
-        (273, 415),    # Left edge start
+    "down": [
+        (273, 415),  # Left edge start
         (1281, 1143),  # Apex (middle-bottom)
-        (2301, 424),   # Right edge end
+        (2301, 424),  # Right edge end
     ],
 }
 
@@ -53,7 +53,7 @@ def turbo_deploy_along_path(corners, num_clicks, delay_ms, sbarb_hotkey, destruc
 
     for seg_idx in range(num_segments):
         # Check for early exit
-        if destruction_check and destruction_check.get('value', False):
+        if destruction_check and destruction_check.get("value", False):
             stopped_early = True
             break
 
@@ -68,7 +68,7 @@ def turbo_deploy_along_path(corners, num_clicks, delay_ms, sbarb_hotkey, destruc
 
         for point in points:
             # Check for early exit inside inner loop
-            if destruction_check and destruction_check.get('value', False):
+            if destruction_check and destruction_check.get("value", False):
                 stopped_early = True
                 break
             turbo_move_cursor(point[0], point[1])
@@ -81,9 +81,13 @@ def turbo_deploy_along_path(corners, num_clicks, delay_ms, sbarb_hotkey, destruc
 
     elapsed = time.perf_counter() - start_time
     if stopped_early:
-        print(f"[TURBO DEPLOY] STOPPED EARLY - deployed {total_deployed}/{num_clicks} units in {elapsed*1000:.0f}ms (50% reached)")
+        print(
+            f"[TURBO DEPLOY] STOPPED EARLY - deployed {total_deployed}/{num_clicks} units in {elapsed * 1000:.0f}ms (50% reached)"
+        )
     else:
-        print(f"[TURBO DEPLOY] Deployed {total_deployed} units in {elapsed*1000:.0f}ms ({total_deployed/elapsed:.0f} CPS)")
+        print(
+            f"[TURBO DEPLOY] Deployed {total_deployed} units in {elapsed * 1000:.0f}ms ({total_deployed / elapsed:.0f} CPS)"
+        )
     return total_deployed
 
 
@@ -97,16 +101,16 @@ def turbo_deploy_heroes(side, hero_timings, destruction_check=None):
         hero_timings: dict with queen/king/warden/rc timings
         destruction_check: Optional dict with 'value' key to check for early exit
     """
-    hero_pos = config.SIDE_DEPLOYMENT_COORDS[side]['hero']
+    hero_pos = config.SIDE_DEPLOYMENT_COORDS[side]["hero"]
     print(f"[TURBO DEPLOY] Deploying heroes at {hero_pos}")
 
     KEYS = config.KEYS
-    hero_keys = ['queen', 'king', 'warden', 'rc']
+    hero_keys = ["queen", "king", "warden", "rc"]
     deployed_count = 0
 
     for hero_key in hero_keys:
         # Check for early exit
-        if destruction_check and destruction_check.get('value', False):
+        if destruction_check and destruction_check.get("value", False):
             print(f"[TURBO DEPLOY] STOPPED EARLY - deployed {deployed_count}/4 heroes (50% reached)")
             return
         keyboard.send(KEYS[hero_key])
@@ -122,14 +126,14 @@ def turbo_deploy_heroes(side, hero_timings, destruction_check=None):
 def turbo_deploy_siege(side, destruction_check=None):
     """Deploy siege machine at hero position for turbo mode."""
     # Check for early exit
-    if destruction_check and destruction_check.get('value', False):
+    if destruction_check and destruction_check.get("value", False):
         print("[TURBO DEPLOY] Skipping siege (50% reached)")
         return
 
-    hero_pos = config.SIDE_DEPLOYMENT_COORDS[side]['hero']
+    hero_pos = config.SIDE_DEPLOYMENT_COORDS[side]["hero"]
     print(f"[TURBO DEPLOY] Deploying siege at {hero_pos}")
 
-    keyboard.send(config.KEYS['siege'])
+    keyboard.send(config.KEYS["siege"])
     time.sleep(0.08)
     turbo_move_cursor(hero_pos[0], hero_pos[1])
     turbo_fast_click()

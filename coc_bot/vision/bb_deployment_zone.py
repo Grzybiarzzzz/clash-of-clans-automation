@@ -6,6 +6,7 @@ from PIL import ImageGrab
 
 from coc_bot.discord_log import send_discord_debug_log
 
+
 def filter_out_unit_bar(coordinates):
     """
     Filter out coordinates that fall within the unit bar area and surrender button area.
@@ -18,9 +19,9 @@ def filter_out_unit_bar(coordinates):
     UNIT_BAR_Y2 = 1431
 
     # Surrender button with 20px padding for mouse movement variance
-    SURRENDER_BTN_X1 = 4    # was 24
+    SURRENDER_BTN_X1 = 4  # was 24
     SURRENDER_BTN_Y1 = 1006  # was 1026
-    SURRENDER_BTN_X2 = 301   # was 281
+    SURRENDER_BTN_X2 = 301  # was 281
     SURRENDER_BTN_Y2 = 1151  # was 1131
 
     filtered_coords = []
@@ -79,8 +80,14 @@ def detect_bb_deployment_zone():
             print("[BB] No red deployment lines detected, using default coordinates")
             # Fallback to corners if detection fails
             return [
-                (300, 300), (300, 1000), (2200, 300), (2200, 1000),
-                (300, 650), (2200, 650), (1250, 300), (1250, 1000)
+                (300, 300),
+                (300, 1000),
+                (2200, 300),
+                (2200, 1000),
+                (300, 650),
+                (2200, 650),
+                (1250, 300),
+                (1250, 1000),
             ]
 
         # Find the bounding box of all red line contours
@@ -94,8 +101,12 @@ def detect_bb_deployment_zone():
         boundary_right = x + w + x_offset
         boundary_bottom = y + h + y_offset
 
-        print(f"[BB] Detected red boundary: left={boundary_left}, top={boundary_top}, right={boundary_right}, bottom={boundary_bottom}")
-        send_discord_debug_log(f"BB deployment zone detected: {boundary_left}, {boundary_top}, {boundary_right}, {boundary_bottom}")
+        print(
+            f"[BB] Detected red boundary: left={boundary_left}, top={boundary_top}, right={boundary_right}, bottom={boundary_bottom}"
+        )
+        send_discord_debug_log(
+            f"BB deployment zone detected: {boundary_left}, {boundary_top}, {boundary_right}, {boundary_bottom}"
+        )
 
         # Generate valid deployment coordinates OUTSIDE the red boundary
         # Top, bottom, left, and right sides
@@ -149,12 +160,12 @@ BB_DRAGON_LOWER_RED2 = np.array([158, 70, 80])
 BB_DRAGON_UPPER_RED2 = np.array([180, 255, 255])
 
 # Hough Line detection parameters
-BB_DRAGON_HOUGH_MIN_LINE_LENGTH = 60   # Minimum line length in pixels
-BB_DRAGON_HOUGH_MAX_LINE_GAP = 50      # Maximum gap to connect segments
-BB_DRAGON_HOUGH_THRESHOLD = 40         # Votes threshold for Hough
-BB_DRAGON_LINE_MERGE_ANGLE = 15        # Degrees - max angle diff for collinear
-BB_DRAGON_LINE_MERGE_DIST = 40         # Pixels - max perpendicular distance
-BB_DRAGON_LINE_MERGE_GAP = 100         # Pixels - max endpoint gap to merge
+BB_DRAGON_HOUGH_MIN_LINE_LENGTH = 60  # Minimum line length in pixels
+BB_DRAGON_HOUGH_MAX_LINE_GAP = 50  # Maximum gap to connect segments
+BB_DRAGON_HOUGH_THRESHOLD = 40  # Votes threshold for Hough
+BB_DRAGON_LINE_MERGE_ANGLE = 15  # Degrees - max angle diff for collinear
+BB_DRAGON_LINE_MERGE_DIST = 40  # Pixels - max perpendicular distance
+BB_DRAGON_LINE_MERGE_GAP = 100  # Pixels - max endpoint gap to merge
 
 
 def detect_hough_lines(red_mask):
@@ -180,7 +191,7 @@ def detect_hough_lines(red_mask):
         theta=np.pi / 180,
         threshold=BB_DRAGON_HOUGH_THRESHOLD,
         minLineLength=BB_DRAGON_HOUGH_MIN_LINE_LENGTH,
-        maxLineGap=BB_DRAGON_HOUGH_MAX_LINE_GAP
+        maxLineGap=BB_DRAGON_HOUGH_MAX_LINE_GAP,
     )
 
     if lines is None:
@@ -194,13 +205,9 @@ def filter_lines_by_length(lines, min_length=50):
     filtered = []
     for line in lines:
         x1, y1, x2, y2 = line
-        length = np.sqrt((x2-x1)**2 + (y2-y1)**2)
+        length = np.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
         if length >= min_length:
-            filtered.append({
-                'line': line,
-                'length': length,
-                'angle': np.arctan2(y2 - y1, x2 - x1)
-            })
+            filtered.append({"line": line, "length": length, "angle": np.arctan2(y2 - y1, x2 - x1)})
     return filtered
 
 
@@ -210,15 +217,15 @@ def are_lines_collinear(line1_data, line2_data):
     Uses angle similarity and perpendicular distance.
     """
     # Check angle similarity
-    angle_diff = abs(line1_data['angle'] - line2_data['angle'])
+    angle_diff = abs(line1_data["angle"] - line2_data["angle"])
     angle_diff = min(angle_diff, np.pi - angle_diff)  # Handle wraparound
 
     if np.degrees(angle_diff) > BB_DRAGON_LINE_MERGE_ANGLE:
         return False
 
     # Check perpendicular distance
-    x1, y1, x2, y2 = line1_data['line']
-    x3, y3, x4, y4 = line2_data['line']
+    x1, y1, x2, y2 = line1_data["line"]
+    x3, y3, x4, y4 = line2_data["line"]
 
     # Midpoint of line2
     mid_x = (x3 + x4) / 2
@@ -245,10 +252,10 @@ def get_endpoint_distance(line1, line2):
     endpoints1 = [(x1, y1), (x2, y2)]
     endpoints2 = [(x3, y3), (x4, y4)]
 
-    min_dist = float('inf')
+    min_dist = float("inf")
     for p1 in endpoints1:
         for p2 in endpoints2:
-            dist = np.sqrt((p1[0]-p2[0])**2 + (p1[1]-p2[1])**2)
+            dist = np.sqrt((p1[0] - p2[0]) ** 2 + (p1[1] - p2[1]) ** 2)
             min_dist = min(min_dist, dist)
 
     return min_dist
@@ -278,7 +285,7 @@ def merge_collinear_lines(line_data_list):
                 continue
 
             if are_lines_collinear(line1, line2):
-                endpoint_dist = get_endpoint_distance(line1['line'], line2['line'])
+                endpoint_dist = get_endpoint_distance(line1["line"], line2["line"])
                 if endpoint_dist < BB_DRAGON_LINE_MERGE_GAP:
                     group.append(line2)
                     used.add(j)
@@ -286,7 +293,7 @@ def merge_collinear_lines(line_data_list):
         # Merge group into single line using extreme endpoints
         all_points = []
         for line_data in group:
-            x1, y1, x2, y2 = line_data['line']
+            x1, y1, x2, y2 = line_data["line"]
             all_points.extend([(x1, y1), (x2, y2)])
 
         # Find the two most distant points
@@ -294,14 +301,13 @@ def merge_collinear_lines(line_data_list):
         best_pair = (all_points[0], all_points[-1])
 
         for k, p1 in enumerate(all_points):
-            for p2 in all_points[k+1:]:
-                dist = np.sqrt((p1[0]-p2[0])**2 + (p1[1]-p2[1])**2)
+            for p2 in all_points[k + 1 :]:
+                dist = np.sqrt((p1[0] - p2[0]) ** 2 + (p1[1] - p2[1]) ** 2)
                 if dist > max_dist:
                     max_dist = dist
                     best_pair = (p1, p2)
 
-        merged_line = (int(best_pair[0][0]), int(best_pair[0][1]),
-                      int(best_pair[1][0]), int(best_pair[1][1]))
+        merged_line = (int(best_pair[0][0]), int(best_pair[0][1]), int(best_pair[1][0]), int(best_pair[1][1]))
         merged.append(merged_line)
 
     return merged
@@ -339,8 +345,9 @@ def sample_points_along_hull(hull_approx, base_center_x, base_center_y, red_mask
     # Calculate cumulative distances along perimeter
     cumulative_distances = [0]
     for i in range(1, len(hull_points)):
-        edge_dist = np.sqrt((hull_points[i][0] - hull_points[i-1][0])**2 +
-                           (hull_points[i][1] - hull_points[i-1][1])**2)
+        edge_dist = np.sqrt(
+            (hull_points[i][0] - hull_points[i - 1][0]) ** 2 + (hull_points[i][1] - hull_points[i - 1][1]) ** 2
+        )
         cumulative_distances.append(cumulative_distances[-1] + edge_dist)
 
     total_perimeter = cumulative_distances[-1]
@@ -358,13 +365,13 @@ def sample_points_along_hull(hull_approx, base_center_x, base_center_y, red_mask
         for j in range(1, len(cumulative_distances)):
             if cumulative_distances[j] >= target_dist:
                 # Interpolate between vertices j-1 and j
-                edge_start = cumulative_distances[j-1]
+                edge_start = cumulative_distances[j - 1]
                 edge_length = cumulative_distances[j] - edge_start
                 t = (target_dist - edge_start) / edge_length if edge_length > 0 else 0
 
                 # Interpolated point on hull edge
-                point_x = hull_points[j-1][0] + t * (hull_points[j][0] - hull_points[j-1][0])
-                point_y = hull_points[j-1][1] + t * (hull_points[j][1] - hull_points[j-1][1])
+                point_x = hull_points[j - 1][0] + t * (hull_points[j][0] - hull_points[j - 1][0])
+                point_y = hull_points[j - 1][1] + t * (hull_points[j][1] - hull_points[j - 1][1])
 
                 # Vector from base center to interpolated point
                 dx = point_x - base_center_x
@@ -563,7 +570,9 @@ def detect_bb_deployment_zone_advanced():
             print("[BB DRAGONS] TIER 1: Using largest contour")
         else:
             # TIER 2: Try combining top contours if largest is too small
-            print(f"[BB DRAGONS] Largest contour too small ({largest_perimeter:.0f}px), trying multi-contour combination...")
+            print(
+                f"[BB DRAGONS] Largest contour too small ({largest_perimeter:.0f}px), trying multi-contour combination..."
+            )
 
             # Combine top N contours with perimeter > 300px
             significant_contours = [c for perim, c in contours_with_perimeter if perim > 300]
@@ -573,18 +582,24 @@ def detect_bb_deployment_zone_advanced():
                 contours_to_combine = significant_contours[:5]
                 all_points = np.vstack(contours_to_combine)
                 combined_perimeter = sum(cv2.arcLength(c, True) for c in contours_to_combine)
-                print(f"[BB DRAGONS] TIER 2: Combining {len(contours_to_combine)} contours (total perimeter: {combined_perimeter:.0f}px)")
+                print(
+                    f"[BB DRAGONS] TIER 2: Combining {len(contours_to_combine)} contours (total perimeter: {combined_perimeter:.0f}px)"
+                )
 
                 if combined_perimeter >= MIN_BOUNDARY_PERIMETER:
                     contour_to_use = all_points
                 else:
                     # TIER 3: Use ring fallback around red mask centroid
-                    print("[BB DRAGONS] TIER 3: Combined perimeter still too small, using ring fallback around red centroid")
+                    print(
+                        "[BB DRAGONS] TIER 3: Combined perimeter still too small, using ring fallback around red centroid"
+                    )
                     # Calculate centroid of red mask
                     red_points = cv2.findNonZero(red_mask)
                     if red_points is not None and len(red_points) > 0:
                         centroid = np.mean(red_points, axis=0)[0]
-                        return generate_ring_fallback_coords(int(centroid[0]), int(centroid[1]), radius=350, num_points=8)
+                        return generate_ring_fallback_coords(
+                            int(centroid[0]), int(centroid[1]), radius=350, num_points=8
+                        )
                     else:
                         return generate_ring_fallback_coords(base_center_x, base_center_y, radius=400, num_points=8)
             else:
@@ -617,15 +632,18 @@ def detect_bb_deployment_zone_advanced():
         # Calculate cumulative distances along perimeter
         cumulative_distances = [0]
         for i in range(1, len(hull_points)):
-            edge_dist = np.sqrt((hull_points[i][0] - hull_points[i-1][0])**2 +
-                               (hull_points[i][1] - hull_points[i-1][1])**2)
+            edge_dist = np.sqrt(
+                (hull_points[i][0] - hull_points[i - 1][0]) ** 2 + (hull_points[i][1] - hull_points[i - 1][1]) ** 2
+            )
             cumulative_distances.append(cumulative_distances[-1] + edge_dist)
 
         total_perimeter = cumulative_distances[-1]
         num_samples = max(int(total_perimeter / BB_DRAGON_SAMPLE_INTERVAL), 8)
         sample_spacing = total_perimeter / num_samples
 
-        print(f"[BB DRAGONS] Perimeter: {total_perimeter:.0f}px, sampling {num_samples} points at {sample_spacing:.0f}px intervals")
+        print(
+            f"[BB DRAGONS] Perimeter: {total_perimeter:.0f}px, sampling {num_samples} points at {sample_spacing:.0f}px intervals"
+        )
 
         # Sample at equal intervals along perimeter (interpolating between vertices)
         for i in range(num_samples):
@@ -635,13 +653,13 @@ def detect_bb_deployment_zone_advanced():
             for j in range(1, len(cumulative_distances)):
                 if cumulative_distances[j] >= target_dist:
                     # Interpolate between vertices j-1 and j
-                    edge_start = cumulative_distances[j-1]
+                    edge_start = cumulative_distances[j - 1]
                     edge_length = cumulative_distances[j] - edge_start
                     t = (target_dist - edge_start) / edge_length if edge_length > 0 else 0
 
                     # Interpolated point on hull edge
-                    point_x = hull_points[j-1][0] + t * (hull_points[j][0] - hull_points[j-1][0])
-                    point_y = hull_points[j-1][1] + t * (hull_points[j][1] - hull_points[j-1][1])
+                    point_x = hull_points[j - 1][0] + t * (hull_points[j][0] - hull_points[j - 1][0])
+                    point_y = hull_points[j - 1][1] + t * (hull_points[j][1] - hull_points[j - 1][1])
 
                     # Vector from base center to interpolated point
                     dx = point_x - base_center_x
@@ -730,7 +748,7 @@ def select_equally_spaced_coords(coords, num_points=6, min_distance=150):
     sorted_coords = sorted(coords, key=angle_from_center)
 
     def distance(p1, p2):
-        return math.sqrt((p1[0] - p2[0])**2 + (p1[1] - p2[1])**2)
+        return math.sqrt((p1[0] - p2[0]) ** 2 + (p1[1] - p2[1]) ** 2)
 
     def is_far_enough(candidate, selected_points, min_dist):
         """Check if candidate is at least min_dist away from all selected points."""
@@ -863,8 +881,15 @@ def save_bb_dragon_debug_visualization(all_coords, dragon_coords, bm_coord):
             cv2.circle(panel3, (region_x, region_y), 17, (255, 255, 255), 2)
             text = str(i + 1)
             (text_w, text_h), _ = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, 0.6, 2)
-            cv2.putText(panel3, text, (region_x - text_w // 2, region_y + text_h // 2),
-                       cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 0), 2)
+            cv2.putText(
+                panel3,
+                text,
+                (region_x - text_w // 2, region_y + text_h // 2),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.6,
+                (0, 0, 0),
+                2,
+            )
 
         # Draw Battle Machine position
         if bm_coord:
@@ -873,8 +898,15 @@ def save_bb_dragon_debug_visualization(all_coords, dragon_coords, bm_coord):
             cv2.circle(panel3, (bm_region_x, bm_region_y), 15, (0, 165, 255), -1)
             cv2.circle(panel3, (bm_region_x, bm_region_y), 17, (255, 255, 255), 2)
             (text_w, text_h), _ = cv2.getTextSize("BM", cv2.FONT_HERSHEY_SIMPLEX, 0.5, 2)
-            cv2.putText(panel3, "BM", (bm_region_x - text_w // 2, bm_region_y + text_h // 2),
-                       cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 2)
+            cv2.putText(
+                panel3,
+                "BM",
+                (bm_region_x - text_w // 2, bm_region_y + text_h // 2),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.5,
+                (0, 0, 0),
+                2,
+            )
 
         # === Add labels to each panel ===
         label_y = 30

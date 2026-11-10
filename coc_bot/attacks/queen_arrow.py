@@ -12,6 +12,7 @@ import config
 from coc_bot.discord_log import send_discord_debug_log
 from coc_bot.humanized_input import fast_click
 
+
 def detect_queen_arrow_projectile():
     """
     Detect the Queen's Giant Arrow by tracking its bright cyan/green glow trail.
@@ -25,8 +26,8 @@ def detect_queen_arrow_projectile():
 
         # Arrow glow trail color range (bright cyan/green beam)
         # CALIBRATED VALUES - tuned to reduce false positives
-        lower_cyan = np.array([77, 0, 194])     # H=77-95 (cyan), S=0+ (any saturation), V=194+ (very bright only)
-        upper_cyan = np.array([95, 255, 255])   # High brightness threshold filters out dark objects
+        lower_cyan = np.array([77, 0, 194])  # H=77-95 (cyan), S=0+ (any saturation), V=194+ (very bright only)
+        upper_cyan = np.array([95, 255, 255])  # High brightness threshold filters out dark objects
 
         # Capture multiple frames to track arrow movement
         frame_count = config.QUEEN_ARROW_FRAME_COUNT
@@ -130,7 +131,7 @@ def detect_queen_arrow_projectile():
             neighbor_count = 0
             for j, (x2, y2) in enumerate(zip(x_coords_all, y_coords_all)):
                 if i != j:
-                    dist = ((x2 - x1)**2 + (y2 - y1)**2)**0.5
+                    dist = ((x2 - x1) ** 2 + (y2 - y1) ** 2) ** 0.5
                     if dist <= cluster_radius:
                         neighbor_count += 1
             neighbor_counts.append(neighbor_count)
@@ -160,7 +161,7 @@ def detect_queen_arrow_projectile():
 
                     for j, (x2, y2) in enumerate(zip(x_coords_all, y_coords_all)):
                         if j not in visited:
-                            dist = ((x2 - x1)**2 + (y2 - y1)**2)**0.5
+                            dist = ((x2 - x1) ** 2 + (y2 - y1) ** 2) ** 0.5
                             if dist <= cluster_radius:
                                 component.add(j)
                                 queue.append(j)
@@ -197,9 +198,11 @@ def detect_queen_arrow_projectile():
                 # Calculate linearity score: favor more points with lower deviation from line
                 avg_distance = np.mean(distances)
                 num_points = len(comp_indices)
-                linearity_score = (num_points ** 2) / (avg_distance + 1)  # +1 to avoid division by zero
+                linearity_score = (num_points**2) / (avg_distance + 1)  # +1 to avoid division by zero
 
-                print(f"[QUEEN ARROW] Component with {num_points} points: avg deviation={avg_distance:.1f}px, score={linearity_score:.1f}")
+                print(
+                    f"[QUEEN ARROW] Component with {num_points} points: avg deviation={avg_distance:.1f}px, score={linearity_score:.1f}"
+                )
 
                 if linearity_score > best_score:
                     best_score = linearity_score
@@ -216,7 +219,9 @@ def detect_queen_arrow_projectile():
         x_coords = x_coords_all[clustered_indices]
         y_coords = y_coords_all[clustered_indices]
 
-        print(f"[QUEEN ARROW] Using {len(x_coords)} connected points (filtered {len(all_glow_points) - len(x_coords)} scattered points)")
+        print(
+            f"[QUEEN ARROW] Using {len(x_coords)} connected points (filtered {len(all_glow_points) - len(x_coords)} scattered points)"
+        )
 
         # IMPROVED: Iterative outlier removal based on perpendicular distance from line
         # Fit initial line, remove points far from it, refit - focuses on the main straight line
@@ -259,7 +264,9 @@ def detect_queen_arrow_projectile():
                 # No points removed, we're done
                 break
 
-            print(f"[QUEEN ARROW] Iteration {iteration+1}: Removed {inliers_before - inliers_after} points far from line")
+            print(
+                f"[QUEEN ARROW] Iteration {iteration + 1}: Removed {inliers_before - inliers_after} points far from line"
+            )
 
         # Safety check: ensure we still have enough points after outlier removal
         if len(x_coords) < 2:
@@ -298,7 +305,7 @@ def detect_queen_arrow_projectile():
         end_x, end_y = end_point
 
         # Calculate trail length along the fitted line
-        trail_length = ((end_x - start_x)**2 + (end_y - start_y)**2)**0.5
+        trail_length = ((end_x - start_x) ** 2 + (end_y - start_y) ** 2) ** 0.5
 
         # Validate that we have a reasonable arrow path
         min_trail_length = 200  # pixels - arrow trail should be at least this long
@@ -317,7 +324,9 @@ def detect_queen_arrow_projectile():
         extrapolated_end_y = int(start_y + dy * extension_factor)
 
         print(f"[QUEEN ARROW] Extrapolated path end: ({extrapolated_end_x},{extrapolated_end_y})")
-        send_discord_debug_log(f"Queen arrow: Glow trail detected ({len(all_glow_points)} points, {trail_length:.0f}px trail)")
+        send_discord_debug_log(
+            f"Queen arrow: Glow trail detected ({len(all_glow_points)} points, {trail_length:.0f}px trail)"
+        )
 
         return [(start_x, start_y), (extrapolated_end_x, extrapolated_end_y)]
 
@@ -325,6 +334,7 @@ def detect_queen_arrow_projectile():
         print(f"[QUEEN ARROW] Error in glow trail detection: {e}")
         send_discord_debug_log(f"Queen arrow glow detection failed: {e}", "WARNING")
         import traceback
+
         traceback.print_exc()
         return None
 
@@ -369,7 +379,7 @@ def detect_queen_arrow_path_and_cast_spells(queen_side, queen_ability_timing, sp
             hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
 
             # Purple HP bar HSV range (magenta/purple color)
-            lower_purple = np.array([140, 80, 80])   # Purple hue
+            lower_purple = np.array([140, 80, 80])  # Purple hue
             upper_purple = np.array([170, 255, 255])
 
             # Find purple HP bars
@@ -403,19 +413,21 @@ def detect_queen_arrow_path_and_cast_spells(queen_side, queen_ability_timing, sp
                     cx = int(M["m10"] / M["m00"])
                     cy = int(M["m01"] / M["m00"])
                     hp_bar_centers.append((cx, cy, area))
-                    print(f"[QUEEN ARROW] HP bar detected: pos=({cx},{cy}), area={area}, size={w}x{h}, ratio={w/h:.2f}")
+                    print(
+                        f"[QUEEN ARROW] HP bar detected: pos=({cx},{cy}), area={area}, size={w}x{h}, ratio={w / h:.2f}"
+                    )
 
             print(f"[QUEEN ARROW] Detected {len(hp_bar_centers)} purple HP bars")
 
             # Exclude Queen's target based on deployment side
             if len(hp_bar_centers) >= 2:
-                if queen_side == 'down':
+                if queen_side == "down":
                     # Queen at bottom - exclude bottom-most (highest Y)
                     hp_bar_centers.sort(key=lambda p: p[1], reverse=True)  # Sort by Y (bottom to top)
                     queen_target = hp_bar_centers[0]
                     hp_bar_centers = hp_bar_centers[1:]
                     print(f"[QUEEN ARROW] Queen deployed BOTTOM - excluded target at {queen_target[:2]}")
-                elif queen_side == 'up':
+                elif queen_side == "up":
                     # Queen at top - exclude top-most (lowest Y)
                     hp_bar_centers.sort(key=lambda p: p[1], reverse=False)  # Sort by Y (top to bottom)
                     queen_target = hp_bar_centers[0]
@@ -460,10 +472,10 @@ def detect_queen_arrow_path_and_cast_spells(queen_side, queen_ability_timing, sp
         print(f"[QUEEN ARROW] Casting 11 Earthquake spells along detected path ({detection_method})...")
 
         # Set flag to indicate spell casting is active (for hero ability re-selection)
-        spell_casting_flag['value'] = True
+        spell_casting_flag["value"] = True
 
         # Cast 11 Earthquake spells evenly distributed along the path - ULTRA FAST
-        keyboard.send('a')  # Select Earthquake spell
+        keyboard.send("a")  # Select Earthquake spell
         time.sleep(0.03)
 
         for i in range(11):
@@ -474,17 +486,19 @@ def detect_queen_arrow_path_and_cast_spells(queen_side, queen_ability_timing, sp
 
             # Re-select spell every 4 casts to maintain selection
             if i % 4 == 0 and i > 0:
-                keyboard.send('a')
+                keyboard.send("a")
                 time.sleep(0.01)
 
             fast_click(x, y)
             time.sleep(0.02)  # Ultra-fast casting
 
         print(f"[QUEEN ARROW] Successfully cast 11 Earthquake spells on arrow path ({detection_method})")
-        send_discord_debug_log(f"SBarb Farm: Cast 11 Earthquakes on Queen arrow path using {detection_method} detection")
+        send_discord_debug_log(
+            f"SBarb Farm: Cast 11 Earthquakes on Queen arrow path using {detection_method} detection"
+        )
 
         # Clear flag - spell casting complete
-        spell_casting_flag['value'] = False
+        spell_casting_flag["value"] = False
 
         # Wait for spells to finish casting animation
         time.sleep(0.5)

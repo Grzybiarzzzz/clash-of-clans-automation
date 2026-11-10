@@ -27,14 +27,14 @@ def update_status():
     """Update GUI status from bot state (both main status and quick status indicator)"""
     if runtime.gui.bot_running:
         if runtime.gui.bot_paused:
-            runtime.gui.status_label.config(text='PAUSED', foreground='orange')
-            runtime.gui.quick_status_label.config(text='● Paused', foreground='orange')
+            runtime.gui.status_label.config(text="PAUSED", foreground="orange")
+            runtime.gui.quick_status_label.config(text="● Paused", foreground="orange")
         else:
-            runtime.gui.status_label.config(text='RUNNING', foreground='green')
-            runtime.gui.quick_status_label.config(text='● Running', foreground='green')
+            runtime.gui.status_label.config(text="RUNNING", foreground="green")
+            runtime.gui.quick_status_label.config(text="● Running", foreground="green")
     else:
-        runtime.gui.status_label.config(text='STOPPED', foreground='red')
-        runtime.gui.quick_status_label.config(text='● Stopped', foreground='red')
+        runtime.gui.status_label.config(text="STOPPED", foreground="red")
+        runtime.gui.quick_status_label.config(text="● Stopped", foreground="red")
 
 
 def toggle_pause():
@@ -52,9 +52,9 @@ def stop_bot():
 
     # Release all held keys immediately
     try:
-        pyautogui.keyUp('shift')
-        pyautogui.keyUp('ctrl')
-        pyautogui.keyUp('alt')
+        pyautogui.keyUp("shift")
+        pyautogui.keyUp("ctrl")
+        pyautogui.keyUp("alt")
         # Release mouse buttons if held
         try:
             pyautogui.mouseUp()
@@ -107,14 +107,14 @@ def check_discord_commands():
     last_settings_check = current_time
     try:
         # Check if bot_settings.json exists and has been modified
-        if not os.path.exists('bot_settings.json'):
+        if not os.path.exists("bot_settings.json"):
             return
         # Load current settings from file
-        with open('bot_settings.json', 'r', encoding='utf-8') as f:
+        with open("bot_settings.json", "r", encoding="utf-8") as f:
             file_settings = json.load(f)
         # Check for Discord control flags
-        discord_running = file_settings.get('discord_running', None)
-        discord_paused = file_settings.get('discord_paused', None)
+        discord_running = file_settings.get("discord_running", None)
+        discord_paused = file_settings.get("discord_paused", None)
         # Only apply Discord commands if the flags actually exist in the file
         if discord_running is not None and discord_paused is not None:
             # Apply Discord commands

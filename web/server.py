@@ -54,14 +54,13 @@ if FRONTEND_DIR.exists():
             return FileResponse(file_path)
         # Return index.html with no-cache headers to ensure updates are seen
         return FileResponse(
-            FRONTEND_DIR / "index.html",
-            headers={"Cache-Control": "no-cache, no-store, must-revalidate"}
+            FRONTEND_DIR / "index.html", headers={"Cache-Control": "no-cache, no-store, must-revalidate"}
         )
 
 
 def _suppress_connection_errors(loop, context):
     """Suppress noisy but harmless connection reset errors on Windows."""
-    exception = context.get('exception')
+    exception = context.get("exception")
     if isinstance(exception, ConnectionResetError):
         return  # Silently ignore - happens when client disconnects abruptly
     if isinstance(exception, OSError) and exception.errno == 10054:
@@ -73,7 +72,7 @@ def _suppress_connection_errors(loop, context):
 def start_web_server(
     state_manager,  # BotStateManager
     host: str = "127.0.0.1",
-    port: int = 8000
+    port: int = 8000,
 ) -> None:
     """
     Start the web server.
@@ -105,14 +104,9 @@ def start_web_server(
 if __name__ == "__main__":
     # For testing without bot
     from coc_bot.bot_state import BotStateManager
+
     state = BotStateManager()
-    state.update({
-        "running": False,
-        "paused": True,
-        "status": "PAUSED",
-        "current_profile": "Farming",
-        "loop_count": 0
-    })
+    state.update({"running": False, "paused": True, "status": "PAUSED", "current_profile": "Farming", "loop_count": 0})
     app.state.bot_state = state
     setup_state_listener(state)
     print("[Web] Starting server at http://127.0.0.1:8000")

@@ -100,7 +100,7 @@ def test_save_load_json():
     state.set("profile", "Farming")
     state.set("min_resources", 1200000)
 
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
         filepath = f.name
 
     try:

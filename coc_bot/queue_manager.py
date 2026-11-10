@@ -8,12 +8,9 @@ import time
 from typing import Optional, Dict, List, Tuple
 
 # Mode categorization
-MAIN_BASE_MODES = [
-    'Farming', 'Trophy Push', 'Derank', 'SGoblin Farm',
-    'SBarb Farm', 'Achievement Farm', 'Custom'
-]
+MAIN_BASE_MODES = ["Farming", "Trophy Push", "Derank", "SGoblin Farm", "SBarb Farm", "Achievement Farm", "Custom"]
 
-BUILDER_BASE_MODES = ['BB Elixir', 'BB Gold']
+BUILDER_BASE_MODES = ["BB Elixir", "BB Gold"]
 
 
 def get_village_for_mode(mode_name: str) -> str:
@@ -101,7 +98,7 @@ class QueueManager:
         self.achievement_farm_start_time = None
 
         settings = self.gui.get_settings()
-        queue_mode = settings.get('queue_mode', 'smart')
+        queue_mode = settings.get("queue_mode", "smart")
 
         print(f"[QUEUE MANAGER] Queue started in {queue_mode.upper()} mode")
         self.gui.log_message(f"Queue System: Started in {queue_mode.upper()} mode")
@@ -135,10 +132,10 @@ class QueueManager:
 
         # Get current settings
         settings = self.gui.get_settings()
-        queue_mode = settings.get('queue_mode', 'smart')
+        queue_mode = settings.get("queue_mode", "smart")
 
         # Route to appropriate queue mode logic
-        if queue_mode == 'smart':
+        if queue_mode == "smart":
             return self.execute_smart_mode()
         else:  # manual
             return self.execute_manual_mode()
@@ -159,34 +156,36 @@ class QueueManager:
             Mode name to execute, or None if queue complete
         """
         settings = self.gui.get_settings()
-        config = settings.get('smart_mode_config', {})
+        config = settings.get("smart_mode_config", {})
 
         # Check if storage reading functions are available
         if not self.read_own_base_storages or not self.read_bb_storages:
             # Functions not yet implemented - return default mode
             print("[QUEUE MANAGER] Storage functions not yet implemented - using default mode")
-            return config.get('main_base_mode', 'SBarb Farm')
+            return config.get("main_base_mode", "SBarb Farm")
 
         # PHASE 1: Main Base Farming
         if self.current_village == "main":
-            mode = config.get('main_base_mode', 'SBarb Farm')
+            mode = config.get("main_base_mode", "SBarb Farm")
 
             # Check if storages full
             storages = self.read_own_base_storages()
-            if storages['success']:
-                storage_targets = config.get('storage_targets', {})
-                gold_full = storages['gold_percent'] >= storage_targets.get('gold_threshold', 100)
-                elixir_full = storages['elixir_percent'] >= storage_targets.get('elixir_threshold', 100)
+            if storages["success"]:
+                storage_targets = config.get("storage_targets", {})
+                gold_full = storages["gold_percent"] >= storage_targets.get("gold_threshold", 100)
+                elixir_full = storages["elixir_percent"] >= storage_targets.get("elixir_threshold", 100)
 
-                if storage_targets.get('wait_for_de', False):
-                    de_full = storages['de_percent'] >= storage_targets.get('de_threshold', 100)
+                if storage_targets.get("wait_for_de", False):
+                    de_full = storages["de_percent"] >= storage_targets.get("de_threshold", 100)
                     main_base_complete = gold_full and elixir_full and de_full
                 else:
                     main_base_complete = gold_full and elixir_full
 
                 if main_base_complete:
                     print("[SMART MODE] Main base storages full - switching to BB")
-                    print(f"[SMART MODE] Gold: {storages['gold_percent']:.1f}%, Elixir: {storages['elixir_percent']:.1f}%, DE: {storages['de_percent']:.1f}%")
+                    print(
+                        f"[SMART MODE] Gold: {storages['gold_percent']:.1f}%, Elixir: {storages['elixir_percent']:.1f}%, DE: {storages['de_percent']:.1f}%"
+                    )
                     self.gui.log_message("Smart Mode: Main storages full, switching to Builder Base")
 
                     # Determine BB mode based on 3x rule or default
@@ -205,14 +204,16 @@ class QueueManager:
             # Check BB storages and handle completion
             bb_storages = self.read_bb_storages()
 
-            if bb_storages['success']:
-                bb_gold_full = bb_storages['gold_percent'] >= 100
-                bb_elixir_full = bb_storages['elixir_percent'] >= 100
+            if bb_storages["success"]:
+                bb_gold_full = bb_storages["gold_percent"] >= 100
+                bb_elixir_full = bb_storages["elixir_percent"] >= 100
 
                 if bb_gold_full and bb_elixir_full:
                     # PHASE 3: BB Complete - Stop or Achievement Farm
-                    after_behavior = config.get('after_bb_behavior', 'stop')
-                    print(f"[SMART MODE] BB storages full - Gold: {bb_storages['gold_percent']:.1f}%, Elixir: {bb_storages['elixir_percent']:.1f}%")
+                    after_behavior = config.get("after_bb_behavior", "stop")
+                    print(
+                        f"[SMART MODE] BB storages full - Gold: {bb_storages['gold_percent']:.1f}%, Elixir: {bb_storages['elixir_percent']:.1f}%"
+                    )
 
                     if after_behavior == "achievement_farm":
                         print("[SMART MODE] BB storages full - switching to Achievement Farm")
@@ -236,7 +237,7 @@ class QueueManager:
             return "BB Gold"  # Default fallback
 
         # Fallback
-        return config.get('main_base_mode', 'SBarb Farm')
+        return config.get("main_base_mode", "SBarb Farm")
 
     def select_bb_mode(self, config: Dict) -> str:
         """
@@ -249,19 +250,21 @@ class QueueManager:
             "BB Gold" or "BB Elixir"
         """
         try:
-            if config.get('bb_auto_select_enabled', True) and self.read_bb_storages:
+            if config.get("bb_auto_select_enabled", True) and self.read_bb_storages:
                 bb_storages = self.read_bb_storages()
-                if bb_storages['success']:
-                    ratio = config.get('bb_gold_elixir_ratio', 3.0)
-                    gold_pct = bb_storages['gold_percent']
-                    elixir_pct = bb_storages['elixir_percent']
+                if bb_storages["success"]:
+                    ratio = config.get("bb_gold_elixir_ratio", 3.0)
+                    gold_pct = bb_storages["gold_percent"]
+                    elixir_pct = bb_storages["elixir_percent"]
 
                     print(f"[SMART MODE] BB Storage check - Gold: {gold_pct:.1f}%, Elixir: {elixir_pct:.1f}%")
 
                     # If gold is more than 3x elixir, farm elixir instead
                     if gold_pct > (elixir_pct * ratio):
                         print(f"[SMART MODE] Gold > {ratio}x Elixir - selecting BB Elixir mode")
-                        self.gui.log_message(f"Smart Mode: Selecting BB Elixir (Gold {gold_pct:.0f}% > {ratio}x Elixir {elixir_pct:.0f}%)")
+                        self.gui.log_message(
+                            f"Smart Mode: Selecting BB Elixir (Gold {gold_pct:.0f}% > {ratio}x Elixir {elixir_pct:.0f}%)"
+                        )
                         return "BB Elixir"
                     else:
                         print("[SMART MODE] Selecting BB Gold mode (default)")
@@ -286,15 +289,15 @@ class QueueManager:
             Mode name to execute, or None if queue complete
         """
         settings = self.gui.get_settings()
-        schedule = settings.get('manual_mode_schedule', [])
+        schedule = settings.get("manual_mode_schedule", [])
 
         # Check if queue complete
         if self.current_task_index >= len(schedule):
             print("[MANUAL MODE] All tasks complete")
 
             # Check for Achievement Farm end behavior
-            achievement_config = settings.get('achievement_farm_end_config', {})
-            if achievement_config.get('enabled', False):
+            achievement_config = settings.get("achievement_farm_end_config", {})
+            if achievement_config.get("enabled", False):
                 if not self.achievement_farm_active:
                     print("[MANUAL MODE] Starting Achievement Farm end behavior")
                     self.gui.log_message("Manual Mode: Starting Achievement Farm")
@@ -312,7 +315,7 @@ class QueueManager:
 
         # Get current task
         task = schedule[self.current_task_index]
-        mode = task.get('mode', 'SBarb Farm')
+        mode = task.get("mode", "SBarb Farm")
 
         # Ensure correct village for this mode
         if not self.ensure_correct_village(mode):
@@ -340,25 +343,25 @@ class QueueManager:
         Returns:
             True if task is complete, False otherwise
         """
-        condition_type = task.get('condition_type', 'time')
+        condition_type = task.get("condition_type", "time")
 
-        if condition_type == 'time':
+        if condition_type == "time":
             # Time-based condition
             if self.task_start_time is None:
                 self.task_start_time = time.time()
                 return False
 
             elapsed_minutes = (time.time() - self.task_start_time) / 60
-            target_minutes = task.get('time_minutes', 30)
+            target_minutes = task.get("time_minutes", 30)
 
             if elapsed_minutes >= target_minutes:
                 self.task_start_time = None  # Reset for next task
                 return True
             return False
 
-        elif condition_type == 'storage':
+        elif condition_type == "storage":
             # Storage-based condition
-            storage_target = task.get('storage_target', {})
+            storage_target = task.get("storage_target", {})
 
             # Read appropriate storages based on current village
             try:
@@ -367,18 +370,22 @@ class QueueManager:
                         print("[MANUAL MODE] Storage reading function not available")
                         return False
                     storages = self.read_own_base_storages()
-                    if not storages['success']:
+                    if not storages["success"]:
                         print("[MANUAL MODE] Failed to read main base storages")
                         return False
 
-                    gold_met = storage_target.get('gold') is None or storages['gold_percent'] >= storage_target['gold']
-                    elixir_met = storage_target.get('elixir') is None or storages['elixir_percent'] >= storage_target['elixir']
-                    de_met = storage_target.get('de') is None or storages['de_percent'] >= storage_target['de']
+                    gold_met = storage_target.get("gold") is None or storages["gold_percent"] >= storage_target["gold"]
+                    elixir_met = (
+                        storage_target.get("elixir") is None or storages["elixir_percent"] >= storage_target["elixir"]
+                    )
+                    de_met = storage_target.get("de") is None or storages["de_percent"] >= storage_target["de"]
 
                     is_complete = gold_met and elixir_met and de_met
 
                     if is_complete:
-                        print(f"[MANUAL MODE] Storage target reached - Gold: {storages['gold_percent']:.1f}%, Elixir: {storages['elixir_percent']:.1f}%, DE: {storages['de_percent']:.1f}%")
+                        print(
+                            f"[MANUAL MODE] Storage target reached - Gold: {storages['gold_percent']:.1f}%, Elixir: {storages['elixir_percent']:.1f}%, DE: {storages['de_percent']:.1f}%"
+                        )
 
                     return is_complete
 
@@ -387,17 +394,21 @@ class QueueManager:
                         print("[MANUAL MODE] Storage reading function not available")
                         return False
                     storages = self.read_bb_storages()
-                    if not storages['success']:
+                    if not storages["success"]:
                         print("[MANUAL MODE] Failed to read BB storages")
                         return False
 
-                    gold_met = storage_target.get('gold') is None or storages['gold_percent'] >= storage_target['gold']
-                    elixir_met = storage_target.get('elixir') is None or storages['elixir_percent'] >= storage_target['elixir']
+                    gold_met = storage_target.get("gold") is None or storages["gold_percent"] >= storage_target["gold"]
+                    elixir_met = (
+                        storage_target.get("elixir") is None or storages["elixir_percent"] >= storage_target["elixir"]
+                    )
 
                     is_complete = gold_met and elixir_met
 
                     if is_complete:
-                        print(f"[MANUAL MODE] Storage target reached - Gold: {storages['gold_percent']:.1f}%, Elixir: {storages['elixir_percent']:.1f}%")
+                        print(
+                            f"[MANUAL MODE] Storage target reached - Gold: {storages['gold_percent']:.1f}%, Elixir: {storages['elixir_percent']:.1f}%"
+                        )
 
                     return is_complete
             except Exception as e:
@@ -419,8 +430,8 @@ class QueueManager:
             return False
 
         settings = self.gui.get_settings()
-        achievement_config = settings.get('achievement_farm_end_config', {})
-        duration_minutes = achievement_config.get('duration_minutes', 20)
+        achievement_config = settings.get("achievement_farm_end_config", {})
+        duration_minutes = achievement_config.get("duration_minutes", 20)
 
         elapsed_minutes = (time.time() - self.achievement_farm_start_time) / 60
 
@@ -498,8 +509,8 @@ class QueueManager:
             (is_valid, error_message) tuple
         """
         for i in range(len(schedule) - 1):
-            current_mode = schedule[i].get('mode', '')
-            next_mode = schedule[i + 1].get('mode', '')
+            current_mode = schedule[i].get("mode", "")
+            next_mode = schedule[i + 1].get("mode", "")
 
             try:
                 current_village = get_village_for_mode(current_mode)
@@ -510,6 +521,9 @@ class QueueManager:
             # Check for invalid main base → main base
             if current_village == "main" and next_village == "main":
                 if current_mode != "Achievement Farm" and next_mode != "Achievement Farm":
-                    return False, f"Invalid transition: {current_mode} → {next_mode} (no main base mode switching allowed)"
+                    return (
+                        False,
+                        f"Invalid transition: {current_mode} → {next_mode} (no main base mode switching allowed)",
+                    )
 
         return True, "Schedule valid"

@@ -24,6 +24,7 @@ from coc_bot.vision.ocr import debug_save_ocr_regions
 from coc_bot.vision.screens import load_bb_gold_templates
 from web.server import start_web_server
 
+
 def main():
     """Start the bot application. Blocks in the Tk main loop until the window closes."""
     # Ensure pytesseract knows its executable path
@@ -50,33 +51,36 @@ def main():
             print(f"[MAIN] Failed to load web state: {e}")
 
     # Initialize default state values
-    runtime.state_manager.update({
-        "running": False,
-        "paused": True,
-        "status": "PAUSED",
-        "current_profile": runtime.gui.current_profile,
-        "loop_count": 0,
-        "bases_attacked": 0,
-        "bases_skipped": 0
-    })
+    runtime.state_manager.update(
+        {
+            "running": False,
+            "paused": True,
+            "status": "PAUSED",
+            "current_profile": runtime.gui.current_profile,
+            "loop_count": 0,
+            "bases_attacked": 0,
+            "bases_skipped": 0,
+        }
+    )
 
     # Connect GUI to state manager for web GUI integration
     runtime.gui.state_manager = runtime.state_manager
     runtime.gui._sync_state_to_manager()
     runtime.state_manager.subscribe(runtime.gui._on_state_change)
 
-    runtime.gui.set_control_callback('pause', on_pause_from_web)
+    runtime.gui.set_control_callback("pause", on_pause_from_web)
     print("[MAIN] GUI connected to state manager for web sync")
 
     # Initialize Queue Manager (callbacks are set further down)
     try:
         from coc_bot.queue_manager import QueueManager
+
         runtime.queue_manager = QueueManager(runtime.gui)
         print("[MAIN] Queue Manager initialized (callbacks pending)")
 
         # Start queue if enabled in settings
         settings = runtime.gui.get_settings()
-        if settings.get('queue_enabled', False):
+        if settings.get("queue_enabled", False):
             runtime.queue_manager.start_queue()
     except ImportError:
         runtime.queue_manager = None
@@ -86,14 +90,14 @@ def main():
         print(f"[MAIN] Failed to initialize Queue Manager: {e}")
 
     # Bind hotkeys
-    keyboard.add_hotkey('f1', toggle_pause)
-    keyboard.add_hotkey('f2', stop_bot)
-    keyboard.add_hotkey('esc', exit_app)
-    keyboard.add_hotkey('f6', debug_save_ocr_regions)
+    keyboard.add_hotkey("f1", toggle_pause)
+    keyboard.add_hotkey("f2", stop_bot)
+    keyboard.add_hotkey("esc", exit_app)
+    keyboard.add_hotkey("f6", debug_save_ocr_regions)
 
-    keyboard.add_hotkey('f7', clear_overlay_hotkey)
+    keyboard.add_hotkey("f7", clear_overlay_hotkey)
 
-    keyboard.add_hotkey('f8', save_overlay_screenshot_hotkey)
+    keyboard.add_hotkey("f8", save_overlay_screenshot_hotkey)
 
     runtime.break_time = schedule_next_break()
 
@@ -109,38 +113,34 @@ def main():
     runtime.root.protocol("WM_DELETE_WINDOW", exit_app)
 
     # Pre-load achievement building templates for faster detection (SBarb Farm optimization)
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("INITIALIZING TEMPLATE CACHE FOR SBARB FARM OPTIMIZATIONS")
-    print("="*70)
+    print("=" * 70)
     load_achievement_building_templates()
-    print("="*70 + "\n")
+    print("=" * 70 + "\n")
 
     # Pre-load BB Gold templates for faster BB Gold attacks
-    print("="*70)
+    print("=" * 70)
     print("INITIALIZING BB GOLD TEMPLATE CACHE")
-    print("="*70)
+    print("=" * 70)
     load_bb_gold_templates()
-    print("="*70 + "\n")
+    print("=" * 70 + "\n")
 
     # Start connection monitor (checks for connection lost every 5 seconds)
-    print("="*70)
+    print("=" * 70)
     print("STARTING CONNECTION MONITOR")
-    print("="*70)
+    print("=" * 70)
     start_connection_monitor()
-    print("="*70 + "\n")
+    print("=" * 70 + "\n")
 
     # Start web server in background thread
-    print("="*70)
+    print("=" * 70)
     print("STARTING WEB GUI SERVER")
-    print("="*70)
-    web_thread = threading.Thread(
-        target=start_web_server,
-        args=(runtime.state_manager, "127.0.0.1", 8000),
-        daemon=True
-    )
+    print("=" * 70)
+    web_thread = threading.Thread(target=start_web_server, args=(runtime.state_manager, "127.0.0.1", 8000), daemon=True)
     web_thread.start()
     print("[MAIN] Web GUI available at http://localhost:8000")
-    print("="*70 + "\n")
+    print("=" * 70 + "\n")
 
     # Start the GUI
     runtime.root.mainloop()

@@ -27,13 +27,14 @@ from coc_bot.vision.screens import (
     wait_for_attack_screen_ready,
 )
 
+
 def _deploy_first_side(KEYS, chosen_side, settings, side_coords, troop_counts):
     """Passes 1 and 2: wall breakers (optional) and the first half of the troops on the chosen side. Returns whether wall breakers are in use."""
     print("Deploying first wave of troops...")
     send_discord_debug_log("Deploying first wave of troops")
 
     # Check if wall breakers should be deployed
-    use_wallbreakers = settings.get('sgoblin_use_wallbreakers', False)
+    use_wallbreakers = settings.get("sgoblin_use_wallbreakers", False)
 
     if use_wallbreakers:
         # NEW MODE: Deploy with wall breakers interspersed
@@ -59,9 +60,9 @@ def _deploy_first_side(KEYS, chosen_side, settings, side_coords, troop_counts):
     for i in range(7):
         troop_count = troop_counts[i]
         if troop_count > 0:
-            troop_key = f'troop{i+1}'
+            troop_key = f"troop{i + 1}"
             # Get all available coordinates for this side
-            available_coords = side_coords['units']
+            available_coords = side_coords["units"]
 
             # Calculate deployment step for even distribution (4 passes total, 2 per side)
             troops_per_pass = troop_count // 4  # Divided across 4 total passes
@@ -93,10 +94,9 @@ def _deploy_first_side(KEYS, chosen_side, settings, side_coords, troop_counts):
                 print(f"  Pass {pass_num} complete")
 
             # First side complete - 2 passes done
-            send_discord_debug_log(f"First side ({chosen_side}) complete: 2 passes with {troop_count//2} troops")
-            print(f"[SGOBLIN FARM] First side complete: ~{troop_count//2} {troop_key} deployed on {chosen_side}")
+            send_discord_debug_log(f"First side ({chosen_side}) complete: 2 passes with {troop_count // 2} troops")
+            print(f"[SGOBLIN FARM] First side complete: ~{troop_count // 2} {troop_key} deployed on {chosen_side}")
     return use_wallbreakers
-
 
 
 def _deploy_heroes_and_siege(KEYS, settings, side_coords):
@@ -112,22 +112,17 @@ def _deploy_heroes_and_siege(KEYS, settings, side_coords):
 
     print("Deploying heroes...")
     send_discord_debug_log("Deploying heroes")
-    hero_pos = side_coords['hero']
+    hero_pos = side_coords["hero"]
 
     # Get hero ability timings from settings
-    queen_timing = settings.get('queen_ability_timing', -1)
-    king_timing = settings.get('king_ability_timing', -1)
-    warden_timing = settings.get('warden_ability_timing', -1)
-    rc_timing = settings.get('rc_ability_timing', -1)
+    queen_timing = settings.get("queen_ability_timing", -1)
+    king_timing = settings.get("king_ability_timing", -1)
+    warden_timing = settings.get("warden_ability_timing", -1)
+    rc_timing = settings.get("rc_ability_timing", -1)
 
-    hero_timings = {
-        'queen': queen_timing,
-        'king': king_timing,
-        'warden': warden_timing,
-        'rc': rc_timing
-    }
+    hero_timings = {"queen": queen_timing, "king": king_timing, "warden": warden_timing, "rc": rc_timing}
 
-    for role in ['queen', 'king', 'warden', 'rc']:
+    for role in ["queen", "king", "warden", "rc"]:
         # Deploy the hero
         keyboard.send(KEYS[role])
         time.sleep(0.05)
@@ -138,11 +133,7 @@ def _deploy_heroes_and_siege(KEYS, settings, side_coords):
         # Start ability timer only if not disabled (-1)
         timing = hero_timings[role]
         if timing != -1:
-            ability_thread = threading.Thread(
-                target=activate_hero_ability_sgoblin,
-                args=(role,),
-                daemon=True
-            )
+            ability_thread = threading.Thread(target=activate_hero_ability_sgoblin, args=(role,), daemon=True)
             ability_thread.start()
             send_discord_debug_log(f"{role.title()} ability timer started ({timing}s)")
         else:
@@ -155,14 +146,13 @@ def _deploy_heroes_and_siege(KEYS, settings, side_coords):
     # Deploy siege machine IMMEDIATELY after heroes (before abilities trigger at 1s)
     print("Deploying siege machine...")
     send_discord_debug_log("Deploying siege machine")
-    keyboard.send('z')  # Siege machine hotkey
+    keyboard.send("z")  # Siege machine hotkey
     time.sleep(0.05)
     pyautogui.moveTo(*hero_pos, duration=0.02)  # Same position as heroes
     pyautogui.click()
     time.sleep(0.02)
     print("Siege machine deployed")
     send_discord_debug_log("Siege machine deployed (before abilities trigger)")
-
 
 
 def _deploy_opposite_side(KEYS, opposite_coords, opposite_side, troop_counts, use_wallbreakers):
@@ -184,9 +174,9 @@ def _deploy_opposite_side(KEYS, opposite_coords, opposite_side, troop_counts, us
     for i in range(7):
         troop_count = troop_counts[i]
         if troop_count > 0:
-            troop_key = f'troop{i+1}'
+            troop_key = f"troop{i + 1}"
             # Get all available coordinates for opposite side
-            available_coords = opposite_coords['units']
+            available_coords = opposite_coords["units"]
 
             # Calculate deployment step for even distribution (same as first side)
             troops_per_pass = troop_count // 4  # Divided across 4 total passes
@@ -218,12 +208,11 @@ def _deploy_opposite_side(KEYS, opposite_coords, opposite_side, troop_counts, us
                 print(f"  Pass {pass_num} complete")
 
             # Second side complete - 4 passes total done
-            send_discord_debug_log(f"Second side ({opposite_side}) complete: 2 passes with {troop_count//2} troops")
-            print(f"[SGOBLIN FARM] Second side complete: ~{troop_count//2} {troop_key} deployed on {opposite_side}")
+            send_discord_debug_log(f"Second side ({opposite_side}) complete: 2 passes with {troop_count // 2} troops")
+            print(f"[SGOBLIN FARM] Second side complete: ~{troop_count // 2} {troop_key} deployed on {opposite_side}")
 
     print("[SGOBLIN FARM] All 4 passes complete - all troops deployed!")
     send_discord_debug_log("SGoblin Farm: All 4 passes complete")
-
 
 
 def _deploy_leftover_troops(KEYS, opposite_coords, troop_counts):
@@ -235,7 +224,7 @@ def _deploy_leftover_troops(KEYS, opposite_coords, troop_counts):
     cleanup_troop_key = None
     for i in range(7):
         if troop_counts[i] > 0:
-            cleanup_troop_key = f'troop{i+1}'
+            cleanup_troop_key = f"troop{i + 1}"
             break
 
     if cleanup_troop_key:
@@ -244,7 +233,7 @@ def _deploy_leftover_troops(KEYS, opposite_coords, troop_counts):
         time.sleep(0.05)
 
         # Get coordinates from the opposite side (last deployed side)
-        cleanup_coords = opposite_coords['units']
+        cleanup_coords = opposite_coords["units"]
         num_cleanup_coords = len(cleanup_coords)
 
         # Start dragging backwards through coordinates for 3 seconds
@@ -279,10 +268,9 @@ def _deploy_leftover_troops(KEYS, opposite_coords, troop_counts):
         send_discord_debug_log("SGoblin: Cleanup phase complete")
 
 
-
 def _cast_spells_on_achievement_buildings(settings):
     """Cast spells on a detected achievement building when the setting is enabled."""
-    cast_spells_enabled = settings.get('sgoblin_cast_spells', False)
+    cast_spells_enabled = settings.get("sgoblin_cast_spells", False)
 
     if cast_spells_enabled:
         # Scan for achievement buildings using parallel priority scan
@@ -299,13 +287,15 @@ def _cast_spells_on_achievement_buildings(settings):
             bw, bh = config.ACHIEVEMENT_BUILDING_SIZES.get(building_type, (70, 70))
             center_x = x + bw // 2
             center_y = y + bh // 2
-            print(f"CASTING SPELLS ON: {building_type.replace('_', ' ').title()} at ({center_x}, {center_y}) - Confidence: {confidence:.3f}")
+            print(
+                f"CASTING SPELLS ON: {building_type.replace('_', ' ').title()} at ({center_x}, {center_y}) - Confidence: {confidence:.3f}"
+            )
             runtime.gui.log_message(f"Casting spells on {building_type.replace('_', ' ')}")
             send_discord_debug_log(f"SGoblin: Casting on {building_type} at ({center_x}, {center_y})")
 
             # Deploy 1 Earthquake spell
             print("Deploying Earthquake spell...")
-            keyboard.send('a')  # Earthquake hotkey
+            keyboard.send("a")  # Earthquake hotkey
             time.sleep(0.02)
             fast_click(center_x, center_y)
             time.sleep(0.05)
@@ -313,14 +303,14 @@ def _cast_spells_on_achievement_buildings(settings):
             # Deploy 10 Lightning spells
             print("Deploying Lightning spells...")
             for i in range(10):
-                keyboard.send('s')  # Lightning hotkey
+                keyboard.send("s")  # Lightning hotkey
                 time.sleep(0.01)
                 # Add slight variation to position (±3px like Achievement Farm)
                 spell_x = center_x + random.randint(-3, 3)
                 spell_y = center_y + random.randint(-3, 3)
                 fast_click(spell_x, spell_y)
                 time.sleep(0.03)
-                print(f"  Lightning {i+1}/10 deployed")
+                print(f"  Lightning {i + 1}/10 deployed")
 
             print(f"Spell casting complete on {building_type.replace('_', ' ')}")
             runtime.gui.log_message("Spells deployed successfully")
@@ -329,7 +319,6 @@ def _cast_spells_on_achievement_buildings(settings):
             print("[PRIORITY SCAN] No achievement buildings found")
             runtime.gui.log_message("No achievement buildings detected")
             send_discord_debug_log("SGoblin: No buildings found")
-
 
 
 def _surrender_or_end_battle():
@@ -366,7 +355,7 @@ def _surrender_or_end_battle():
 
         # Check if battle already ended (end battle button or return home button visible)
         button_type, x, y = detect_surrender_or_end_battle()
-        if button_type == 'end_battle':
+        if button_type == "end_battle":
             print("Battle already ended - clicking end battle button")
             send_discord_debug_log("SGoblin: Battle ended before surrender - clicking end battle")
             human_like_move_click(x, y)
@@ -384,14 +373,14 @@ def _surrender_or_end_battle():
             # Try finding surrender again
             for retry in range(2):
                 button_type, x, y = detect_surrender_or_end_battle()
-                if button_type == 'surrender':
+                if button_type == "surrender":
                     print(f"Surrender button now available at {x}, {y} - clicking")
                     human_like_move_click(x, y)
                     time.sleep(0.5)
                     human_like_move_click(1483, 898)
                     time.sleep(2)
                     break
-                elif button_type == 'end_battle':
+                elif button_type == "end_battle":
                     print("Battle ended - clicking end battle button")
                     human_like_move_click(x, y)
                     time.sleep(1.5)
@@ -402,7 +391,6 @@ def _surrender_or_end_battle():
                 print("ERROR: Could not find surrender or end battle button - continuing anyway")
                 send_discord_debug_log("SGoblin: Failed to surrender - button not found after retries", "ERROR")
                 time.sleep(3)  # Wait a bit for battle to potentially end on its own
-
 
 
 def perform_sgoblin_farm_attack():
@@ -430,7 +418,9 @@ def perform_sgoblin_farm_attack():
         # If either value is 0, retry after 0.2 seconds (give more time for screen to load)
         if gold == 0 or elixir == 0:
             retry_attempt += 1
-            print(f"[SGOBLIN] OCR returned 0 (gold={gold}, elixir={elixir}), retrying in 0.2s... (attempt {retry_attempt})")
+            print(
+                f"[SGOBLIN] OCR returned 0 (gold={gold}, elixir={elixir}), retrying in 0.2s... (attempt {retry_attempt})"
+            )
             send_discord_debug_log(f"SGoblin Farm: OCR retry {retry_attempt} - gold={gold}, elixir={elixir}")
             time.sleep(0.2)
             continue
@@ -440,7 +430,7 @@ def perform_sgoblin_farm_attack():
         break
 
     # Check if resources meet minimum threshold (no TH or AD check for SGoblin Farm)
-    min_resources = settings.get('min_resources', 800000)
+    min_resources = settings.get("min_resources", 800000)
     total_resources = gold + elixir
 
     if total_resources < min_resources:
@@ -454,10 +444,10 @@ def perform_sgoblin_farm_attack():
     print("[SGOBLIN FARM] Starting SGoblin Farm attack...")
 
     # Get troop counts from settings
-    troop_counts = settings.get('troop_counts', [0, 0, 0, 0, 0, 0, 0])
+    troop_counts = settings.get("troop_counts", [0, 0, 0, 0, 0, 0, 0])
 
     # Choose initial attack side randomly (only up/down for SGoblin Farm)
-    sides = ['up', 'down']
+    sides = ["up", "down"]
     chosen_side = random.choice(sides)
     side_coords = config.SIDE_DEPLOYMENT_COORDS[chosen_side]
     opposite_side = get_opposite_side(chosen_side)
@@ -529,7 +519,7 @@ def perform_sgoblin_farm_attack():
     wait_for_battle_end()
 
     # Check if fast return (skip loot logging) is enabled
-    skip_logging = settings.get('sgoblin_skip_logging', False)
+    skip_logging = settings.get("sgoblin_skip_logging", False)
 
     if skip_logging:
         # Fast return - skip loot capture and logging

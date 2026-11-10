@@ -30,6 +30,7 @@ from coc_bot.vision.screens import (
     wait_for_base_screen,
 )
 
+
 def _take_scheduled_break_if_due():
     """Pause for the configured break when its time has come and schedule the next one."""
     if runtime.break_time is not None and time.time() >= runtime.break_time:
@@ -42,12 +43,11 @@ def _take_scheduled_break_if_due():
 
         # Get break duration from settings and schedule auto-resume
         settings = runtime.gui.get_settings()
-        break_duration = settings.get('break_duration', 5)  # minutes
+        break_duration = settings.get("break_duration", 5)  # minutes
         runtime.root.after(0, lambda: runtime.gui.schedule_auto_resume(break_duration))
 
         # schedule next break after auto-resume
         runtime.break_time = schedule_next_break()
-
 
 
 def _recover_from_end_screen(return_home_pos):
@@ -70,7 +70,6 @@ def _recover_from_end_screen(return_home_pos):
     wait_for_base_screen(timeout=10)
 
     print("[MAIN LOOP] Recovery complete - restarting loop iteration")
-
 
 
 def _start_search(bb_elixir_mode, bb_gold_mode):
@@ -125,13 +124,22 @@ def _start_search(bb_elixir_mode, bb_gold_mode):
                     retry_count += 1
 
                     if retry_count < config.BB_LOAD_MAX_RETRIES:
-                        print(f"[{mode_name}] Retrying search... (attempt {retry_count + 1}/{config.BB_LOAD_MAX_RETRIES})")
+                        print(
+                            f"[{mode_name}] Retrying search... (attempt {retry_count + 1}/{config.BB_LOAD_MAX_RETRIES})"
+                        )
                         runtime.gui.log_message(f"{mode_name}: Retry {retry_count + 1}/{config.BB_LOAD_MAX_RETRIES}")
-                        send_discord_debug_log(f"{mode_name}: Retrying search (attempt {retry_count + 1}/{config.BB_LOAD_MAX_RETRIES})")
+                        send_discord_debug_log(
+                            f"{mode_name}: Retrying search (attempt {retry_count + 1}/{config.BB_LOAD_MAX_RETRIES})"
+                        )
                     else:
-                        print(f"[{mode_name}] ❌ Base load failed after {config.BB_LOAD_MAX_RETRIES} retries - skipping to next search")
+                        print(
+                            f"[{mode_name}] ❌ Base load failed after {config.BB_LOAD_MAX_RETRIES} retries - skipping to next search"
+                        )
                         runtime.gui.log_message(f"{mode_name}: Max retries exceeded - skipping")
-                        send_discord_debug_log(f"{mode_name}: Base load failed after {config.BB_LOAD_MAX_RETRIES} retries - skipping", "ERROR")
+                        send_discord_debug_log(
+                            f"{mode_name}: Base load failed after {config.BB_LOAD_MAX_RETRIES} retries - skipping",
+                            "ERROR",
+                        )
                         # Skip to next search iteration - don't proceed with attack
                         continue
         # BB Gold mode doesn't need any clicks here - state machine handles everything internally
@@ -163,7 +171,6 @@ def _start_search(bb_elixir_mode, bb_gold_mode):
         print(f"After click, mouse position: {pyautogui.position()}")
 
 
-
 def _run_evaluated_attack_cycle(sgoblin_farm_mode):
     """Evaluation-based modes: skip bases until one is attacked (Super Goblin farming or the normal attack)."""
     while runtime.running:
@@ -184,7 +191,9 @@ def _run_evaluated_attack_cycle(sgoblin_farm_mode):
                 runtime.skipped_bases += 1
                 runtime.gui.log_message(f"Base skipped (total: {runtime.skipped_bases})")
                 send_discord_debug_log(f"SGoblin Farm: Base skipped (total: {runtime.skipped_bases})")
-                runtime.root.after(0, lambda: runtime.gui.update_skipped_stats(runtime.skipped_bases, runtime.attacked_bases))
+                runtime.root.after(
+                    0, lambda: runtime.gui.update_skipped_stats(runtime.skipped_bases, runtime.attacked_bases)
+                )
 
                 # Wait for next base to load automatically (skip initiates auto-search)
                 print("Waiting for next base after skip...")
@@ -218,7 +227,9 @@ def _run_evaluated_attack_cycle(sgoblin_farm_mode):
                 runtime.gui.log_message(f"SGoblin Farm attack {runtime.loop_count} completed")
                 runtime.attacked_bases += 1
                 send_discord_debug_log(f"SGoblin Farm attack {runtime.loop_count} completed successfully")
-                runtime.root.after(0, lambda: runtime.gui.update_skipped_stats(runtime.skipped_bases, runtime.attacked_bases))
+                runtime.root.after(
+                    0, lambda: runtime.gui.update_skipped_stats(runtime.skipped_bases, runtime.attacked_bases)
+                )
                 break  # Exit inner while loop to start a new attack cycle
         else:
             print("[DEBUG] Using NORMAL ATTACK mode (will evaluate and may skip)")
@@ -242,9 +253,10 @@ def _run_evaluated_attack_cycle(sgoblin_farm_mode):
             send_discord_debug_log(f"Attack {runtime.loop_count} completed successfully")
 
             # Update skipped/ratio statistics in GUI
-            runtime.root.after(0, lambda: runtime.gui.update_skipped_stats(runtime.skipped_bases, runtime.attacked_bases))
+            runtime.root.after(
+                0, lambda: runtime.gui.update_skipped_stats(runtime.skipped_bases, runtime.attacked_bases)
+            )
             break  # Exit inner while loop to start a new attack cycle
-
 
 
 def _save_error_screenshot():
@@ -265,26 +277,25 @@ def _save_error_screenshot():
         send_discord_debug_log(f"Failed to save error screenshot: {err}", "ERROR")
 
 
-
 def main_loop():
-    
+
     # Each iteration covers one full attack cycle
     while runtime.running:
         # Check for Discord commands
         check_discord_commands()
-        
+
         # Check if GUI wants to stop
         if not runtime.gui.bot_running:
             runtime.running = False
             send_discord_debug_log("Bot stopped by GUI", "INFO")
             break
-            
+
         # Check if GUI wants to pause
         runtime.paused = runtime.gui.bot_paused
-        
+
         # Automatic break check
         _take_scheduled_break_if_due()
-        
+
         time.sleep(0.1)
         if runtime.paused:
             continue
@@ -296,7 +307,7 @@ def main_loop():
         # If stuck on end screen (Return Home button visible), click it and recover
         # BB modes are excluded - they have their own state machine recovery
         settings_check = runtime.gui.get_settings()
-        bb_mode_active = settings_check.get('bb_elixir_mode', False) or settings_check.get('bb_gold_mode', False)
+        bb_mode_active = settings_check.get("bb_elixir_mode", False) or settings_check.get("bb_gold_mode", False)
 
         if not bb_mode_active:
             return_home_pos = detect_return_home_button(quiet=True)
@@ -317,14 +328,14 @@ def main_loop():
                 overlay_clear()
                 # Draw a test marker so we know the overlay is working
                 if runtime.gui.overlay:
-                    runtime.gui.overlay.draw_text(100, 50, f"Bot Cycle: {runtime.loop_count + 1}", '#00FF00')
+                    runtime.gui.overlay.draw_text(100, 50, f"Bot Cycle: {runtime.loop_count + 1}", "#00FF00")
                     runtime.gui.overlay.update()
             else:
                 if runtime.loop_count == 0:  # Only print once
                     print("[OVERLAY] Overlay is disabled (checkbox not checked)")
 
             # Check if queue system is active
-            queue_enabled = settings.get('queue_enabled', False)
+            queue_enabled = settings.get("queue_enabled", False)
 
             if queue_enabled and runtime.queue_manager:
                 # Ensure queue is started (handles race condition from web GUI)
@@ -342,12 +353,12 @@ def main_loop():
 
                 # Set mode flags based on queue's selected mode
                 print(f"[QUEUE] Executing mode: {next_mode}")
-                derank_mode = (next_mode == 'Derank')
-                sgoblin_farm_mode = (next_mode == 'SGoblin Farm')
-                sbarb_farm_mode = (next_mode == 'SBarb Farm')
-                bb_elixir_mode = (next_mode == 'BB Elixir')
-                bb_gold_mode = (next_mode == 'BB Gold')
-                achievement_farm_mode = (next_mode == 'Achievement Farm')
+                derank_mode = next_mode == "Derank"
+                sgoblin_farm_mode = next_mode == "SGoblin Farm"
+                sbarb_farm_mode = next_mode == "SBarb Farm"
+                bb_elixir_mode = next_mode == "BB Elixir"
+                bb_gold_mode = next_mode == "BB Gold"
+                achievement_farm_mode = next_mode == "Achievement Farm"
 
                 # Update GUI profile to match queue mode
                 if runtime.gui.current_profile != next_mode:
@@ -357,17 +368,17 @@ def main_loop():
                     runtime.gui.apply_current_profile(silent=True)  # Silent mode for queue auto-switching
             else:
                 # Normal mode - use profile settings
-                derank_mode = settings.get('derank_mode', False)
-                sgoblin_farm_mode = settings.get('sgoblin_farm_mode', False)
-                sbarb_farm_mode = settings.get('sbarb_farm_mode', False)
-                bb_elixir_mode = settings.get('bb_elixir_mode', False)
-                bb_gold_mode = settings.get('bb_gold_mode', False)
-                achievement_farm_mode = settings.get('achievement_farm_mode', False)
+                derank_mode = settings.get("derank_mode", False)
+                sgoblin_farm_mode = settings.get("sgoblin_farm_mode", False)
+                sbarb_farm_mode = settings.get("sbarb_farm_mode", False)
+                bb_elixir_mode = settings.get("bb_elixir_mode", False)
+                bb_gold_mode = settings.get("bb_gold_mode", False)
+                achievement_farm_mode = settings.get("achievement_farm_mode", False)
 
             # CRITICAL DEBUG: Print ALL settings to verify
-            current_profile = settings.get('current_profile', 'Unknown')
+            current_profile = settings.get("current_profile", "Unknown")
 
-            send_discord_debug_log(f"Cycle {runtime.loop_count+1} | Profile: {current_profile}")
+            send_discord_debug_log(f"Cycle {runtime.loop_count + 1} | Profile: {current_profile}")
 
             # Handle potential star bonus screen and other popups (blind click - no detection)
             # This handles star bonus for BB Gold mode after returning to base
@@ -376,15 +387,15 @@ def main_loop():
             time.sleep(0.1)
 
             # 1. Open attack GUI (randomized click)
-            x1,y1,x2,y2 = config.OPEN_GUI_BUTTON
-            click_in_square((x1,y1,x2,y2))
+            x1, y1, x2, y2 = config.OPEN_GUI_BUTTON
+            click_in_square((x1, y1, x2, y2))
             # Human-like delay with natural variance (0.4-0.7s range)
             humanized_sleep(0.55, variance=0.273)
 
             # Skip-based fast modes (no evaluation): derank, sgoblin, sbarb, bb modes, achievement
             # Use BB-specific search button for BB Elixir mode (BB Gold uses state machine)
             _start_search(bb_elixir_mode, bb_gold_mode)
-                # No fixed delay needed - OCR and base detection will handle timing
+            # No fixed delay needed - OCR and base detection will handle timing
 
             # 2. Fast attack modes (no evaluation) - handle immediately and skip evaluation loop
             # These modes attack every base without checking resources/defenses
@@ -471,7 +482,9 @@ def main_loop():
                 runtime.gui.log_message(f"Achievement Farm attack {runtime.loop_count} completed")
                 runtime.attacked_bases += 1
                 send_discord_debug_log(f"Achievement Farm attack {runtime.loop_count} completed successfully")
-                runtime.root.after(0, lambda: runtime.gui.update_skipped_stats(runtime.skipped_bases, runtime.attacked_bases))
+                runtime.root.after(
+                    0, lambda: runtime.gui.update_skipped_stats(runtime.skipped_bases, runtime.attacked_bases)
+                )
 
                 # Check auto-pause condition
                 if check_auto_pause():
@@ -495,6 +508,7 @@ def main_loop():
         except Exception as e:
             print(f"Error during loop: {e}")
             import traceback
+
             traceback.print_exc()  # Print full stack trace
             runtime.paused = True
             runtime.gui.bot_paused = True
@@ -513,9 +527,15 @@ def main_loop():
         skip_ratio = runtime.skipped_bases / runtime.attacked_bases
     else:
         skip_ratio = 0
-    print(f"Bases skipped: {runtime.skipped_bases}, Attacks: {runtime.attacked_bases}, Skip/Attack ratio: {skip_ratio:.2f}")
-    runtime.gui.log_message(f"Bases skipped: {runtime.skipped_bases}, Attacks: {runtime.attacked_bases}, Skip/Attack ratio: {skip_ratio:.2f}")
-    send_discord_debug_log(f"Session summary: {runtime.skipped_bases} skipped, {runtime.attacked_bases} attacked, ratio: {skip_ratio:.2f}")
+    print(
+        f"Bases skipped: {runtime.skipped_bases}, Attacks: {runtime.attacked_bases}, Skip/Attack ratio: {skip_ratio:.2f}"
+    )
+    runtime.gui.log_message(
+        f"Bases skipped: {runtime.skipped_bases}, Attacks: {runtime.attacked_bases}, Skip/Attack ratio: {skip_ratio:.2f}"
+    )
+    send_discord_debug_log(
+        f"Session summary: {runtime.skipped_bases} skipped, {runtime.attacked_bases} attacked, ratio: {skip_ratio:.2f}"
+    )
 
 
 # Override GUI's run_bot method with our main loop

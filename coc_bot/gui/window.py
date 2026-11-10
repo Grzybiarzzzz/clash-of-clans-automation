@@ -18,6 +18,7 @@ from coc_bot.gui.state_sync import StateSyncMixin
 from coc_bot.gui.stats_panel import StatsPanelMixin
 from coc_bot.gui.visibility import VisibilityMixin
 
+
 class BotGUI(
     StateSyncMixin,
     ProfileDataMixin,
@@ -42,9 +43,9 @@ class BotGUI(
         # Load 2nd monitor setting early (before positioning window)
         prefer_second_monitor = False
         try:
-            with open('data/bot_settings.json', 'r', encoding='utf-8') as f:
+            with open("data/bot_settings.json", "r", encoding="utf-8") as f:
                 settings_data = json.load(f)
-                prefer_second_monitor = settings_data.get('use_second_monitor', False)
+                prefer_second_monitor = settings_data.get("use_second_monitor", False)
         except Exception:
             pass
 
@@ -66,14 +67,14 @@ class BotGUI(
         if prefer_second_monitor and len(monitors) > 1:
             # Find a non-primary monitor (one that doesn't start at 0,0)
             for mon in monitors:
-                if mon['x'] != 0 or mon['y'] != 0:
+                if mon["x"] != 0 or mon["y"] != 0:
                     second_monitor = mon
                     break
 
         if second_monitor:
             # Center window on the second monitor
-            mon_x, mon_y = second_monitor['x'], second_monitor['y']
-            mon_w, mon_h = second_monitor['width'], second_monitor['height']
+            mon_x, mon_y = second_monitor["x"], second_monitor["y"]
+            mon_w, mon_h = second_monitor["width"], second_monitor["height"]
             x = mon_x + (mon_w // 2) - (window_width // 2)
             y = mon_y + (mon_h // 2) - (window_height // 2)
             print(f"[GUI] Positioning on second monitor ({mon_w}x{mon_h} at {mon_x},{mon_y})")
@@ -95,12 +96,12 @@ class BotGUI(
 
         # Fullscreen toggle with F11
         self.is_fullscreen = False
-        self.root.bind('<F11>', self.toggle_fullscreen)
-        self.root.bind('<Escape>', self.exit_fullscreen)
+        self.root.bind("<F11>", self.toggle_fullscreen)
+        self.root.bind("<Escape>", self.exit_fullscreen)
 
         # Style will be applied after loading settings
         # Removed top-right dropdown - night mode controlled via Global settings checkbox
-        
+
         # Bot state
         self.bot_running = False
         self.bot_paused = True
@@ -110,24 +111,24 @@ class BotGUI(
 
         # External control callbacks (set by main.py for web GUI integration)
         self._control_callbacks = {
-            'start': None,   # Called when web GUI requests start
-            'stop': None,    # Called when web GUI requests stop
-            'pause': None,   # Called when web GUI toggles pause (passes new paused state)
+            "start": None,  # Called when web GUI requests start
+            "stop": None,  # Called when web GUI requests stop
+            "pause": None,  # Called when web GUI toggles pause (passes new paused state)
         }
 
         # Settings
         settings = self.load_settings()
-        self.night_mode = settings.get('night_mode', False)
-        self.overlay_enabled = settings.get('overlay_enabled', False)
-        self.overlay_hide_low_conf = settings.get('overlay_hide_low_conf', False)
+        self.night_mode = settings.get("night_mode", False)
+        self.overlay_enabled = settings.get("overlay_enabled", False)
+        self.overlay_hide_low_conf = settings.get("overlay_hide_low_conf", False)
         self.overlay = None  # Will be initialized after GUI creation
 
         # Initialize manual mode schedule early (before GUI creation)
-        self.manual_mode_schedule = settings.get('manual_mode_schedule', [])
+        self.manual_mode_schedule = settings.get("manual_mode_schedule", [])
 
         # Profile system - use the loaded current profile
         self.profile_var = tk.StringVar(value=self.current_profile)
-        
+
         # Flag to prevent recursive saving
         self.is_saving = False
 
@@ -136,28 +137,30 @@ class BotGUI(
 
         # --- Initialize all settings variables used in the settings sections ---
         # Use the current profile's settings for initialization
-        profile_settings = self.profiles.get(self.current_profile, self.get_hardcoded_profiles()['Farming'])
-        self.min_resources_var = tk.StringVar(value=str(profile_settings.get('min_resources', 1200000)))
-        self.max_th_var = tk.StringVar(value=str(profile_settings.get('max_th_level', 15)))
+        profile_settings = self.profiles.get(self.current_profile, self.get_hardcoded_profiles()["Farming"])
+        self.min_resources_var = tk.StringVar(value=str(profile_settings.get("min_resources", 1200000)))
+        self.max_th_var = tk.StringVar(value=str(profile_settings.get("max_th_level", 15)))
 
         # Initialize troop count variables (7 generic troop slots)
-        troop_counts = profile_settings.get('troop_counts', [0, 0, 0, 0, 0, 0, 0])
+        troop_counts = profile_settings.get("troop_counts", [0, 0, 0, 0, 0, 0, 0])
         self.troop_count_vars = [tk.StringVar(value=str(count)) for count in troop_counts]
 
-        self.lightning_damage_var = tk.StringVar(value=str(profile_settings.get('lightning_damage', 300)))
-        self.auto_pause_var = tk.BooleanVar(value=profile_settings.get('auto_pause_enabled', True))
-        self.break_interval_var = tk.StringVar(value=str(profile_settings.get('break_interval', 45)))
-        self.break_duration_var = tk.StringVar(value=str(profile_settings.get('break_duration', 5)))
-        self.reinforcements_var = tk.BooleanVar(value=profile_settings.get('reinforcements_enabled', False))
-        self.ad_target_mode_var = tk.StringVar(value=profile_settings.get('ad_target_mode', 'level'))
-        self.attack_side_mode_var = tk.StringVar(value=profile_settings.get('attack_side_mode', 'random'))
-        self.bb_collect_interval_var = tk.StringVar(value=str(settings.get('bb_collect_interval', profile_settings.get('bb_collect_interval', 12))))
-        
+        self.lightning_damage_var = tk.StringVar(value=str(profile_settings.get("lightning_damage", 300)))
+        self.auto_pause_var = tk.BooleanVar(value=profile_settings.get("auto_pause_enabled", True))
+        self.break_interval_var = tk.StringVar(value=str(profile_settings.get("break_interval", 45)))
+        self.break_duration_var = tk.StringVar(value=str(profile_settings.get("break_duration", 5)))
+        self.reinforcements_var = tk.BooleanVar(value=profile_settings.get("reinforcements_enabled", False))
+        self.ad_target_mode_var = tk.StringVar(value=profile_settings.get("ad_target_mode", "level"))
+        self.attack_side_mode_var = tk.StringVar(value=profile_settings.get("attack_side_mode", "random"))
+        self.bb_collect_interval_var = tk.StringVar(
+            value=str(settings.get("bb_collect_interval", profile_settings.get("bb_collect_interval", 12)))
+        )
+
         # Hero ability activation timing variables (seconds after deployment)
-        self.queen_ability_timing_var = tk.StringVar(value=str(profile_settings.get('queen_ability_timing', 15)))
-        self.king_ability_timing_var = tk.StringVar(value=str(profile_settings.get('king_ability_timing', 15)))
-        self.warden_ability_timing_var = tk.StringVar(value=str(profile_settings.get('warden_ability_timing', 15)))
-        self.rc_ability_timing_var = tk.StringVar(value=str(profile_settings.get('rc_ability_timing', 15)))
+        self.queen_ability_timing_var = tk.StringVar(value=str(profile_settings.get("queen_ability_timing", 15)))
+        self.king_ability_timing_var = tk.StringVar(value=str(profile_settings.get("king_ability_timing", 15)))
+        self.warden_ability_timing_var = tk.StringVar(value=str(profile_settings.get("warden_ability_timing", 15)))
+        self.rc_ability_timing_var = tk.StringVar(value=str(profile_settings.get("rc_ability_timing", 15)))
 
         # Create GUI
         self.create_widgets()
@@ -177,7 +180,7 @@ class BotGUI(
         self.update_storage_preset_dropdown()
         # Load active preset and its values (use settings already loaded on line 90)
         try:
-            active_preset = settings.get('active_storage_preset', 'main')
+            active_preset = settings.get("active_storage_preset", "main")
             self.storage_preset_var.set(active_preset)
             # Trigger preset loading to update spinbox values
             self.on_storage_preset_selected()
@@ -188,27 +191,27 @@ class BotGUI(
         # Always start with queue disabled (user preference - prevent accidental auto-runs)
         try:
             self.queue_enabled_var.set(False)  # Force disabled on startup
-            self.queue_mode_var.set(settings.get('queue_mode', 'smart'))
+            self.queue_mode_var.set(settings.get("queue_mode", "smart"))
 
             # Initialize Smart Mode settings
-            smart_config = settings.get('smart_mode_config', {})
-            self.smart_main_mode_var.set(smart_config.get('main_base_mode', 'SBarb Farm'))
-            storage_targets = smart_config.get('storage_targets', {})
-            self.smart_gold_threshold_var.set(str(storage_targets.get('gold_threshold', 100)))
-            self.smart_elixir_threshold_var.set(str(storage_targets.get('elixir_threshold', 100)))
-            self.smart_de_threshold_var.set(str(storage_targets.get('de_threshold', 100)))
-            self.smart_wait_de_var.set(storage_targets.get('wait_for_de', False))
-            self.smart_bb_auto_var.set(smart_config.get('bb_auto_select_enabled', True))
-            self.smart_bb_ratio_var.set(str(smart_config.get('bb_gold_elixir_ratio', 3.0)))
-            self.smart_after_bb_var.set(smart_config.get('after_bb_behavior', 'stop'))
+            smart_config = settings.get("smart_mode_config", {})
+            self.smart_main_mode_var.set(smart_config.get("main_base_mode", "SBarb Farm"))
+            storage_targets = smart_config.get("storage_targets", {})
+            self.smart_gold_threshold_var.set(str(storage_targets.get("gold_threshold", 100)))
+            self.smart_elixir_threshold_var.set(str(storage_targets.get("elixir_threshold", 100)))
+            self.smart_de_threshold_var.set(str(storage_targets.get("de_threshold", 100)))
+            self.smart_wait_de_var.set(storage_targets.get("wait_for_de", False))
+            self.smart_bb_auto_var.set(smart_config.get("bb_auto_select_enabled", True))
+            self.smart_bb_ratio_var.set(str(smart_config.get("bb_gold_elixir_ratio", 3.0)))
+            self.smart_after_bb_var.set(smart_config.get("after_bb_behavior", "stop"))
 
             # Initialize Achievement Farm end behavior settings
-            achievement_end_config = settings.get('achievement_farm_end_config', {})
-            self.achievement_end_enabled_var.set(achievement_end_config.get('enabled', False))
-            self.achievement_end_duration_var.set(str(achievement_end_config.get('duration_minutes', 20)))
+            achievement_end_config = settings.get("achievement_farm_end_config", {})
+            self.achievement_end_enabled_var.set(achievement_end_config.get("enabled", False))
+            self.achievement_end_duration_var.set(str(achievement_end_config.get("duration_minutes", 20)))
 
             # Initialize Manual Mode schedule
-            self.manual_mode_schedule = settings.get('manual_mode_schedule', [])
+            self.manual_mode_schedule = settings.get("manual_mode_schedule", [])
 
             # Update visibility
             self.update_queue_mode_visibility()
@@ -216,14 +219,14 @@ class BotGUI(
             print(f"[GUI] Failed to initialize queue settings: {e}")
 
         self.update_timer()
-        
+
         # Capture console output
         self.capture_console_output()
-        
+
         # Bind hotkeys
-        self.root.bind('<F1>', lambda e: self.toggle_pause())
-        self.root.bind('<Escape>', lambda e: self.stop_bot())
-        
+        self.root.bind("<F1>", lambda e: self.toggle_pause())
+        self.root.bind("<Escape>", lambda e: self.stop_bot())
+
         # Apply night mode if enabled
         if self.night_mode:
             self.enable_night_mode()
@@ -256,12 +259,14 @@ class BotGUI(
 
         def callback(hMonitor, hdcMonitor, lprcMonitor, dwData):
             rect = lprcMonitor.contents
-            monitors.append({
-                'x': rect.left,
-                'y': rect.top,
-                'width': rect.right - rect.left,
-                'height': rect.bottom - rect.top,
-            })
+            monitors.append(
+                {
+                    "x": rect.left,
+                    "y": rect.top,
+                    "width": rect.right - rect.left,
+                    "height": rect.bottom - rect.top,
+                }
+            )
             return True
 
         MONITORENUMPROC = ctypes.WINFUNCTYPE(
@@ -272,9 +277,7 @@ class BotGUI(
             ctypes.c_double,
         )
         try:
-            ctypes.windll.user32.EnumDisplayMonitors(
-                None, None, MONITORENUMPROC(callback), 0
-            )
+            ctypes.windll.user32.EnumDisplayMonitors(None, None, MONITORENUMPROC(callback), 0)
         except Exception as e:
             print(f"[GUI] Monitor enumeration failed: {e}")
 
@@ -294,7 +297,7 @@ class BotGUI(
             self.section_states[section_name] = default_expanded
 
         # Store original text and children
-        original_text = label_frame.cget('text')
+        original_text = label_frame.cget("text")
 
         # Get all children widgets for later hide/show
         children = []
@@ -356,7 +359,7 @@ class BotGUI(
             label_frame.configure(height=40)
 
         # Make the label frame itself clickable
-        label_frame.bind('<Button-1>', lambda e: toggle_collapse())
+        label_frame.bind("<Button-1>", lambda e: toggle_collapse())
 
         # Store the toggle function for external access if needed
         label_frame.toggle_collapse = toggle_collapse
@@ -367,8 +370,8 @@ class BotGUI(
     def create_widgets(self):
         # Main frame
         main_frame = ttk.Frame(self.root, padding="10")
-        main_frame.grid(row=0, column=0, sticky='nsew')
-        
+        main_frame.grid(row=0, column=0, sticky="nsew")
+
         # Configure grid weights
         self.root.columnconfigure(0, weight=1)
         self.root.rowconfigure(0, weight=1)
@@ -382,32 +385,32 @@ class BotGUI(
         main_frame.rowconfigure(3, weight=0)
         main_frame.rowconfigure(4, weight=0)
         main_frame.rowconfigure(5, weight=0)
-        
+
         # Title with improved styling
         title_frame = ttk.Frame(main_frame)
-        title_frame.grid(row=0, column=0, columnspan=2, pady=(0, 20), sticky='ew')
+        title_frame.grid(row=0, column=0, columnspan=2, pady=(0, 20), sticky="ew")
         title_frame.columnconfigure(0, weight=1)
 
         # Main title
-        title_label = ttk.Label(title_frame, text="⚔️ Clash of Clans Bot", font=('Segoe UI', 20, 'bold'))
+        title_label = ttk.Label(title_frame, text="⚔️ Clash of Clans Bot", font=("Segoe UI", 20, "bold"))
         title_label.grid(row=0, column=0)
 
         # Version and status indicator
         version_frame = ttk.Frame(title_frame)
         version_frame.grid(row=1, column=0, pady=(5, 0))
-        version_label = ttk.Label(version_frame, text="v2.5", font=('Segoe UI', 9), foreground='gray')
+        version_label = ttk.Label(version_frame, text="v2.5", font=("Segoe UI", 9), foreground="gray")
         version_label.pack(side=tk.LEFT, padx=(0, 10))
 
         # Quick status indicator
-        self.quick_status_label = ttk.Label(version_frame, text="● Paused", font=('Segoe UI', 9), foreground='red')
+        self.quick_status_label = ttk.Label(version_frame, text="● Paused", font=("Segoe UI", 9), foreground="red")
         self.quick_status_label.pack(side=tk.LEFT)
-        
+
         # Status Section
         self.create_status_section(main_frame)
-        
+
         # Settings Section
         self.create_settings_section(main_frame)
-        
+
         # Control Section
         self.create_control_section(main_frame)
 
@@ -433,7 +436,7 @@ class BotGUI(
     def toggle_fullscreen(self, event=None):
         """Toggle fullscreen mode with F11"""
         self.is_fullscreen = not self.is_fullscreen
-        self.root.attributes('-fullscreen', self.is_fullscreen)
+        self.root.attributes("-fullscreen", self.is_fullscreen)
 
         if self.is_fullscreen:
             print("[GUI] Fullscreen mode enabled")
@@ -448,7 +451,7 @@ class BotGUI(
         # Don't interfere with ESC hotkey for stopping bot
         if self.is_fullscreen:
             self.is_fullscreen = False
-            self.root.attributes('-fullscreen', False)
+            self.root.attributes("-fullscreen", False)
             print("[GUI] Exited fullscreen mode")
             return "break"  # Prevent event propagation
 

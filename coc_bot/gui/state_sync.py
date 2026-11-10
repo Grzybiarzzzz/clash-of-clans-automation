@@ -4,6 +4,7 @@ import tkinter as tk
 
 from coc_bot import runtime
 
+
 class StateSyncMixin:
     """Two-way synchronisation between the Tkinter widgets and the shared BotStateManager. Mixin for BotGUI."""
 
@@ -23,6 +24,7 @@ class StateSyncMixin:
         This method is called when state changes externally (e.g., from web GUI).
         It updates the Tkinter GUI elements to reflect the new state.
         """
+
         # Use after() to ensure GUI updates happen on the main thread
         def update_gui():
             try:
@@ -39,9 +41,9 @@ class StateSyncMixin:
                                 self.quick_status_label.config(text="● Running", foreground="green")
 
                             # Trigger external pause callback (for main.py global variable)
-                            if self._control_callbacks.get('pause'):
+                            if self._control_callbacks.get("pause"):
                                 try:
-                                    self._control_callbacks['pause'](value)
+                                    self._control_callbacks["pause"](value)
                                 except Exception as e:
                                     print(f"[GUI] Error in pause callback: {e}")
 
@@ -131,7 +133,7 @@ class StateSyncMixin:
                     self.save_settings()
 
                 elif key == "bb_gold_troop_mode":
-                    display_mode = self.bb_gold_troop_mode_reverse_map.get(value, 'Night Witches')
+                    display_mode = self.bb_gold_troop_mode_reverse_map.get(value, "Night Witches")
                     self.bb_gold_troop_mode_var.set(display_mode)
                     self.save_settings()
 
@@ -196,24 +198,24 @@ class StateSyncMixin:
                 elif key == "smart_mode_config":
                     if isinstance(value, dict):
                         # Update smart mode settings
-                        self.smart_main_mode_var.set(value.get('main_base_mode', 'SBarb Farm'))
-                        storage_targets = value.get('storage_targets', {})
-                        self.smart_wait_de_var.set(storage_targets.get('wait_for_de', False))
-                        self.smart_after_bb_var.set(value.get('after_bb_behavior', 'stop'))
+                        self.smart_main_mode_var.set(value.get("main_base_mode", "SBarb Farm"))
+                        storage_targets = value.get("storage_targets", {})
+                        self.smart_wait_de_var.set(storage_targets.get("wait_for_de", False))
+                        self.smart_after_bb_var.set(value.get("after_bb_behavior", "stop"))
                         # Sync threshold values
-                        if hasattr(self, 'smart_gold_threshold_var'):
-                            self.smart_gold_threshold_var.set(str(storage_targets.get('gold_threshold', 100)))
-                        if hasattr(self, 'smart_elixir_threshold_var'):
-                            self.smart_elixir_threshold_var.set(str(storage_targets.get('elixir_threshold', 100)))
-                        if hasattr(self, 'smart_de_threshold_var'):
-                            self.smart_de_threshold_var.set(str(storage_targets.get('de_threshold', 100)))
+                        if hasattr(self, "smart_gold_threshold_var"):
+                            self.smart_gold_threshold_var.set(str(storage_targets.get("gold_threshold", 100)))
+                        if hasattr(self, "smart_elixir_threshold_var"):
+                            self.smart_elixir_threshold_var.set(str(storage_targets.get("elixir_threshold", 100)))
+                        if hasattr(self, "smart_de_threshold_var"):
+                            self.smart_de_threshold_var.set(str(storage_targets.get("de_threshold", 100)))
                         self.save_settings()
 
                 elif key == "achievement_farm_end_config":
                     if isinstance(value, dict):
-                        self.achievement_end_duration_var.set(str(value.get('duration_minutes', 20)))
-                        if hasattr(self, 'achievement_end_enabled_var'):
-                            self.achievement_end_enabled_var.set(bool(value.get('enabled', False)))
+                        self.achievement_end_duration_var.set(str(value.get("duration_minutes", 20)))
+                        if hasattr(self, "achievement_end_enabled_var"):
+                            self.achievement_end_enabled_var.set(bool(value.get("enabled", False)))
                         self.save_settings()
 
                 # Achievement building scan settings (sync from Web GUI)
@@ -256,13 +258,11 @@ class StateSyncMixin:
 
                 # SBarb targeting mode (sync from Web GUI)
                 elif key == "sbarb_cast_spells_target_mode":
-                    if hasattr(self, 'sbarb_cast_spells_mode_var'):
+                    if hasattr(self, "sbarb_cast_spells_mode_var"):
                         # Convert to display name for dropdown
-                        mode_display = {
-                            'target': 'Target',
-                            'clumps': 'Clumps',
-                            'first_detected': 'First Detected'
-                        }.get(value, 'Clumps')
+                        mode_display = {"target": "Target", "clumps": "Clumps", "first_detected": "First Detected"}.get(
+                            value, "Clumps"
+                        )
                         self.sbarb_cast_spells_mode_var.set(mode_display)
                         self.save_settings()
 
@@ -334,61 +334,88 @@ class StateSyncMixin:
         # Get current profile settings
         profile_settings = self.profiles.get(self.current_profile, {})
 
-        self.state_manager.update({
-            "running": self.bot_running,
-            "paused": self.bot_paused,
-            "current_profile": self.current_profile,
-            "loop_count": self.loop_count,
-            "status": self.current_status,
-            # Include profile settings for web GUI
-            "troop_counts": profile_settings.get('troop_counts', [0, 0, 0, 0, 0, 0, 0]),
-            "min_resources": profile_settings.get('min_resources', 100000),
-            "max_th_level": profile_settings.get('max_th_level', 17),
-            "lightning_damage": profile_settings.get('lightning_damage', 600),
-            "queen_ability_timing": profile_settings.get('queen_ability_timing', 15),
-            "king_ability_timing": profile_settings.get('king_ability_timing', 15),
-            "warden_ability_timing": profile_settings.get('warden_ability_timing', 15),
-            "rc_ability_timing": profile_settings.get('rc_ability_timing', 15),
-            "sgoblin_cast_spells": profile_settings.get('sgoblin_cast_spells', False),
-            "sgoblin_use_wallbreakers": profile_settings.get('sgoblin_use_wallbreakers', False),
-            "sbarb_heroes_first": profile_settings.get('sbarb_heroes_first', False),
-            "sbarb_queen_arrow_spells": profile_settings.get('sbarb_queen_arrow_spells', False),
-            "sbarb_cast_spells": profile_settings.get('sbarb_cast_spells', False),
-            "sbarb_cast_spells_target_mode": profile_settings.get('sbarb_cast_spells_target_mode', 'clumps'),
-            "sbarb_turbo_deployment": profile_settings.get('sbarb_turbo_deployment', False),
-            "bb_gold_troop_mode": profile_settings.get('bb_gold_troop_mode', 'night_witches'),
-            # Achievement building scan settings (uses full key names)
-            "achievement_scan_eagle_artillery": profile_settings.get('achievement_scan_eagle_artillery', True),
-            "achievement_scan_monolith": profile_settings.get('achievement_scan_monolith', True),
-            "achievement_scan_xbow": profile_settings.get('achievement_scan_xbow', True),
-            "achievement_scan_inferno_tower": profile_settings.get('achievement_scan_inferno_tower', True),
-            "achievement_scan_scattershot": profile_settings.get('achievement_scan_scattershot', True),
-            "achievement_scan_spell_tower": profile_settings.get('achievement_scan_spell_tower', True),
-            "achievement_scan_multi_archer_tower": profile_settings.get('achievement_scan_multi_archer_tower', True),
-            "achievement_scan_ricochet_cannon": profile_settings.get('achievement_scan_ricochet_cannon', True),
-            "achievement_scan_firespitter": profile_settings.get('achievement_scan_firespitter', True),
-            "achievement_scan_multi_gear_tower": profile_settings.get('achievement_scan_multi_gear_tower', True),
-            "achievement_priority_list": profile_settings.get('achievement_priority_list', [
-                'eagle_artillery', 'monolith', 'xbow', 'inferno_tower', 'scattershot',
-                'spell_tower', 'multi_archer_tower', 'ricochet_cannon', 'firespitter', 'multi_gear_tower'
-            ]),
-            # Global settings
-            "reinforcements_enabled": getattr(self, 'reinforcements_var', tk.BooleanVar()).get() if hasattr(self, 'reinforcements_var') else False,
-            "skip_on_th_fail": getattr(self, 'skip_on_th_fail_var', tk.BooleanVar()).get() if hasattr(self, 'skip_on_th_fail_var') else True,
-            "parallel_scanning": getattr(self, 'parallel_scanning', False),
-            "gpu_scanning": getattr(self, 'gpu_scanning', False),
-            "overlay_enabled": getattr(self, 'overlay_enabled', False),
-            "overlay_hide_low_conf": getattr(self, 'overlay_hide_low_conf', False),
-            "auto_pause_enabled": getattr(self, 'auto_pause_enabled_var', tk.BooleanVar()).get() if hasattr(self, 'auto_pause_enabled_var') else False,
-            "break_interval": getattr(self, 'break_interval_var', tk.IntVar()).get() if hasattr(self, 'break_interval_var') else 60,
-            "break_duration": getattr(self, 'break_duration_var', tk.IntVar()).get() if hasattr(self, 'break_duration_var') else 5,
-            "bb_collect_interval": getattr(self, 'bb_collect_interval_var', tk.IntVar()).get() if hasattr(self, 'bb_collect_interval_var') else 12,
-            # Auto-pause settings
-            "auto_pause_mode": self.auto_pause_mode.get(),
-            "auto_pause_value": self.auto_pause_value.get(),
-            "storage_full_gold": self.storage_full_gold_var.get(),
-            "storage_full_elixir": self.storage_full_elixir_var.get(),
-            "storage_full_de": self.storage_full_de_var.get(),
-            "storage_full_preset": self.storage_full_preset_var.get(),
-            "storage_presets": self.get_storage_presets(),
-        })
+        self.state_manager.update(
+            {
+                "running": self.bot_running,
+                "paused": self.bot_paused,
+                "current_profile": self.current_profile,
+                "loop_count": self.loop_count,
+                "status": self.current_status,
+                # Include profile settings for web GUI
+                "troop_counts": profile_settings.get("troop_counts", [0, 0, 0, 0, 0, 0, 0]),
+                "min_resources": profile_settings.get("min_resources", 100000),
+                "max_th_level": profile_settings.get("max_th_level", 17),
+                "lightning_damage": profile_settings.get("lightning_damage", 600),
+                "queen_ability_timing": profile_settings.get("queen_ability_timing", 15),
+                "king_ability_timing": profile_settings.get("king_ability_timing", 15),
+                "warden_ability_timing": profile_settings.get("warden_ability_timing", 15),
+                "rc_ability_timing": profile_settings.get("rc_ability_timing", 15),
+                "sgoblin_cast_spells": profile_settings.get("sgoblin_cast_spells", False),
+                "sgoblin_use_wallbreakers": profile_settings.get("sgoblin_use_wallbreakers", False),
+                "sbarb_heroes_first": profile_settings.get("sbarb_heroes_first", False),
+                "sbarb_queen_arrow_spells": profile_settings.get("sbarb_queen_arrow_spells", False),
+                "sbarb_cast_spells": profile_settings.get("sbarb_cast_spells", False),
+                "sbarb_cast_spells_target_mode": profile_settings.get("sbarb_cast_spells_target_mode", "clumps"),
+                "sbarb_turbo_deployment": profile_settings.get("sbarb_turbo_deployment", False),
+                "bb_gold_troop_mode": profile_settings.get("bb_gold_troop_mode", "night_witches"),
+                # Achievement building scan settings (uses full key names)
+                "achievement_scan_eagle_artillery": profile_settings.get("achievement_scan_eagle_artillery", True),
+                "achievement_scan_monolith": profile_settings.get("achievement_scan_monolith", True),
+                "achievement_scan_xbow": profile_settings.get("achievement_scan_xbow", True),
+                "achievement_scan_inferno_tower": profile_settings.get("achievement_scan_inferno_tower", True),
+                "achievement_scan_scattershot": profile_settings.get("achievement_scan_scattershot", True),
+                "achievement_scan_spell_tower": profile_settings.get("achievement_scan_spell_tower", True),
+                "achievement_scan_multi_archer_tower": profile_settings.get(
+                    "achievement_scan_multi_archer_tower", True
+                ),
+                "achievement_scan_ricochet_cannon": profile_settings.get("achievement_scan_ricochet_cannon", True),
+                "achievement_scan_firespitter": profile_settings.get("achievement_scan_firespitter", True),
+                "achievement_scan_multi_gear_tower": profile_settings.get("achievement_scan_multi_gear_tower", True),
+                "achievement_priority_list": profile_settings.get(
+                    "achievement_priority_list",
+                    [
+                        "eagle_artillery",
+                        "monolith",
+                        "xbow",
+                        "inferno_tower",
+                        "scattershot",
+                        "spell_tower",
+                        "multi_archer_tower",
+                        "ricochet_cannon",
+                        "firespitter",
+                        "multi_gear_tower",
+                    ],
+                ),
+                # Global settings
+                "reinforcements_enabled": getattr(self, "reinforcements_var", tk.BooleanVar()).get()
+                if hasattr(self, "reinforcements_var")
+                else False,
+                "skip_on_th_fail": getattr(self, "skip_on_th_fail_var", tk.BooleanVar()).get()
+                if hasattr(self, "skip_on_th_fail_var")
+                else True,
+                "parallel_scanning": getattr(self, "parallel_scanning", False),
+                "gpu_scanning": getattr(self, "gpu_scanning", False),
+                "overlay_enabled": getattr(self, "overlay_enabled", False),
+                "overlay_hide_low_conf": getattr(self, "overlay_hide_low_conf", False),
+                "auto_pause_enabled": getattr(self, "auto_pause_enabled_var", tk.BooleanVar()).get()
+                if hasattr(self, "auto_pause_enabled_var")
+                else False,
+                "break_interval": getattr(self, "break_interval_var", tk.IntVar()).get()
+                if hasattr(self, "break_interval_var")
+                else 60,
+                "break_duration": getattr(self, "break_duration_var", tk.IntVar()).get()
+                if hasattr(self, "break_duration_var")
+                else 5,
+                "bb_collect_interval": getattr(self, "bb_collect_interval_var", tk.IntVar()).get()
+                if hasattr(self, "bb_collect_interval_var")
+                else 12,
+                # Auto-pause settings
+                "auto_pause_mode": self.auto_pause_mode.get(),
+                "auto_pause_value": self.auto_pause_value.get(),
+                "storage_full_gold": self.storage_full_gold_var.get(),
+                "storage_full_elixir": self.storage_full_elixir_var.get(),
+                "storage_full_de": self.storage_full_de_var.get(),
+                "storage_full_preset": self.storage_full_preset_var.get(),
+                "storage_presets": self.get_storage_presets(),
+            }
+        )

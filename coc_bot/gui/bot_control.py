@@ -6,6 +6,7 @@ from tkinter import messagebox
 
 from coc_bot import runtime
 
+
 class BotControlMixin:
     """Start, stop and pause handling, timers and status labels. Mixin for BotGUI."""
 
@@ -18,12 +19,12 @@ class BotControlMixin:
             seconds = int(elapsed % 60)
             time_str = f"{hours:02d}:{minutes:02d}:{seconds:02d}"
             self.time_label.config(text=time_str)
-            
+
             # Calculate loops per hour
             if elapsed > 0:
                 loops_per_hour = (self.loop_count / elapsed) * 3600
                 self.rate_label.config(text=f"{loops_per_hour:.1f}")
-        
+
         # Schedule next update
         self.root.after(1000, self.update_timer)
 
@@ -32,15 +33,15 @@ class BotControlMixin:
         try:
             # Validate settings
             self.validate_settings()
-            
+
             # Disable start button during countdown
             self.start_button.config(state="disabled", text="Starting...")
             self.log_message("Starting bot in 3 seconds...")
-            
+
             # Start countdown
             self.countdown_thread = threading.Thread(target=self.countdown_and_start, daemon=True)
             self.countdown_thread.start()
-            
+
         except ValueError as e:
             messagebox.showerror("Settings Error", str(e))
 
@@ -48,19 +49,21 @@ class BotControlMixin:
         """Countdown and then start the bot"""
         for i in range(3, 0, -1):
             # Check if bot was cancelled during countdown
-            if not hasattr(self, 'bot_running') or self.bot_running is None:
+            if not hasattr(self, "bot_running") or self.bot_running is None:
                 self.root.after(0, self.cancel_start)
                 return
-                
-            self.root.after(0, lambda count=i: self.status_label.config(text=f"Starting in {count}...", foreground="orange"))
+
+            self.root.after(
+                0, lambda count=i: self.status_label.config(text=f"Starting in {count}...", foreground="orange")
+            )
             self.root.after(0, lambda count=i: self.log_message(f"Starting in {count} seconds..."))
             time.sleep(1)
-        
+
         # Check one more time before starting
-        if not hasattr(self, 'bot_running') or self.bot_running is None:
+        if not hasattr(self, "bot_running") or self.bot_running is None:
             self.root.after(0, self.cancel_start)
             return
-            
+
         # Start the bot
         self.root.after(0, self.actually_start_bot)
 
@@ -82,12 +85,7 @@ class BotControlMixin:
 
         # Sync to state manager for web GUI
         if self.state_manager:
-            self.state_manager.update({
-                "running": True,
-                "paused": False,
-                "status": "RUNNING",
-                "loop_count": 0
-            })
+            self.state_manager.update({"running": True, "paused": False, "status": "RUNNING", "loop_count": 0})
 
         # Start bot thread
         self.bot_thread = threading.Thread(target=self.run_bot, daemon=True)
@@ -127,11 +125,7 @@ class BotControlMixin:
 
         # Sync to state manager for web GUI
         if self.state_manager:
-            self.state_manager.update({
-                "running": False,
-                "paused": True,
-                "status": "STOPPED"
-            })
+            self.state_manager.update({"running": False, "paused": True, "status": "STOPPED"})
 
         self.log_message("Bot stopped")
 
@@ -165,8 +159,9 @@ class BotControlMixin:
     def open_template_tools(self):
         """Open template capture tools"""
         import subprocess
+
         try:
-            subprocess.Popen(['python', 'capture_templates.py'])
+            subprocess.Popen(["python", "capture_templates.py"])
             self.log_message("Template tools opened")
         except Exception as e:
             messagebox.showerror("Error", f"Failed to open template tools: {e}")
@@ -189,18 +184,18 @@ class BotControlMixin:
         """Update BB Gold state display from main bot (thread-safe)"""
         # Color mapping for different states (dark mode compatible)
         state_colors = {
-            'IN_BASE': '#4A9EFF',          # Light blue
-            'SEARCHING': '#FFA500',        # Orange
-            'ATTACK_READY': '#BB86FC',     # Light purple
-            'BATTLE_ACTIVE': '#03DAC6',    # Cyan/teal
-            'BATTLE_ENDING': '#00C853',    # Light green
-            'END_SCREEN': '#4A9EFF',       # Light blue
-            'RETURNING_HOME': '#4A9EFF',   # Light blue
-            'ERROR_RECOVERY': '#FF5252'    # Light red
+            "IN_BASE": "#4A9EFF",  # Light blue
+            "SEARCHING": "#FFA500",  # Orange
+            "ATTACK_READY": "#BB86FC",  # Light purple
+            "BATTLE_ACTIVE": "#03DAC6",  # Cyan/teal
+            "BATTLE_ENDING": "#00C853",  # Light green
+            "END_SCREEN": "#4A9EFF",  # Light blue
+            "RETURNING_HOME": "#4A9EFF",  # Light blue
+            "ERROR_RECOVERY": "#FF5252",  # Light red
         }
 
         # Get color for this state
-        color = state_colors.get(state_name, '#B0B0B0')  # Light gray default
+        color = state_colors.get(state_name, "#B0B0B0")  # Light gray default
 
         # Queue update to main GUI thread (proper threading)
         self.root.after(0, self._update_bb_state_label, state_name, color)
@@ -214,7 +209,7 @@ class BotControlMixin:
         if self.bot_running and self.bot_paused:
             # Schedule resume after break duration
             resume_time = time.time() + (break_duration_minutes * 60)
-            
+
             def auto_resume():
                 if time.time() >= resume_time and self.bot_running and self.bot_paused:
                     self.bot_paused = False
@@ -226,7 +221,7 @@ class BotControlMixin:
                 elif self.bot_running:
                     # Check again in 10 seconds
                     self.root.after(10000, auto_resume)
-            
+
             self.root.after(10000, auto_resume)  # Start checking after 10 seconds
 
     def schedule_next_break(self):

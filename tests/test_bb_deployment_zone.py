@@ -1,4 +1,5 @@
 """Characterisation tests for the screenshot-free parts of the Builder Base zone detector."""
+
 import math
 
 import pytest
@@ -75,13 +76,15 @@ def test_select_equally_spaced_returns_input_when_few_points():
 
 
 def test_select_equally_spaced_respects_minimum_distance():
-    circle = [(int(1000 + 500 * math.cos(2 * math.pi * i / 12)), int(600 + 500 * math.sin(2 * math.pi * i / 12)))
-              for i in range(12)]
+    circle = [
+        (int(1000 + 500 * math.cos(2 * math.pi * i / 12)), int(600 + 500 * math.sin(2 * math.pi * i / 12)))
+        for i in range(12)
+    ]
     selected = zone.select_equally_spaced_coords(circle, num_points=6, min_distance=150)
     assert len(selected) == 6
     assert set(selected) <= set(circle)
     for i, p in enumerate(selected):
-        for q in selected[i + 1:]:
+        for q in selected[i + 1 :]:
             assert math.dist(p, q) >= 150
 
 

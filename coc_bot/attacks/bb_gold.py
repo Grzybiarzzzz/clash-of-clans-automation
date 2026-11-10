@@ -43,15 +43,16 @@ bb_gold_attack_count = 0  # Counter for BB Gold loot collection every 12 attacks
 # BB Gold State Machine Enum
 class BBGoldState(Enum):
     """BB Gold mode states - explicit lifecycle tracking"""
-    IN_BASE = auto()              # At home base, army_button.png visible
-    SEARCHING = auto()            # Search button clicked, waiting for match
-    ATTACK_READY = auto()         # "Attacker" text confirmed, ready to deploy
-    TROOPS_DEPLOYING = auto()     # Battle Machine/Night Witches being placed
-    BATTLE_ACTIVE = auto()        # All troops deployed, monitoring stars
-    BATTLE_ENDING = auto()        # 2/3 stars detected or timeout, clicking surrender/end
-    END_SCREEN = auto()           # Battle finished, on victory/defeat screen
-    RETURNING_HOME = auto()       # Return button clicked, transitioning to base
-    ERROR_RECOVERY = auto()       # Ghost attack or error state, recovering
+
+    IN_BASE = auto()  # At home base, army_button.png visible
+    SEARCHING = auto()  # Search button clicked, waiting for match
+    ATTACK_READY = auto()  # "Attacker" text confirmed, ready to deploy
+    TROOPS_DEPLOYING = auto()  # Battle Machine/Night Witches being placed
+    BATTLE_ACTIVE = auto()  # All troops deployed, monitoring stars
+    BATTLE_ENDING = auto()  # 2/3 stars detected or timeout, clicking surrender/end
+    END_SCREEN = auto()  # Battle finished, on victory/defeat screen
+    RETURNING_HOME = auto()  # Return button clicked, transitioning to base
+    ERROR_RECOVERY = auto()  # Ghost attack or error state, recovering
 
 
 def deploy_bb_gold_baby_dragons(context):
@@ -98,7 +99,7 @@ def deploy_bb_gold_baby_dragons(context):
         bm_coord = (1250, 650)  # Center fallback
 
     # Save debug visualization if enabled
-    if runtime.gui.get_settings().get('bb_gold_dragon_debug_positions', False):
+    if runtime.gui.get_settings().get("bb_gold_dragon_debug_positions", False):
         print("[BB DRAGONS] Debug mode enabled - saving position visualization...")
         save_bb_dragon_debug_visualization(all_coords, dragon_coords, bm_coord)
 
@@ -107,7 +108,7 @@ def deploy_bb_gold_baby_dragons(context):
 
     # === DEPLOY BATTLE MACHINE FIRST ===
     print(f"[BB DRAGONS] Deploying Battle Machine first at {bm_coord}...")
-    keyboard.send(KEYS['queen'])  # 'q' key
+    keyboard.send(KEYS["queen"])  # 'q' key
     time.sleep(0.02)
     turbo_move_cursor(bm_coord[0], bm_coord[1])
     turbo_fast_click()
@@ -118,16 +119,16 @@ def deploy_bb_gold_baby_dragons(context):
 
     if button_type:
         surrender_pos = (button_x, button_y)
-        context['surrender_button_cached'] = True
-        context['surrender_button_pos'] = surrender_pos
-        context['surrender_button_type'] = button_type
+        context["surrender_button_cached"] = True
+        context["surrender_button_pos"] = surrender_pos
+        context["surrender_button_type"] = button_type
         print(f"[BB DRAGONS] Battle Machine deployed successfully - {button_type} button detected")
-        runtime.gui.update_bb_gold_state('BATTLE_ACTIVE')
+        runtime.gui.update_bb_gold_state("BATTLE_ACTIVE")
     else:
         # Try fallback position for BM
         print("[BB DRAGONS] BM position failed, trying fallback...")
         fallback_coord = (1250, 200)  # Top center
-        keyboard.send(KEYS['queen'])
+        keyboard.send(KEYS["queen"])
         time.sleep(0.02)
         turbo_move_cursor(fallback_coord[0], fallback_coord[1])
         turbo_fast_click()
@@ -136,12 +137,12 @@ def deploy_bb_gold_baby_dragons(context):
         button_type, button_x, button_y = detect_surrender_or_end_battle()
         if button_type:
             surrender_pos = (button_x, button_y)
-            context['surrender_button_cached'] = True
-            context['surrender_button_pos'] = surrender_pos
-            context['surrender_button_type'] = button_type
+            context["surrender_button_cached"] = True
+            context["surrender_button_pos"] = surrender_pos
+            context["surrender_button_type"] = button_type
             bm_coord = fallback_coord
             print("[BB DRAGONS] BM fallback deployment successful")
-            runtime.gui.update_bb_gold_state('BATTLE_ACTIVE')
+            runtime.gui.update_bb_gold_state("BATTLE_ACTIVE")
         else:
             print("[BB DRAGONS] CRITICAL: Failed to deploy Battle Machine!")
             send_discord_debug_log("BB Dragons: CRITICAL - Failed to deploy BM", "ERROR")
@@ -149,8 +150,8 @@ def deploy_bb_gold_baby_dragons(context):
 
     # Activate Battle Machine ability immediately
     print("[BB DRAGONS] Activating Battle Machine ability...")
-    keyboard.send('q')
-    context['battle_machine_ability_time'] = time.time()
+    keyboard.send("q")
+    context["battle_machine_ability_time"] = time.time()
 
     # === DEPLOY ALL 6 BABY DRAGONS AT ONCE ===
     print("[BB DRAGONS] Deploying all 6 Baby Dragons (turbo mode)...")
@@ -201,11 +202,11 @@ def deploy_bb_gold_troops(context):
     - baby_dragons: 6 Baby Dragons spread out + Battle Machine (14s ability recast)
     """
     # Check troop mode setting
-    troop_mode = runtime.gui.get_settings().get('bb_gold_troop_mode', 'night_witches')
+    troop_mode = runtime.gui.get_settings().get("bb_gold_troop_mode", "night_witches")
     print(f"[BB GOLD DEPLOY] Troop mode: {troop_mode}")
 
     # Route to appropriate deployment function based on mode
-    if troop_mode == 'baby_dragons':
+    if troop_mode == "baby_dragons":
         return deploy_bb_gold_baby_dragons(context)
 
     # For night_witches and bomber_night_witches, use the standard deployment below
@@ -226,7 +227,9 @@ def deploy_bb_gold_troops(context):
     # Randomly choose deployment position from valid coordinates
     if valid_coords:
         deployment_coord = random.choice(valid_coords)
-        print(f"[BB GOLD DEPLOY] Using deployment position: {deployment_coord} (randomly selected from {len(valid_coords)} options)")
+        print(
+            f"[BB GOLD DEPLOY] Using deployment position: {deployment_coord} (randomly selected from {len(valid_coords)} options)"
+        )
         send_discord_debug_log(f"BB Gold: Deploying at randomly selected position {deployment_coord}")
     else:
         deployment_coord = (300, 300)  # Fallback to top-left corner
@@ -248,7 +251,7 @@ def deploy_bb_gold_troops(context):
         print(f"[BB GOLD DEPLOY] Deployment attempt {deployment_attempt}/10 at {deployment_coord}")
 
         # Deploy Battle Machine (q)
-        keyboard.send(KEYS['queen'])  # 'q' key for Battle Machine
+        keyboard.send(KEYS["queen"])  # 'q' key for Battle Machine
         time.sleep(0.2)
         human_like_move_click(deployment_coord[0], deployment_coord[1])
         time.sleep(0.5)
@@ -259,14 +262,16 @@ def deploy_bb_gold_troops(context):
         if button_type:
             surrender_pos = (button_x, button_y)
             # CACHE surrender button position for fast clicking later (2-star path)
-            context['surrender_button_cached'] = True
-            context['surrender_button_pos'] = surrender_pos
-            context['surrender_button_type'] = button_type
-            print(f"[BB GOLD DEPLOY] Battle Machine deployed successfully at {deployment_coord} ({button_type} button detected)")
+            context["surrender_button_cached"] = True
+            context["surrender_button_pos"] = surrender_pos
+            context["surrender_button_type"] = button_type
+            print(
+                f"[BB GOLD DEPLOY] Battle Machine deployed successfully at {deployment_coord} ({button_type} button detected)"
+            )
             print(f"[BB GOLD DEPLOY] ✓ Cached {button_type} button at {surrender_pos} for instant surrender")
             send_discord_debug_log(f"BB Gold: Battle Machine deployed - {button_type} button cached at {surrender_pos}")
             # Update GUI to show BATTLE_ACTIVE immediately
-            runtime.gui.update_bb_gold_state('BATTLE_ACTIVE')
+            runtime.gui.update_bb_gold_state("BATTLE_ACTIVE")
             break
         else:
             print("[BB GOLD DEPLOY] Surrender/end battle button not found - invalid placement, trying again...")
@@ -287,10 +292,12 @@ def deploy_bb_gold_troops(context):
             random_x = random.randint(300, 2200)
             random_y = random.randint(200, 1100)  # Avoid unit bar at bottom
 
-            print(f"[BB GOLD DEPLOY] Random attempt {deployment_attempt - 10}/{max_random_attempts} at ({random_x}, {random_y})")
+            print(
+                f"[BB GOLD DEPLOY] Random attempt {deployment_attempt - 10}/{max_random_attempts} at ({random_x}, {random_y})"
+            )
 
             # Deploy Battle Machine
-            keyboard.send(KEYS['queen'])
+            keyboard.send(KEYS["queen"])
             time.sleep(0.2)
             human_like_move_click(random_x, random_y)
             time.sleep(0.5)
@@ -301,14 +308,18 @@ def deploy_bb_gold_troops(context):
             if button_type:
                 surrender_pos = (button_x, button_y)
                 # CACHE surrender button position for fast clicking later (2-star path)
-                context['surrender_button_cached'] = True
-                context['surrender_button_pos'] = surrender_pos
-                context['surrender_button_type'] = button_type
-                print(f"[BB GOLD DEPLOY] SUCCESS! Battle Machine deployed at random coordinate ({random_x}, {random_y}), {button_type} button detected")
+                context["surrender_button_cached"] = True
+                context["surrender_button_pos"] = surrender_pos
+                context["surrender_button_type"] = button_type
+                print(
+                    f"[BB GOLD DEPLOY] SUCCESS! Battle Machine deployed at random coordinate ({random_x}, {random_y}), {button_type} button detected"
+                )
                 print(f"[BB GOLD DEPLOY] ✓ Cached {button_type} button at {surrender_pos} for instant surrender")
-                send_discord_debug_log(f"BB Gold: Success with random coords - {button_type} button cached at {surrender_pos}")
+                send_discord_debug_log(
+                    f"BB Gold: Success with random coords - {button_type} button cached at {surrender_pos}"
+                )
                 # Update GUI to show BATTLE_ACTIVE immediately
-                runtime.gui.update_bb_gold_state('BATTLE_ACTIVE')
+                runtime.gui.update_bb_gold_state("BATTLE_ACTIVE")
                 deployment_coord = (random_x, random_y)  # Update deployment coord for Night Witches
                 break
 
@@ -320,8 +331,8 @@ def deploy_bb_gold_troops(context):
     # Activate Battle Machine ability immediately after deployment
     print("[BB GOLD DEPLOY] Activating Battle Machine ability...")
     send_discord_debug_log("BB Gold: Activating Battle Machine ability")
-    keyboard.send('q')  # Battle Machine ability key
-    context['battle_machine_ability_time'] = time.time()  # Track when ability was used
+    keyboard.send("q")  # Battle Machine ability key
+    context["battle_machine_ability_time"] = time.time()  # Track when ability was used
     time.sleep(0.2)
 
     # Deploy all 6 Night Witches at the same position - FAST DEPLOYMENT
@@ -353,8 +364,8 @@ def deploy_bb_gold_troops(context):
     send_discord_debug_log("BB Gold: All abilities cast - deployment complete")
 
     # Set bomber ability timer after casting (bomber ability was cast when key '1' was pressed)
-    if troop_mode == 'bomber_night_witches':
-        context['bomber_ability_time'] = time.time()
+    if troop_mode == "bomber_night_witches":
+        context["bomber_ability_time"] = time.time()
         print("[BB GOLD DEPLOY] Bomber ability timer started (22s recast)")
 
     return True
@@ -375,15 +386,11 @@ def monitor_bb_gold_battle(context):
     """
     max_wait_time = 180  # Maximum 3 minutes to get stars
     start_time = time.time()
-    battle_machine_ability_time = context.get('battle_machine_ability_time')
+    battle_machine_ability_time = context.get("battle_machine_ability_time")
     last_return_home_check = 0  # Track last Return Home check time
     return_home_check_interval = 2.0  # Check every 2 seconds to reduce overhead
 
-    result = {
-        'stars': 0,
-        'timeout_without_stars': False,
-        'return_home_pos': None
-    }
+    result = {"stars": 0, "timeout_without_stars": False, "return_home_pos": None}
 
     print("[BB GOLD MONITOR] Monitoring for 2/3 stars or battle end...")
     runtime.gui.log_message("BB Gold: Monitoring for 2/3 stars...")
@@ -397,31 +404,31 @@ def monitor_bb_gold_battle(context):
             last_return_home_check = current_time
             return_home_pos = detect_return_home_button(quiet=True)
             if return_home_pos:
-                result['timeout_without_stars'] = True
-                result['return_home_pos'] = return_home_pos
-                print(f"[BB GOLD MONITOR] Return Home button detected at {return_home_pos} - battle ended without stars")
+                result["timeout_without_stars"] = True
+                result["return_home_pos"] = return_home_pos
+                print(
+                    f"[BB GOLD MONITOR] Return Home button detected at {return_home_pos} - battle ended without stars"
+                )
                 runtime.gui.log_message("BB Gold: Battle ended - returning home")
                 send_discord_debug_log("BB Gold: Return Home detected - battle ended without stars")
                 break
 
         # Re-activate Battle Machine ability every 14 seconds if battle is still ongoing
-        if (battle_machine_ability_time is not None and
-            current_time - battle_machine_ability_time >= 14):
+        if battle_machine_ability_time is not None and current_time - battle_machine_ability_time >= 14:
             print("[BB GOLD MONITOR] 14 seconds elapsed - re-activating Battle Machine ability...")
             send_discord_debug_log("BB Gold: Re-activating Battle Machine ability after 14 seconds")
-            keyboard.send('q')  # Re-activate Battle Machine ability
+            keyboard.send("q")  # Re-activate Battle Machine ability
             battle_machine_ability_time = current_time  # Reset timer for next activation
-            context['battle_machine_ability_time'] = current_time
+            context["battle_machine_ability_time"] = current_time
             time.sleep(0.2)
 
         # Re-activate Bomber ability every 22 seconds if enabled and battle is still ongoing
-        bomber_ability_time = context.get('bomber_ability_time')
-        if (bomber_ability_time is not None and
-            current_time - bomber_ability_time >= 22):
+        bomber_ability_time = context.get("bomber_ability_time")
+        if bomber_ability_time is not None and current_time - bomber_ability_time >= 22:
             print("[BB GOLD MONITOR] 22 seconds elapsed - re-activating Bomber ability...")
             send_discord_debug_log("BB Gold: Re-activating Bomber ability after 22 seconds")
-            keyboard.send('1')  # Re-activate Bomber ability (slot 1)
-            context['bomber_ability_time'] = current_time
+            keyboard.send("1")  # Re-activate Bomber ability (slot 1)
+            context["bomber_ability_time"] = current_time
             time.sleep(0.2)
 
         # Check for 2 stars first (most common case) with double verification (optimized from 3x)
@@ -429,19 +436,19 @@ def monitor_bb_gold_battle(context):
 
         if two_star_verification >= 2:  # If both checks passed
             # Check if "try for 3 stars" is enabled for Baby Dragons
-            try_3_stars = runtime.gui.get_settings().get('bb_gold_try_3_stars', False)
-            troop_mode = runtime.gui.get_settings().get('bb_gold_troop_mode', 'night_witches')
+            try_3_stars = runtime.gui.get_settings().get("bb_gold_try_3_stars", False)
+            troop_mode = runtime.gui.get_settings().get("bb_gold_troop_mode", "night_witches")
 
-            if try_3_stars and troop_mode == 'baby_dragons':
+            if try_3_stars and troop_mode == "baby_dragons":
                 # Skip 2-star exit, continue monitoring for 3 stars
-                if result['stars'] < 2:  # Only log once when first reaching 2 stars
-                    result['stars'] = 2
+                if result["stars"] < 2:  # Only log once when first reaching 2 stars
+                    result["stars"] = 2
                     print("[BB GOLD MONITOR] 2 STARS DETECTED! Continuing for 3 stars...")
                     runtime.gui.log_message("BB Gold: 2 stars - trying for 3...")
                     send_discord_debug_log("BB Gold: 2 stars detected - continuing for 3 stars")
                 # Don't break - continue monitoring for 3 stars or Return Home
             else:
-                result['stars'] = 2
+                result["stars"] = 2
                 print("[BB GOLD MONITOR] 2 STARS DETECTED! Surrendering immediately...")
                 runtime.gui.log_message("BB Gold: 2 stars detected - surrendering")
                 send_discord_debug_log("BB Gold: 2 stars detected - surrendering immediately")
@@ -451,7 +458,7 @@ def monitor_bb_gold_battle(context):
         three_star_verification = sum(1 for _ in range(2) if detect_three_stars())
 
         if three_star_verification >= 2:  # If both checks passed
-            result['stars'] = 3
+            result["stars"] = 3
             print("[BB GOLD MONITOR] 3 STARS DETECTED! (Builder Hall was last building)")
             runtime.gui.log_message("BB Gold: 3 stars detected!")
             send_discord_debug_log("BB Gold: 3 stars detected - waiting 7 seconds before ending")
@@ -463,7 +470,7 @@ def monitor_bb_gold_battle(context):
 
         time.sleep(0.5)  # Check every ~0.5 seconds
 
-    if result['stars'] == 0 and not result['timeout_without_stars']:
+    if result["stars"] == 0 and not result["timeout_without_stars"]:
         print("[BB GOLD MONITOR] WARNING: 2/3 stars not detected after 3 minutes, ending battle anyway")
         runtime.gui.log_message("BB Gold: Timeout - ending battle")
         send_discord_debug_log("BB Gold: Timeout waiting for stars - ending battle anyway", "WARNING")
@@ -484,13 +491,13 @@ def end_bb_gold_battle(stars_detected, context=None):
 
     Extracts end battle logic from original handle_bb_gold_mode()
     """
-    result = {'success': False, 'final_stars': stars_detected}
+    result = {"success": False, "final_stars": stars_detected}
 
     # Check if we have a cached surrender button position (from deployment)
-    cached_available = context and context.get('surrender_button_cached', False)
+    cached_available = context and context.get("surrender_button_cached", False)
     if cached_available:
-        cached_pos = context.get('surrender_button_pos')
-        cached_type = context.get('surrender_button_type', 'surrender')
+        cached_pos = context.get("surrender_button_pos")
+        cached_type = context.get("surrender_button_type", "surrender")
         print(f"[BB GOLD END] ✓ Using cached {cached_type} button at {cached_pos}")
         send_discord_debug_log(f"BB Gold: Using cached {cached_type} button from deployment")
 
@@ -514,13 +521,13 @@ def end_bb_gold_battle(stars_detected, context=None):
 
             print("[BB GOLD END] 3-star battle ended successfully")
             send_discord_debug_log("BB Gold: 3-star battle ended")
-            result['success'] = True
+            result["success"] = True
             return result
         else:
             # NO FALLBACK - Return failure so state machine can handle it
             print("[BB GOLD END] ERROR: End battle button not detected - cannot proceed")
             send_discord_debug_log("BB Gold: End battle button not found - returning failure", "ERROR")
-            result['success'] = False
+            result["success"] = False
             return result
 
     elif stars_detected == 2:
@@ -542,7 +549,7 @@ def end_bb_gold_battle(stars_detected, context=None):
                 # NO FALLBACK - Return failure so state machine can handle it
                 print("[BB GOLD END] ERROR: Surrender button not detected - cannot proceed")
                 send_discord_debug_log("BB Gold: Surrender button not found - returning failure", "ERROR")
-                result['success'] = False
+                result["success"] = False
                 return result
 
         print(f"[BB GOLD END] Clicking {button_type} button at ({button_x}, {button_y})")
@@ -562,7 +569,7 @@ def end_bb_gold_battle(stars_detected, context=None):
         if three_star_check >= 2:
             # Edge case: Builder Hall was destroyed while clicking surrender
             # Surrender is NEGATED by 3 stars - must click end battle button instead
-            result['final_stars'] = 3
+            result["final_stars"] = 3
             print("[BB GOLD END] 3 STARS DETECTED after surrender attempt! (Builder Hall destroyed during surrender)")
             runtime.gui.log_message("BB Gold: 3 stars appeared during surrender")
             send_discord_debug_log("BB Gold: 3 stars appeared after surrender - clicking end battle")
@@ -574,8 +581,10 @@ def end_bb_gold_battle(stars_detected, context=None):
             if not end_battle_pos:
                 # NO FALLBACK - Return failure so state machine can handle it
                 print("[BB GOLD END] ERROR: End battle button not detected (post-surrender 3 stars) - cannot proceed")
-                send_discord_debug_log("BB Gold: End battle button not found (post-surrender) - returning failure", "ERROR")
-                result['success'] = False
+                send_discord_debug_log(
+                    "BB Gold: End battle button not found (post-surrender) - returning failure", "ERROR"
+                )
+                result["success"] = False
                 return result
 
             print(f"[BB GOLD END] Clicking end battle button at {end_battle_pos}")
@@ -595,7 +604,7 @@ def end_bb_gold_battle(stars_detected, context=None):
             print("[BB GOLD END] Surrender successful (2 stars)")
             send_discord_debug_log("BB Gold: surrendered successfully with 2 stars")
 
-        result['success'] = True
+        result["success"] = True
         return result
 
     else:
@@ -615,8 +624,10 @@ def end_bb_gold_battle(stars_detected, context=None):
             if not button_type:
                 # NO FALLBACK - Return failure so state machine can handle it
                 print(f"[BB GOLD END] ERROR: No surrender/end battle button found ({stars_detected} stars)")
-                send_discord_debug_log(f"BB Gold: No button found ({stars_detected} stars) - returning failure", "ERROR")
-                result['success'] = False
+                send_discord_debug_log(
+                    f"BB Gold: No button found ({stars_detected} stars) - returning failure", "ERROR"
+                )
+                result["success"] = False
                 return result
 
         print(f"[BB GOLD END] Clicking {button_type} button at ({button_x}, {button_y})")
@@ -631,7 +642,7 @@ def end_bb_gold_battle(stars_detected, context=None):
 
         print(f"[BB GOLD END] Battle ended successfully ({stars_detected} stars)")
         send_discord_debug_log(f"BB Gold: Battle ended with {stars_detected} stars")
-        result['success'] = True
+        result["success"] = True
         return result
 
 
@@ -642,7 +653,7 @@ def increment_bb_gold_counter():
     """
     global bb_gold_attack_count
     settings = runtime.gui.get_settings()
-    collect_interval = settings.get('bb_collect_interval', 12)
+    collect_interval = settings.get("bb_collect_interval", 12)
     bb_gold_attack_count += 1
 
     print(f"[BB GOLD] Attack count: {bb_gold_attack_count}/{collect_interval}")
@@ -669,22 +680,22 @@ def save_bb_gold_attack_duration(context):
     Args:
         context: Attack context dict containing 'attack_start_time' and 'stars_detected'
     """
-    attack_start_time = context.get('attack_start_time')
+    attack_start_time = context.get("attack_start_time")
     if attack_start_time is None:
         print("[BB GOLD] No attack start time recorded - skipping duration logging")
         return
 
     attack_end_time = time.time()
     attack_duration = attack_end_time - attack_start_time
-    stars = context.get('final_stars', context.get('stars_detected', 0))
+    stars = context.get("final_stars", context.get("stars_detected", 0))
 
     # Get the troop mode used for this attack
-    troop_mode = runtime.gui.get_settings().get('bb_gold_troop_mode', 'night_witches')
+    troop_mode = runtime.gui.get_settings().get("bb_gold_troop_mode", "night_witches")
     # Map internal names to display names
     troop_mode_display = {
-        'night_witches': 'Night Witches',
-        'bomber_night_witches': 'Bomber + Night Witches',
-        'baby_dragons': 'Baby Dragons'
+        "night_witches": "Night Witches",
+        "bomber_night_witches": "Bomber + Night Witches",
+        "baby_dragons": "Baby Dragons",
     }.get(troop_mode, troop_mode)
 
     csv_file = "data/bb_gold_time.csv"
@@ -692,19 +703,26 @@ def save_bb_gold_attack_duration(context):
 
     try:
         import csv
-        with open(csv_file, 'a', newline='') as f:
+
+        with open(csv_file, "a", newline="") as f:
             writer = csv.writer(f)
             if not file_exists:
-                writer.writerow(['Loop #', 'Duration (seconds)', 'Stars', 'Troop Mode', 'Timestamp'])
-            writer.writerow([
-                bb_gold_attack_count + 1,
-                f'{attack_duration:.2f}',
-                stars,
-                troop_mode_display,
-                datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-            ])
-        print(f"[BB GOLD] Attack duration: {attack_duration:.2f}s, {stars} stars, mode: {troop_mode_display} (saved to {csv_file})")
-        send_discord_debug_log(f"BB Gold: Attack completed in {attack_duration:.2f}s with {stars} stars ({troop_mode_display})")
+                writer.writerow(["Loop #", "Duration (seconds)", "Stars", "Troop Mode", "Timestamp"])
+            writer.writerow(
+                [
+                    bb_gold_attack_count + 1,
+                    f"{attack_duration:.2f}",
+                    stars,
+                    troop_mode_display,
+                    datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                ]
+            )
+        print(
+            f"[BB GOLD] Attack duration: {attack_duration:.2f}s, {stars} stars, mode: {troop_mode_display} (saved to {csv_file})"
+        )
+        send_discord_debug_log(
+            f"BB Gold: Attack completed in {attack_duration:.2f}s with {stars} stars ({troop_mode_display})"
+        )
     except Exception as e:
         print(f"[BB GOLD] Error saving timing to CSV: {e}")
         send_discord_debug_log(f"BB Gold: Error saving timing - {e}", "WARNING")
@@ -731,10 +749,9 @@ def _state_in_base(context):
 
     # Update state immediately after clicking
     current_state = BBGoldState.SEARCHING
-    context['search_start_time'] = time.time()
+    context["search_start_time"] = time.time()
     runtime.gui.update_bb_gold_state(current_state.name)
     return current_state
-
 
 
 def _state_searching(current_state, state_timeout):
@@ -744,7 +761,6 @@ def _state_searching(current_state, state_timeout):
     # Wait for either attack ready or timeout
     timeout_start = time.time()
     while time.time() - timeout_start < state_timeout:
-
         # Check if attack ready
         if check_bb_attacker_text():
             print("[BB GOLD STATE] SEARCHING -> ATTACK_READY: Attacker text detected")
@@ -770,20 +786,19 @@ def _state_searching(current_state, state_timeout):
     return current_state
 
 
-
 def _state_attack_ready(context):
     """ATTACK_READY: deploy the troops. Returns the next state."""
     print("[BB GOLD STATE] ATTACK_READY: Deploying troops")
     runtime.gui.log_message("BB Gold: Deploying troops")
 
     # Set attack start time
-    context['attack_start_time'] = time.time()
+    context["attack_start_time"] = time.time()
 
     # Deploy troops using helper function
     deployment_success = deploy_bb_gold_troops(context)
 
     if deployment_success:
-        context['troops_deployed'] = True
+        context["troops_deployed"] = True
         current_state = BBGoldState.BATTLE_ACTIVE
         runtime.gui.update_bb_gold_state(current_state.name)
         print("[BB GOLD STATE] ATTACK_READY -> BATTLE_ACTIVE: Troops deployed")
@@ -794,7 +809,6 @@ def _state_attack_ready(context):
     return current_state
 
 
-
 def _state_battle_active(context):
     """BATTLE_ACTIVE: monitor the battle until stars are earned or it ends. Returns the next state."""
     print("[BB GOLD STATE] BATTLE_ACTIVE: Monitoring for stars")
@@ -803,18 +817,19 @@ def _state_battle_active(context):
     # Monitor for stars or Return Home button (battle ended)
     battle_result = monitor_bb_gold_battle(context)
 
-    context['stars_detected'] = battle_result['stars']
-    context['battle_lost'] = battle_result['timeout_without_stars']
+    context["stars_detected"] = battle_result["stars"]
+    context["battle_lost"] = battle_result["timeout_without_stars"]
 
     # Cache Return Home button position if detected (for faster END_SCREEN handling)
-    if battle_result.get('return_home_pos'):
-        context['return_home_button_pos'] = battle_result['return_home_pos']
+    if battle_result.get("return_home_pos"):
+        context["return_home_button_pos"] = battle_result["return_home_pos"]
 
     current_state = BBGoldState.BATTLE_ENDING
     runtime.gui.update_bb_gold_state(current_state.name)
-    print(f"[BB GOLD STATE] BATTLE_ACTIVE -> BATTLE_ENDING: {battle_result['stars']} stars, lost={battle_result['timeout_without_stars']}")
+    print(
+        f"[BB GOLD STATE] BATTLE_ACTIVE -> BATTLE_ENDING: {battle_result['stars']} stars, lost={battle_result['timeout_without_stars']}"
+    )
     return current_state
-
 
 
 def _state_battle_ending(context, current_state):
@@ -822,23 +837,23 @@ def _state_battle_ending(context, current_state):
     print("[BB GOLD STATE] BATTLE_ENDING: Clicking surrender/end battle")
 
     # Skip if battle ended (Return Home button detected without stars)
-    if not context.get('battle_lost', False):
-        end_result = end_bb_gold_battle(context['stars_detected'], context)
+    if not context.get("battle_lost", False):
+        end_result = end_bb_gold_battle(context["stars_detected"], context)
 
-        if not end_result['success']:
+        if not end_result["success"]:
             print("[BB GOLD STATE] BATTLE_ENDING: End button click failed, retrying")
             time.sleep(1)
             return current_state
 
         # Update final stars from end result
-        context['final_stars'] = end_result['final_stars']
+        context["final_stars"] = end_result["final_stars"]
     else:
         print("[BB GOLD STATE] BATTLE_ENDING: Battle ended (Return Home detected), skipping surrender")
-        context['final_stars'] = 0
+        context["final_stars"] = 0
         # Return Home button position already cached from monitor_bb_gold_battle()
 
     # Special handling for 3 stars - FORCE return home button detection
-    if context.get('final_stars', 0) == 3:
+    if context.get("final_stars", 0) == 3:
         print("[BB GOLD STATE] BATTLE_ENDING: 3 stars - forcing return home button detection (no fallback)")
         send_discord_debug_log("BB Gold: 3 stars - waiting for return home button confirmation")
 
@@ -847,7 +862,9 @@ def _state_battle_ending(context, current_state):
 
         while attempt < max_attempts:
             attempt += 1
-            print(f"[BB GOLD STATE] BATTLE_ENDING: Checking for return home button (attempt {attempt}/{max_attempts})...")
+            print(
+                f"[BB GOLD STATE] BATTLE_ENDING: Checking for return home button (attempt {attempt}/{max_attempts})..."
+            )
 
             # Wait up to 5 seconds for return home button to appear
             timeout_start = time.time()
@@ -859,7 +876,7 @@ def _state_battle_ending(context, current_state):
                     print(f"[BB GOLD STATE] BATTLE_ENDING: ✓ Return home button confirmed at {return_home_pos}")
                     send_discord_debug_log("BB Gold: Return home button confirmed (3 stars)")
                     # Cache position for END_SCREEN state
-                    context['return_home_button_pos'] = return_home_pos
+                    context["return_home_button_pos"] = return_home_pos
                     return_home_found = True
                     break
                 time.sleep(0.3)  # Optimized: reduced from 0.5s
@@ -872,8 +889,12 @@ def _state_battle_ending(context, current_state):
                 break
             else:
                 # Return home button not visible - end battle/surrender didn't work
-                print(f"[BB GOLD STATE] BATTLE_ENDING: ✗ Return home button not visible (attempt {attempt}/{max_attempts})")
-                send_discord_debug_log(f"BB Gold: Return home not visible - clicking end battle again (attempt {attempt})", "WARNING")
+                print(
+                    f"[BB GOLD STATE] BATTLE_ENDING: ✗ Return home button not visible (attempt {attempt}/{max_attempts})"
+                )
+                send_discord_debug_log(
+                    f"BB Gold: Return home not visible - clicking end battle again (attempt {attempt})", "WARNING"
+                )
 
                 # Click end battle button again
                 end_battle_pos = detect_end_battle_button()
@@ -901,18 +922,18 @@ def _state_battle_ending(context, current_state):
     else:
         # 0/1/2 stars - use standard end screen detection with fallback
         print("[BB GOLD STATE] BATTLE_ENDING: 0/1/2 stars - standard end screen detection")
-        end_screen_timeout = getattr(config, 'BB_END_SCREEN_TIMEOUT', 10)
+        end_screen_timeout = getattr(config, "BB_END_SCREEN_TIMEOUT", 10)
         timeout_start = time.time()
         while time.time() - timeout_start < end_screen_timeout:
             end_screen = detect_end_screen_state()
-            if end_screen['detected']:
+            if end_screen["detected"]:
                 print("[BB GOLD STATE] BATTLE_ENDING -> END_SCREEN: End screen confirmed")
                 current_state = BBGoldState.END_SCREEN
                 runtime.gui.update_bb_gold_state(current_state.name)
-                context['star_bonus'] = end_screen['star_bonus']
+                context["star_bonus"] = end_screen["star_bonus"]
                 # Cache return home button position if detected
-                if end_screen.get('return_button_pos'):
-                    context['return_home_button_pos'] = end_screen['return_button_pos']
+                if end_screen.get("return_button_pos"):
+                    context["return_home_button_pos"] = end_screen["return_button_pos"]
                 break
             time.sleep(0.3)  # Optimized: reduced from 0.5s
 
@@ -921,7 +942,6 @@ def _state_battle_ending(context, current_state):
             current_state = BBGoldState.END_SCREEN
             runtime.gui.update_bb_gold_state(current_state.name)
     return current_state
-
 
 
 def handle_bb_gold_mode_stateful():
@@ -943,16 +963,16 @@ def handle_bb_gold_mode_stateful():
     """
     current_state = BBGoldState.IN_BASE
     context = {
-        'retry_count': 0,
-        'troops_deployed': False,
-        'stars_detected': 0,
-        'attack_start_time': None,
-        'battle_machine_ability_time': None,
-        'battle_lost': False
+        "retry_count": 0,
+        "troops_deployed": False,
+        "stars_detected": 0,
+        "attack_start_time": None,
+        "battle_machine_ability_time": None,
+        "battle_lost": False,
     }
 
-    state_timeout = getattr(config, 'BB_STATE_DETECTION_TIMEOUT', 30)
-    max_retries = getattr(config, 'BB_LOAD_MAX_RETRIES', 3)
+    state_timeout = getattr(config, "BB_STATE_DETECTION_TIMEOUT", 30)
+    max_retries = getattr(config, "BB_LOAD_MAX_RETRIES", 3)
 
     print("[BB GOLD STATE] Starting stateful attack")
     send_discord_debug_log("BB Gold: Starting state machine attack")
@@ -968,20 +988,22 @@ def handle_bb_gold_mode_stateful():
         # This provides reliable error recovery since Return Home ONLY appears on end screen
         if current_state not in [BBGoldState.END_SCREEN, BBGoldState.RETURNING_HOME]:
             # Throttle checks to every 0.5 seconds to minimize performance impact
-            last_universal_check = context.get('last_return_home_universal_check', 0)
+            last_universal_check = context.get("last_return_home_universal_check", 0)
             current_time = time.time()
             if current_time - last_universal_check >= 0.5:
-                context['last_return_home_universal_check'] = current_time
+                context["last_return_home_universal_check"] = current_time
                 return_home_pos = detect_return_home_button(quiet=True)
                 if return_home_pos:
-                    print(f"[BB GOLD STATE] !! Return Home detected in {current_state.name} - transitioning to END_SCREEN")
-                    context['return_home_button_pos'] = return_home_pos
+                    print(
+                        f"[BB GOLD STATE] !! Return Home detected in {current_state.name} - transitioning to END_SCREEN"
+                    )
+                    context["return_home_button_pos"] = return_home_pos
                     current_state = BBGoldState.END_SCREEN
                     runtime.gui.update_bb_gold_state(current_state.name)
                     continue  # Skip to END_SCREEN handling
 
         # STATE 1: IN_BASE -> SEARCHING
-        if current_state == BBGoldState.IN_BASE and context['retry_count'] == 0:
+        if current_state == BBGoldState.IN_BASE and context["retry_count"] == 0:
             current_state = _state_in_base(context)
             continue
 
@@ -1012,12 +1034,14 @@ def handle_bb_gold_mode_stateful():
             runtime.gui.log_message("BB Gold: Returning home")
 
             # Use cached position if available (from BATTLE_ENDING state for 3 stars)
-            cached_pos = context.get('return_home_button_pos')
+            cached_pos = context.get("return_home_button_pos")
             clicked = False  # Initialize clicked variable
 
             if cached_pos:
                 # Use cached position - no need to detect again
-                print(f"[BB GOLD STATE] END_SCREEN: Using cached return home position {cached_pos} - clicking instantly")
+                print(
+                    f"[BB GOLD STATE] END_SCREEN: Using cached return home position {cached_pos} - clicking instantly"
+                )
                 send_discord_debug_log(f"BB Gold: Clicking cached return home at {cached_pos}")
                 fast_click(*cached_pos)
                 clicked = True  # Mark as clicked
@@ -1029,13 +1053,16 @@ def handle_bb_gold_mode_stateful():
 
                 # Exponential backoff - fast checks early, slower later
                 import itertools
+
                 check_intervals = [0.05, 0.05, 0.1, 0.1, 0.2, 0.2, 0.3]
                 for interval in itertools.cycle(check_intervals):
                     if time.time() - start_time >= max_wait:
                         break
                     return_home_pos = detect_return_home_button()
                     if return_home_pos:
-                        print(f"[BB GOLD STATE] END_SCREEN: ✓ Return home button detected at {return_home_pos} - clicking instantly")
+                        print(
+                            f"[BB GOLD STATE] END_SCREEN: ✓ Return home button detected at {return_home_pos} - clicking instantly"
+                        )
                         send_discord_debug_log(f"BB Gold: Clicking return home at {return_home_pos}")
                         fast_click(*return_home_pos)
                         clicked = True
@@ -1044,12 +1071,14 @@ def handle_bb_gold_mode_stateful():
 
                 if not clicked:
                     # NO FALLBACK - Detect actual state and handle appropriately
-                    print("[BB GOLD STATE] END_SCREEN: Return home button not detected after 10s - detecting actual state")
+                    print(
+                        "[BB GOLD STATE] END_SCREEN: Return home button not detected after 10s - detecting actual state"
+                    )
                     send_discord_debug_log("BB Gold: Return home button not found - detecting state", "WARNING")
 
                     detected_state = detect_current_game_state()
 
-                    if detected_state == 'in_base':
+                    if detected_state == "in_base":
                         # Already at base - skip to IN_BASE state
                         print("[BB GOLD STATE] END_SCREEN: Already at base - transitioning to IN_BASE")
                         send_discord_debug_log("BB Gold: Already at base (return button not needed)")
@@ -1059,12 +1088,12 @@ def handle_bb_gold_mode_stateful():
                         increment_bb_gold_counter()
                         return True
 
-                    elif detected_state == 'battle_active':
+                    elif detected_state == "battle_active":
                         # Still in battle - need to surrender
                         print("[BB GOLD STATE] END_SCREEN: Still in active battle - attempting surrender")
                         send_discord_debug_log("BB Gold: Stuck in battle - surrendering", "WARNING")
                         button_type, x, y = detect_surrender_or_end_battle()
-                        if button_type == 'surrender':
+                        if button_type == "surrender":
                             fast_click(x, y)
                             time.sleep(0.5)
                             # Click confirmation
@@ -1074,14 +1103,14 @@ def handle_bb_gold_mode_stateful():
                         runtime.gui.update_bb_gold_state(current_state.name)
                         continue
 
-                    elif detected_state == 'battle_ending':
+                    elif detected_state == "battle_ending":
                         # Battle ending - transition to BATTLE_ENDING state
                         print("[BB GOLD STATE] END_SCREEN: Battle still ending - transitioning to BATTLE_ENDING")
                         current_state = BBGoldState.BATTLE_ENDING
                         runtime.gui.update_bb_gold_state(current_state.name)
                         continue
 
-                    elif detected_state == 'end_screen':
+                    elif detected_state == "end_screen":
                         # This shouldn't happen (we just failed to detect return button)
                         # But detection succeeded now - retry click
                         print("[BB GOLD STATE] END_SCREEN: Return button now detected - retrying click")
@@ -1118,7 +1147,7 @@ def handle_bb_gold_mode_stateful():
             print("[BB GOLD STATE] RETURNING_HOME: Waiting for base arrival")
 
             # Wait for IN_BASE confirmation
-            return_timeout = getattr(config, 'BB_RETURN_HOME_TIMEOUT', 15)
+            return_timeout = getattr(config, "BB_RETURN_HOME_TIMEOUT", 15)
             timeout_start = time.time()
             while time.time() - timeout_start < return_timeout:
                 if detect_in_base_state():
@@ -1150,7 +1179,7 @@ def handle_bb_gold_mode_stateful():
             return_home_pos = detect_return_home_button(quiet=True)
             if return_home_pos:
                 print("[BB GOLD STATE] ERROR_RECOVERY: Return Home detected - on end screen")
-                context['return_home_button_pos'] = return_home_pos
+                context["return_home_button_pos"] = return_home_pos
                 current_state = BBGoldState.END_SCREEN
                 runtime.gui.update_bb_gold_state(current_state.name)
                 continue
@@ -1158,12 +1187,12 @@ def handle_bb_gold_mode_stateful():
             # If not on end screen, detect what state we're actually in
             detected_state = detect_current_game_state()
 
-            if detected_state == 'in_base':
+            if detected_state == "in_base":
                 # Already recovered - return to IN_BASE
                 print("[BB GOLD STATE] ERROR_RECOVERY: Already at base - recovery successful")
                 send_discord_debug_log("BB Gold: Error recovery successful (already at base)")
-                context['retry_count'] += 1
-                if context['retry_count'] < max_retries:
+                context["retry_count"] += 1
+                if context["retry_count"] < max_retries:
                     print(f"[BB GOLD STATE] ERROR_RECOVERY -> IN_BASE: Retry {context['retry_count']}/{max_retries}")
                     current_state = BBGoldState.IN_BASE
                     runtime.gui.update_bb_gold_state(current_state.name)
@@ -1172,12 +1201,12 @@ def handle_bb_gold_mode_stateful():
                     send_discord_debug_log("BB Gold: Max retries exceeded, aborting", "ERROR")
                     return False
 
-            elif detected_state == 'battle_active':
+            elif detected_state == "battle_active":
                 # Stuck in battle - surrender to exit
                 print("[BB GOLD STATE] ERROR_RECOVERY: In active battle - surrendering")
                 send_discord_debug_log("BB Gold: Error recovery - surrendering from battle", "WARNING")
                 button_type, x, y = detect_surrender_or_end_battle()
-                if button_type == 'surrender':
+                if button_type == "surrender":
                     fast_click(x, y)
                     time.sleep(0.5)
                     # Click confirmation
@@ -1192,7 +1221,7 @@ def handle_bb_gold_mode_stateful():
                     time.sleep(3.0)
                     # Try surrender again
                     button_type, x, y = detect_surrender_or_end_battle()
-                    if button_type == 'surrender':
+                    if button_type == "surrender":
                         fast_click(x, y)
                         time.sleep(0.5)
                         fast_click(1483, 898)
@@ -1200,10 +1229,10 @@ def handle_bb_gold_mode_stateful():
                     current_state = BBGoldState.BATTLE_ENDING
                     runtime.gui.update_bb_gold_state(current_state.name)
 
-            elif detected_state == 'battle_ending' or detected_state == 'end_screen':
+            elif detected_state == "battle_ending" or detected_state == "end_screen":
                 # Battle ending or end screen - transition appropriately
                 print(f"[BB GOLD STATE] ERROR_RECOVERY: Detected {detected_state} - transitioning")
-                if detected_state == 'battle_ending':
+                if detected_state == "battle_ending":
                     current_state = BBGoldState.BATTLE_ENDING
                 else:
                     current_state = BBGoldState.END_SCREEN
@@ -1219,8 +1248,8 @@ def handle_bb_gold_mode_stateful():
                 # Check again if we're at base now
                 if detect_in_base_state():
                     print("[BB GOLD STATE] ERROR_RECOVERY: Return click worked - at base now")
-                    context['retry_count'] += 1
-                    if context['retry_count'] < max_retries:
+                    context["retry_count"] += 1
+                    if context["retry_count"] < max_retries:
                         current_state = BBGoldState.IN_BASE
                         runtime.gui.update_bb_gold_state(current_state.name)
                     else:
@@ -1228,8 +1257,8 @@ def handle_bb_gold_mode_stateful():
                         return False
                 else:
                     # Still stuck - increment retry and continue looping
-                    context['retry_count'] += 1
-                    if context['retry_count'] >= max_retries:
+                    context["retry_count"] += 1
+                    if context["retry_count"] >= max_retries:
                         print("[BB GOLD STATE] ERROR_RECOVERY: Max retries exceeded - aborting")
                         send_discord_debug_log("BB Gold: Max error recovery retries exceeded", "ERROR")
                         return False

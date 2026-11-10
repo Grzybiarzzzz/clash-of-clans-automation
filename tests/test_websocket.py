@@ -10,11 +10,7 @@ from web.routes.ws import setup_state_listener
 def state():
     """Create fresh state manager."""
     s = BotStateManager()
-    s.update({
-        "running": False,
-        "paused": True,
-        "loop_count": 0
-    })
+    s.update({"running": False, "paused": True, "loop_count": 0})
     app.state.bot_state = s
     setup_state_listener(s)
     return s
@@ -54,13 +50,11 @@ def test_websocket_send_command(state):
         websocket.receive_json()
 
         # Send pause command
-        websocket.send_json({
-            "type": "control",
-            "data": {"action": "pause"}
-        })
+        websocket.send_json({"type": "control", "data": {"action": "pause"}})
 
         # State should be updated
         # (Give brief time for processing)
         import time
+
         time.sleep(0.1)
         assert state.get("paused") is False  # Toggled from True

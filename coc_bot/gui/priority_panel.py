@@ -3,6 +3,7 @@
 import tkinter as tk
 from tkinter import messagebox, ttk
 
+
 class PriorityPanelMixin:
     """Achievement building priority list. Mixin for BotGUI."""
 
@@ -11,29 +12,39 @@ class PriorityPanelMixin:
         frame.columnconfigure(0, weight=1)
 
         # Subtitle explaining usage
-        subtitle = ttk.Label(frame,
+        subtitle = ttk.Label(
+            frame,
             text="Top = highest priority, used by Achievement/SBarb Farm modes",
-            font=('Segoe UI', 8, 'italic'),
-            foreground='gray')
+            font=("Segoe UI", 8, "italic"),
+            foreground="gray",
+        )
         subtitle.grid(row=0, column=0, sticky=tk.W, pady=(0, 10))
 
         # Create modern styled frame for priority list
-        self.achievement_priority_frame = ttk.Frame(frame, relief='solid', borderwidth=1)
+        self.achievement_priority_frame = ttk.Frame(frame, relief="solid", borderwidth=1)
 
         # Create canvas with scrollbar for modern scrollable list
         priority_canvas_frame = ttk.Frame(self.achievement_priority_frame)
         priority_canvas_frame.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
 
-        self.achievement_priority_canvas = tk.Canvas(priority_canvas_frame, height=250, bg='#f0f0f0', highlightthickness=0)
-        self.achievement_priority_scrollbar = ttk.Scrollbar(priority_canvas_frame, orient="vertical", command=self.achievement_priority_canvas.yview)
+        self.achievement_priority_canvas = tk.Canvas(
+            priority_canvas_frame, height=250, bg="#f0f0f0", highlightthickness=0
+        )
+        self.achievement_priority_scrollbar = ttk.Scrollbar(
+            priority_canvas_frame, orient="vertical", command=self.achievement_priority_canvas.yview
+        )
         self.achievement_priority_scroll_frame = ttk.Frame(self.achievement_priority_canvas)
 
         self.achievement_priority_scroll_frame.bind(
             "<Configure>",
-            lambda e: self.achievement_priority_canvas.configure(scrollregion=self.achievement_priority_canvas.bbox("all"))
+            lambda e: self.achievement_priority_canvas.configure(
+                scrollregion=self.achievement_priority_canvas.bbox("all")
+            ),
         )
 
-        self.achievement_priority_canvas.create_window((0, 0), window=self.achievement_priority_scroll_frame, anchor="nw")
+        self.achievement_priority_canvas.create_window(
+            (0, 0), window=self.achievement_priority_scroll_frame, anchor="nw"
+        )
         self.achievement_priority_canvas.configure(yscrollcommand=self.achievement_priority_scrollbar.set)
 
         self.achievement_priority_canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
@@ -48,18 +59,12 @@ class PriorityPanelMixin:
         # Buttons frame with modern styling
         self.achievement_priority_buttons_frame = ttk.Frame(frame)
         self.achievement_move_up_btn = ttk.Button(
-            self.achievement_priority_buttons_frame,
-            text="⬆ Move Up",
-            command=self.move_building_up,
-            width=15
+            self.achievement_priority_buttons_frame, text="⬆ Move Up", command=self.move_building_up, width=15
         )
         self.achievement_move_up_btn.pack(side=tk.LEFT, padx=5)
 
         self.achievement_move_down_btn = ttk.Button(
-            self.achievement_priority_buttons_frame,
-            text="⬇ Move Down",
-            command=self.move_building_down,
-            width=15
+            self.achievement_priority_buttons_frame, text="⬇ Move Down", command=self.move_building_down, width=15
         )
         self.achievement_move_down_btn.pack(side=tk.LEFT, padx=5)
 
@@ -67,7 +72,7 @@ class PriorityPanelMixin:
             self.achievement_priority_buttons_frame,
             text="🔄 Reset Order",
             command=self.reset_building_priority,
-            width=15
+            width=15,
         )
         self.achievement_reset_priority_btn.pack(side=tk.LEFT, padx=5)
 
@@ -76,10 +81,21 @@ class PriorityPanelMixin:
 
         # Initialize priority list from current profile
         profile_settings = self.profiles.get(self.current_profile, {})
-        self.achievement_priority_list = profile_settings.get('achievement_priority_list', [
-            'eagle_artillery', 'monolith', 'xbow', 'inferno_tower', 'scattershot',
-            'spell_tower', 'multi_archer_tower', 'ricochet_cannon', 'firespitter', 'multi_gear_tower'
-        ])
+        self.achievement_priority_list = profile_settings.get(
+            "achievement_priority_list",
+            [
+                "eagle_artillery",
+                "monolith",
+                "xbow",
+                "inferno_tower",
+                "scattershot",
+                "spell_tower",
+                "multi_archer_tower",
+                "ricochet_cannon",
+                "firespitter",
+                "multi_gear_tower",
+            ],
+        )
         self.selected_priority_building = None
         self.update_priority_listbox()
 
@@ -88,7 +104,7 @@ class PriorityPanelMixin:
         current_profile = self.profile_var.get()
 
         # Show for Achievement Farm and SBarb Farm only
-        relevant_profiles = ['Achievement Farm', 'SBarb Farm']
+        relevant_profiles = ["Achievement Farm", "SBarb Farm"]
 
         if current_profile in relevant_profiles:
             # Show priority section
@@ -105,43 +121,43 @@ class PriorityPanelMixin:
         self.priority_building_cards.clear()
 
         building_display_names = {
-            'eagle_artillery': 'Eagle Artillery',
-            'monolith': 'Monolith',
-            'xbow': 'X-Bow',
-            'inferno_tower': 'Inferno Tower',
-            'scattershot': 'Scattershot',
-            'spell_tower': 'Spell Tower',
-            'multi_archer_tower': 'Multi-Archer Tower',
-            'ricochet_cannon': 'Ricochet Cannon',
-            'firespitter': 'Firespitter',
-            'multi_gear_tower': 'Multi-Gear Tower'
+            "eagle_artillery": "Eagle Artillery",
+            "monolith": "Monolith",
+            "xbow": "X-Bow",
+            "inferno_tower": "Inferno Tower",
+            "scattershot": "Scattershot",
+            "spell_tower": "Spell Tower",
+            "multi_archer_tower": "Multi-Archer Tower",
+            "ricochet_cannon": "Ricochet Cannon",
+            "firespitter": "Firespitter",
+            "multi_gear_tower": "Multi-Gear Tower",
         }
 
         # Priority badge emojis (or numbers)
-        priority_badges = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣', '🔟']
+        priority_badges = ["1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣", "6️⃣", "7️⃣", "8️⃣", "9️⃣", "🔟"]
 
         # Create card for each building
         for index, building in enumerate(self.achievement_priority_list):
-            display_name = building_display_names.get(building, building.replace('_', ' ').title())
+            display_name = building_display_names.get(building, building.replace("_", " ").title())
 
             # Create card frame with gradient-like colors (higher priority = stronger color)
             card_frame = tk.Frame(
                 self.achievement_priority_scroll_frame,
-                relief='raised',
+                relief="raised",
                 borderwidth=1,
                 padx=10,
                 pady=8,
-                bg=self.get_priority_color(index)
+                bg=self.get_priority_color(index),
             )
             card_frame.pack(fill=tk.X, pady=3, padx=5)
 
             # Priority badge
             badge_label = tk.Label(
                 card_frame,
-                text=priority_badges[index] if index < len(priority_badges) else f"{index+1}.",
-                font=('Segoe UI', 12, 'bold'),
+                text=priority_badges[index] if index < len(priority_badges) else f"{index + 1}.",
+                font=("Segoe UI", 12, "bold"),
                 bg=self.get_priority_color(index),
-                fg='#333333'
+                fg="#333333",
             )
             badge_label.pack(side=tk.LEFT, padx=(0, 10))
 
@@ -149,20 +165,20 @@ class PriorityPanelMixin:
             name_label = tk.Label(
                 card_frame,
                 text=display_name,
-                font=('Segoe UI', 10),
+                font=("Segoe UI", 10),
                 bg=self.get_priority_color(index),
-                fg='#000000',
-                anchor='w'
+                fg="#000000",
+                anchor="w",
             )
             name_label.pack(side=tk.LEFT, fill=tk.X, expand=True)
 
             # Priority rank text
             rank_label = tk.Label(
                 card_frame,
-                text=f"Priority #{index+1}",
-                font=('Segoe UI', 8, 'italic'),
+                text=f"Priority #{index + 1}",
+                font=("Segoe UI", 8, "italic"),
                 bg=self.get_priority_color(index),
-                fg='#666666'
+                fg="#666666",
             )
             rank_label.pack(side=tk.RIGHT, padx=(10, 0))
 
@@ -173,22 +189,23 @@ class PriorityPanelMixin:
             def make_select_handler(card, bldg):
                 def handler(event):
                     self.select_priority_building(card, bldg)
+
                 return handler
 
             for widget in [card_frame, badge_label, name_label, rank_label]:
-                widget.bind('<Button-1>', make_select_handler(card_frame, building))
+                widget.bind("<Button-1>", make_select_handler(card_frame, building))
 
             # Add hover effect
             def on_enter(event, card=card_frame):
                 if card != self.selected_priority_building:
-                    card.config(relief='solid', borderwidth=2)
+                    card.config(relief="solid", borderwidth=2)
 
             def on_leave(event, card=card_frame):
                 if card != self.selected_priority_building:
-                    card.config(relief='raised', borderwidth=1)
+                    card.config(relief="raised", borderwidth=1)
 
-            card_frame.bind('<Enter>', on_enter)
-            card_frame.bind('<Leave>', on_leave)
+            card_frame.bind("<Enter>", on_enter)
+            card_frame.bind("<Leave>", on_leave)
 
             self.priority_building_cards.append(card_frame)
 
@@ -200,18 +217,18 @@ class PriorityPanelMixin:
         """Get color for priority card based on index (gradient from high to low priority)"""
         # Gradient from gold (high priority) to light blue (low priority)
         colors = [
-            '#FFD700',  # Gold
-            '#FFA500',  # Orange
-            '#FFB347',  # Light Orange
-            '#FFDAB9',  # Peach
-            '#FFFACD',  # Lemon
-            '#E0FFE0',  # Light Green
-            '#B0E0E6',  # Powder Blue
-            '#ADD8E6',  # Light Blue
-            '#D3D3D3',  # Light Gray
-            '#E0E0E0'   # Lighter Gray
+            "#FFD700",  # Gold
+            "#FFA500",  # Orange
+            "#FFB347",  # Light Orange
+            "#FFDAB9",  # Peach
+            "#FFFACD",  # Lemon
+            "#E0FFE0",  # Light Green
+            "#B0E0E6",  # Powder Blue
+            "#ADD8E6",  # Light Blue
+            "#D3D3D3",  # Light Gray
+            "#E0E0E0",  # Lighter Gray
         ]
-        return colors[index] if index < len(colors) else '#F0F0F0'
+        return colors[index] if index < len(colors) else "#F0F0F0"
 
     def select_priority_building(self, card_frame, building_id):
         """Select a building card for move operations"""
@@ -220,21 +237,24 @@ class PriorityPanelMixin:
             # Check if old selection still exists in current cards list
             if self.selected_priority_building in self.priority_building_cards:
                 index = self.priority_building_cards.index(self.selected_priority_building)
-                self.selected_priority_building.config(relief='raised', borderwidth=1, bg=self.get_priority_color(index))
+                self.selected_priority_building.config(
+                    relief="raised", borderwidth=1, bg=self.get_priority_color(index)
+                )
 
         # Select new card
         self.selected_priority_building = card_frame
-        card_frame.config(relief='solid', borderwidth=3, bg='#4A90E2')  # Blue highlight
+        card_frame.config(relief="solid", borderwidth=3, bg="#4A90E2")  # Blue highlight
 
         # Update all labels in the selected card to match the blue background
         for child in card_frame.winfo_children():
             if isinstance(child, tk.Label):
-                child.config(bg='#4A90E2', fg='white')
+                child.config(bg="#4A90E2", fg="white")
 
     def on_parallel_scan_toggle(self):
         """Show warning when parallel scanning is enabled"""
         if self.achievement_parallel_scan_var.get():
             from tkinter import messagebox
+
             messagebox.showwarning(
                 "CPU Warning",
                 "Parallel scanning is faster but may cause:\n\n"
@@ -243,7 +263,7 @@ class PriorityPanelMixin:
                 "• Brief system lag during scans\n\n"
                 "Sequential scanning (default) is slower but stable.\n\n"
                 "Only enable parallel mode if you have a fast CPU and "
-                "haven't experienced crashes."
+                "haven't experienced crashes.",
             )
 
     def move_building_up(self):
@@ -259,18 +279,20 @@ class PriorityPanelMixin:
             return  # Already at top
 
         # Swap with previous item
-        self.achievement_priority_list[index], self.achievement_priority_list[index-1] = \
-            self.achievement_priority_list[index-1], self.achievement_priority_list[index]
+        self.achievement_priority_list[index], self.achievement_priority_list[index - 1] = (
+            self.achievement_priority_list[index - 1],
+            self.achievement_priority_list[index],
+        )
 
         # Rebuild display and maintain selection
         selected_building = self.selected_priority_building.building_id
         self.update_priority_listbox()
 
         # Re-select the moved building
-        if index-1 < len(self.priority_building_cards):
-            self.select_priority_building(self.priority_building_cards[index-1], selected_building)
+        if index - 1 < len(self.priority_building_cards):
+            self.select_priority_building(self.priority_building_cards[index - 1], selected_building)
             # Scroll to show the selected card
-            self.achievement_priority_canvas.yview_moveto(max(0, (index-1) / len(self.priority_building_cards)))
+            self.achievement_priority_canvas.yview_moveto(max(0, (index - 1) / len(self.priority_building_cards)))
 
         # Save changes to settings
         self.save_settings()
@@ -288,18 +310,20 @@ class PriorityPanelMixin:
             return  # Already at bottom
 
         # Swap with next item
-        self.achievement_priority_list[index], self.achievement_priority_list[index+1] = \
-            self.achievement_priority_list[index+1], self.achievement_priority_list[index]
+        self.achievement_priority_list[index], self.achievement_priority_list[index + 1] = (
+            self.achievement_priority_list[index + 1],
+            self.achievement_priority_list[index],
+        )
 
         # Rebuild display and maintain selection
         selected_building = self.selected_priority_building.building_id
         self.update_priority_listbox()
 
         # Re-select the moved building
-        if index+1 < len(self.priority_building_cards):
-            self.select_priority_building(self.priority_building_cards[index+1], selected_building)
+        if index + 1 < len(self.priority_building_cards):
+            self.select_priority_building(self.priority_building_cards[index + 1], selected_building)
             # Scroll to show the selected card
-            self.achievement_priority_canvas.yview_moveto(min(1.0, (index+1) / len(self.priority_building_cards)))
+            self.achievement_priority_canvas.yview_moveto(min(1.0, (index + 1) / len(self.priority_building_cards)))
 
         # Save changes to settings
         self.save_settings()
@@ -307,8 +331,16 @@ class PriorityPanelMixin:
     def reset_building_priority(self):
         """Reset building priority to default order"""
         default_order = [
-            'eagle_artillery', 'monolith', 'xbow', 'inferno_tower', 'scattershot',
-            'spell_tower', 'multi_archer_tower', 'ricochet_cannon', 'firespitter', 'multi_gear_tower'
+            "eagle_artillery",
+            "monolith",
+            "xbow",
+            "inferno_tower",
+            "scattershot",
+            "spell_tower",
+            "multi_archer_tower",
+            "ricochet_cannon",
+            "firespitter",
+            "multi_gear_tower",
         ]
         self.achievement_priority_list = default_order.copy()
         self.selected_priority_building = None

@@ -1,4 +1,5 @@
 """A bare ``except:`` also swallows KeyboardInterrupt and SystemExit."""
+
 import ast
 import pathlib
 

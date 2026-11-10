@@ -3,6 +3,7 @@
 A misspelt or forgotten name only fails when that line runs, which for this
 project means in the middle of a live attack. This check finds them up front.
 """
+
 import builtins
 import dis
 import importlib
@@ -38,7 +39,6 @@ def test_global_names_resolve(module_name):
                 assigned.add(instruction.argval)
 
     missing = sorted(
-        name for name in referenced - assigned
-        if not hasattr(module, name) and not hasattr(builtins, name)
+        name for name in referenced - assigned if not hasattr(module, name) and not hasattr(builtins, name)
     )
     assert missing == []

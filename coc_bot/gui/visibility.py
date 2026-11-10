@@ -2,6 +2,7 @@
 
 import tkinter as tk
 
+
 class VisibilityMixin:
     """Show and hide settings widgets according to the selected profile and toggles. Mixin for BotGUI."""
 
@@ -11,49 +12,19 @@ class VisibilityMixin:
 
         # Define which widgets should be visible for each profile
         profile_visibility = {
-            'Derank': {
-                'troops': False,
-                'lightning_damage': False
-            },
-            'Farming': {
-                'troops': True,
-                'lightning_damage': True
-            },
-            'Trophy Push': {
-                'troops': True,
-                'lightning_damage': True
-            },
-            'SGoblin Farm': {
-                'troops': True,
-                'lightning_damage': False
-            },
-            'SBarb Farm': {
-                'troops': True,
-                'lightning_damage': True
-            },
-            'BB Elixir': {
-                'troops': False,
-                'lightning_damage': False
-            },
-            'BB Gold': {
-                'troops': False,
-                'lightning_damage': False
-            },
-            'Achievement Farm': {
-                'troops': False,
-                'lightning_damage': True
-            },
-            'Custom': {
-                'troops': True,
-                'lightning_damage': True
-            }
+            "Derank": {"troops": False, "lightning_damage": False},
+            "Farming": {"troops": True, "lightning_damage": True},
+            "Trophy Push": {"troops": True, "lightning_damage": True},
+            "SGoblin Farm": {"troops": True, "lightning_damage": False},
+            "SBarb Farm": {"troops": True, "lightning_damage": True},
+            "BB Elixir": {"troops": False, "lightning_damage": False},
+            "BB Gold": {"troops": False, "lightning_damage": False},
+            "Achievement Farm": {"troops": False, "lightning_damage": True},
+            "Custom": {"troops": True, "lightning_damage": True},
         }
 
         # Get visibility settings for current profile (default to all visible)
-        visibility = profile_visibility.get(current_profile, {
-            'troops': True,
-            'lightning_damage': True
-        })
+        visibility = profile_visibility.get(current_profile, {"troops": True, "lightning_damage": True})
 
         # Clear all widgets first
         for i in range(7):
@@ -65,13 +36,13 @@ class VisibilityMixin:
         # Grid widgets based on visibility
         row = 0
 
-        if visibility['troops']:
+        if visibility["troops"]:
             for i in range(7):
                 self.troop_labels[i].grid(row=row, column=0, sticky=tk.W, padx=(0, 10))
                 self.troop_spinboxes[i].grid(row=row, column=1, sticky=tk.W)
                 row += 1
 
-        if visibility['lightning_damage']:
+        if visibility["lightning_damage"]:
             self.lightning_label.grid(row=row, column=0, sticky=tk.W, padx=(0, 10))
             self.lightning_damage_spinbox.grid(row=row, column=1, sticky=tk.W)
             row += 1
@@ -79,121 +50,135 @@ class VisibilityMixin:
     def update_attack_section_visibility(self):
         """Update visibility of attack section widgets based on current profile"""
         current_profile = self.current_profile
-        
+
         # Define which widgets should be visible for each profile
         profile_visibility = {
-            'Derank': {
-                'min_resources': False,
-                'max_th_level': False,
-                'ad_target_mode': False,
-                'attack_side_mode': True,
-                'hero_ability_timing': False
+            "Derank": {
+                "min_resources": False,
+                "max_th_level": False,
+                "ad_target_mode": False,
+                "attack_side_mode": True,
+                "hero_ability_timing": False,
             },
-            'Farming': {
-                'min_resources': True,
-                'max_th_level': True,
-                'ad_target_mode': True,
-                'attack_side_mode': True,
-                'hero_ability_timing': True
+            "Farming": {
+                "min_resources": True,
+                "max_th_level": True,
+                "ad_target_mode": True,
+                "attack_side_mode": True,
+                "hero_ability_timing": True,
             },
-            'Trophy Push': {
-                'min_resources': True,
-                'max_th_level': True,
-                'ad_target_mode': True,
-                'attack_side_mode': True,
-                'hero_ability_timing': True
+            "Trophy Push": {
+                "min_resources": True,
+                "max_th_level": True,
+                "ad_target_mode": True,
+                "attack_side_mode": True,
+                "hero_ability_timing": True,
             },
-            'SGoblin Farm': {
-                'min_resources': True,
-                'max_th_level': False,
-                'ad_target_mode': False,
-                'attack_side_mode': False,
-                'hero_ability_timing': True
+            "SGoblin Farm": {
+                "min_resources": True,
+                "max_th_level": False,
+                "ad_target_mode": False,
+                "attack_side_mode": False,
+                "hero_ability_timing": True,
             },
-            'SBarb Farm': {
-                'min_resources': True,
-                'max_th_level': False,
-                'ad_target_mode': False,
-                'attack_side_mode': False,
-                'hero_ability_timing': False
+            "SBarb Farm": {
+                "min_resources": True,
+                "max_th_level": False,
+                "ad_target_mode": False,
+                "attack_side_mode": False,
+                "hero_ability_timing": False,
             },
-            'BB Elixir': {
-                'min_resources': False,
-                'max_th_level': False,
-                'ad_target_mode': False,
-                'attack_side_mode': False,
-                'hero_ability_timing': False
+            "BB Elixir": {
+                "min_resources": False,
+                "max_th_level": False,
+                "ad_target_mode": False,
+                "attack_side_mode": False,
+                "hero_ability_timing": False,
             },
-            'BB Gold': {
-                'min_resources': False,
-                'max_th_level': False,
-                'ad_target_mode': False,
-                'attack_side_mode': False,
-                'hero_ability_timing': False
+            "BB Gold": {
+                "min_resources": False,
+                "max_th_level": False,
+                "ad_target_mode": False,
+                "attack_side_mode": False,
+                "hero_ability_timing": False,
             },
-            'Achievement Farm': {
-                'min_resources': True,
-                'max_th_level': False,
-                'ad_target_mode': False,
-                'attack_side_mode': False,
-                'hero_ability_timing': False
+            "Achievement Farm": {
+                "min_resources": True,
+                "max_th_level": False,
+                "ad_target_mode": False,
+                "attack_side_mode": False,
+                "hero_ability_timing": False,
             },
-            'Custom': {
-                'min_resources': True,
-                'max_th_level': True,
-                'ad_target_mode': True,
-                'attack_side_mode': True,
-                'hero_ability_timing': True
-            }
+            "Custom": {
+                "min_resources": True,
+                "max_th_level": True,
+                "ad_target_mode": True,
+                "attack_side_mode": True,
+                "hero_ability_timing": True,
+            },
         }
 
         # Get visibility settings for current profile (default to all visible)
-        visibility = profile_visibility.get(current_profile, {
-            'min_resources': True,
-            'max_th_level': True,
-            'ad_target_mode': True,
-            'attack_side_mode': True,
-            'hero_ability_timing': True
-        })
-        
+        visibility = profile_visibility.get(
+            current_profile,
+            {
+                "min_resources": True,
+                "max_th_level": True,
+                "ad_target_mode": True,
+                "attack_side_mode": True,
+                "hero_ability_timing": True,
+            },
+        )
+
         # Clear all widgets first
-        for widget in [self.min_resources_label, self.min_resources_entry,
-                      self.max_th_label, self.max_th_spinbox,
-                      self.ad_target_label, self.ad_target_mode_frame,
-                      self.attack_side_label, self.attack_side_mode_frame,
-                      self.hero_timing_label, self.queen_timing_label, self.queen_timing_spinbox,
-                      self.king_timing_label, self.king_timing_spinbox,
-                      self.warden_timing_label, self.warden_timing_spinbox,
-                      self.rc_timing_label, self.rc_timing_spinbox]:
+        for widget in [
+            self.min_resources_label,
+            self.min_resources_entry,
+            self.max_th_label,
+            self.max_th_spinbox,
+            self.ad_target_label,
+            self.ad_target_mode_frame,
+            self.attack_side_label,
+            self.attack_side_mode_frame,
+            self.hero_timing_label,
+            self.queen_timing_label,
+            self.queen_timing_spinbox,
+            self.king_timing_label,
+            self.king_timing_spinbox,
+            self.warden_timing_label,
+            self.warden_timing_spinbox,
+            self.rc_timing_label,
+            self.rc_timing_spinbox,
+        ]:
             widget.grid_remove()
-        
+
         # Grid widgets based on visibility
         row = 0
-        
-        if visibility['min_resources']:
+
+        if visibility["min_resources"]:
             self.min_resources_label.grid(row=row, column=0, sticky=tk.W, padx=(0, 10))
             self.min_resources_entry.grid(row=row, column=1, sticky=tk.W)
             row += 1
-            
-        if visibility['max_th_level']:
+
+        if visibility["max_th_level"]:
             self.max_th_label.grid(row=row, column=0, sticky=tk.W, padx=(0, 10))
             self.max_th_spinbox.grid(row=row, column=1, sticky=tk.W)
             row += 1
-            
-        if visibility['ad_target_mode']:
+
+        if visibility["ad_target_mode"]:
             self.ad_target_label.grid(row=row, column=0, sticky=tk.W, padx=(0, 10))
             self.ad_target_mode_frame.grid(row=row, column=1, sticky=tk.W)
             row += 1
-            
-        if visibility['attack_side_mode']:
+
+        if visibility["attack_side_mode"]:
             self.attack_side_label.grid(row=row, column=0, sticky=tk.W, padx=(0, 10))
             self.attack_side_mode_frame.grid(row=row, column=1, sticky=tk.W)
             row += 1
 
-        if visibility['hero_ability_timing']:
+        if visibility["hero_ability_timing"]:
             self.hero_timing_label.grid(row=row, column=0, sticky=tk.W, padx=(0, 10))
             row += 1
-            
+
             # Queen timing
             self.queen_timing_label.grid(row=row, column=0, sticky=tk.W, padx=(5, 10))
             self.queen_timing_spinbox.grid(row=row, column=1, sticky=tk.W)
@@ -247,7 +232,7 @@ class VisibilityMixin:
         """Show/hide achievement building dropdown based on current profile"""
         current_profile = self.profile_var.get()
 
-        if current_profile == 'Achievement Farm':
+        if current_profile == "Achievement Farm":
             # Show achievement building dropdown
             if not self.achievement_building_row_visible:
                 self.achievement_building_label.grid(row=2, column=0, sticky=tk.W, padx=(0, 10), pady=(5, 0))
@@ -259,31 +244,60 @@ class VisibilityMixin:
 
                 # Set initial values from profile if available
                 if current_profile in self.profiles:
-                    target = self.profiles[current_profile].get('achievement_target_building', 'eagle_artillery')
-                    display_name = self.achievement_building_reverse_map.get(target, 'Eagle Artillery')
+                    target = self.profiles[current_profile].get("achievement_target_building", "eagle_artillery")
+                    display_name = self.achievement_building_reverse_map.get(target, "Eagle Artillery")
                     self.achievement_building_var.set(display_name)
 
-                    mode = self.profiles[current_profile].get('achievement_farm_target_mode', 'clumps')
-                    mode_display_name = self.achievement_mode_reverse_map.get(mode, 'Clumps')
+                    mode = self.profiles[current_profile].get("achievement_farm_target_mode", "clumps")
+                    mode_display_name = self.achievement_mode_reverse_map.get(mode, "Clumps")
                     self.achievement_mode_var.set(mode_display_name)
 
                     # Set checkbox values from profile (uses full key names to match Web GUI)
-                    self.achievement_eagle_var.set(self.profiles[current_profile].get('achievement_scan_eagle_artillery', True))
-                    self.achievement_monolith_var.set(self.profiles[current_profile].get('achievement_scan_monolith', True))
-                    self.achievement_xbow_var.set(self.profiles[current_profile].get('achievement_scan_xbow', True))
-                    self.achievement_inferno_var.set(self.profiles[current_profile].get('achievement_scan_inferno_tower', True))
-                    self.achievement_scattershot_var.set(self.profiles[current_profile].get('achievement_scan_scattershot', True))
-                    self.achievement_spell_tower_var.set(self.profiles[current_profile].get('achievement_scan_spell_tower', True))
-                    self.achievement_multi_archer_var.set(self.profiles[current_profile].get('achievement_scan_multi_archer_tower', True))
-                    self.achievement_ricochet_var.set(self.profiles[current_profile].get('achievement_scan_ricochet_cannon', True))
-                    self.achievement_firespitter_var.set(self.profiles[current_profile].get('achievement_scan_firespitter', True))
-                    self.achievement_multi_gear_var.set(self.profiles[current_profile].get('achievement_scan_multi_gear_tower', True))
+                    self.achievement_eagle_var.set(
+                        self.profiles[current_profile].get("achievement_scan_eagle_artillery", True)
+                    )
+                    self.achievement_monolith_var.set(
+                        self.profiles[current_profile].get("achievement_scan_monolith", True)
+                    )
+                    self.achievement_xbow_var.set(self.profiles[current_profile].get("achievement_scan_xbow", True))
+                    self.achievement_inferno_var.set(
+                        self.profiles[current_profile].get("achievement_scan_inferno_tower", True)
+                    )
+                    self.achievement_scattershot_var.set(
+                        self.profiles[current_profile].get("achievement_scan_scattershot", True)
+                    )
+                    self.achievement_spell_tower_var.set(
+                        self.profiles[current_profile].get("achievement_scan_spell_tower", True)
+                    )
+                    self.achievement_multi_archer_var.set(
+                        self.profiles[current_profile].get("achievement_scan_multi_archer_tower", True)
+                    )
+                    self.achievement_ricochet_var.set(
+                        self.profiles[current_profile].get("achievement_scan_ricochet_cannon", True)
+                    )
+                    self.achievement_firespitter_var.set(
+                        self.profiles[current_profile].get("achievement_scan_firespitter", True)
+                    )
+                    self.achievement_multi_gear_var.set(
+                        self.profiles[current_profile].get("achievement_scan_multi_gear_tower", True)
+                    )
 
                     # Load priority list
-                    self.achievement_priority_list = self.profiles[current_profile].get('achievement_priority_list', [
-                        'eagle_artillery', 'monolith', 'xbow', 'inferno_tower', 'scattershot',
-                        'spell_tower', 'multi_archer_tower', 'ricochet_cannon', 'firespitter', 'multi_gear_tower'
-                    ])
+                    self.achievement_priority_list = self.profiles[current_profile].get(
+                        "achievement_priority_list",
+                        [
+                            "eagle_artillery",
+                            "monolith",
+                            "xbow",
+                            "inferno_tower",
+                            "scattershot",
+                            "spell_tower",
+                            "multi_archer_tower",
+                            "ricochet_cannon",
+                            "firespitter",
+                            "multi_gear_tower",
+                        ],
+                    )
                     self.update_priority_listbox()
 
                 # Show building checkboxes on rows 4-14
@@ -322,7 +336,7 @@ class VisibilityMixin:
         """Show/hide SGoblin spell casting and wall breaker checkboxes based on current profile"""
         current_profile = self.profile_var.get()
 
-        if current_profile == 'SGoblin Farm':
+        if current_profile == "SGoblin Farm":
             # Show spell casting checkbox
             if not self.sgoblin_cast_spells_row_visible:
                 self.sgoblin_cast_spells_check.grid(row=4, column=0, columnspan=3, sticky=tk.W, pady=(10, 0))
@@ -330,7 +344,7 @@ class VisibilityMixin:
 
                 # Set initial value from profile if available
                 if current_profile in self.profiles:
-                    cast_spells = self.profiles[current_profile].get('sgoblin_cast_spells', False)
+                    cast_spells = self.profiles[current_profile].get("sgoblin_cast_spells", False)
                     self.sgoblin_cast_spells_var.set(cast_spells)
 
             # Show wall breaker checkbox
@@ -340,7 +354,7 @@ class VisibilityMixin:
 
                 # Set initial value from profile if available
                 if current_profile in self.profiles:
-                    use_wallbreakers = self.profiles[current_profile].get('sgoblin_use_wallbreakers', False)
+                    use_wallbreakers = self.profiles[current_profile].get("sgoblin_use_wallbreakers", False)
                     self.sgoblin_use_wallbreakers_var.set(use_wallbreakers)
 
             # Show skip logging checkbox
@@ -350,7 +364,7 @@ class VisibilityMixin:
 
                 # Set initial value from profile if available
                 if current_profile in self.profiles:
-                    skip_logging = self.profiles[current_profile].get('sgoblin_skip_logging', False)
+                    skip_logging = self.profiles[current_profile].get("sgoblin_skip_logging", False)
                     self.sgoblin_skip_logging_var.set(skip_logging)
         else:
             # Hide spell casting checkbox
@@ -370,13 +384,13 @@ class VisibilityMixin:
         """Show/hide SBarb Farm checkboxes based on current profile and turbo mode"""
         current_profile = self.profile_var.get()
 
-        if current_profile == 'SBarb Farm':
+        if current_profile == "SBarb Farm":
             # Get turbo mode state
             turbo_enabled = self.sbarb_turbo_deployment_var.get()
 
             # Set initial values from profile if available
             if current_profile in self.profiles:
-                turbo_deployment = self.profiles[current_profile].get('sbarb_turbo_deployment', False)
+                turbo_deployment = self.profiles[current_profile].get("sbarb_turbo_deployment", False)
                 self.sbarb_turbo_deployment_var.set(turbo_deployment)
                 turbo_enabled = turbo_deployment
 
@@ -400,11 +414,11 @@ class VisibilityMixin:
                     self.sbarb_cast_spells_row_visible = True
 
                     if current_profile in self.profiles:
-                        cast_spells = self.profiles[current_profile].get('sbarb_cast_spells', False)
+                        cast_spells = self.profiles[current_profile].get("sbarb_cast_spells", False)
                         self.sbarb_cast_spells_var.set(cast_spells)
                         # Also load the targeting mode
-                        target_mode = self.profiles[current_profile].get('sbarb_cast_spells_target_mode', 'clumps')
-                        display_mode = self.sbarb_cast_spells_mode_reverse_map.get(target_mode, 'Clumps')
+                        target_mode = self.profiles[current_profile].get("sbarb_cast_spells_target_mode", "clumps")
+                        display_mode = self.sbarb_cast_spells_mode_reverse_map.get(target_mode, "Clumps")
                         self.sbarb_cast_spells_mode_var.set(display_mode)
             else:
                 # Standard mode: show all options
@@ -414,7 +428,7 @@ class VisibilityMixin:
                     self.sbarb_heroes_first_row_visible = True
 
                     if current_profile in self.profiles:
-                        heroes_first = self.profiles[current_profile].get('sbarb_heroes_first', False)
+                        heroes_first = self.profiles[current_profile].get("sbarb_heroes_first", False)
                         self.sbarb_heroes_first_var.set(heroes_first)
 
                 # Show queen arrow spells checkbox
@@ -423,7 +437,7 @@ class VisibilityMixin:
                     self.sbarb_queen_arrow_spells_row_visible = True
 
                     if current_profile in self.profiles:
-                        queen_arrow = self.profiles[current_profile].get('sbarb_queen_arrow_spells', False)
+                        queen_arrow = self.profiles[current_profile].get("sbarb_queen_arrow_spells", False)
                         self.sbarb_queen_arrow_spells_var.set(queen_arrow)
 
                 # Show achievement building spell casting checkbox
@@ -432,11 +446,11 @@ class VisibilityMixin:
                     self.sbarb_cast_spells_row_visible = True
 
                     if current_profile in self.profiles:
-                        cast_spells = self.profiles[current_profile].get('sbarb_cast_spells', False)
+                        cast_spells = self.profiles[current_profile].get("sbarb_cast_spells", False)
                         self.sbarb_cast_spells_var.set(cast_spells)
                         # Also load the targeting mode
-                        target_mode = self.profiles[current_profile].get('sbarb_cast_spells_target_mode', 'clumps')
-                        display_mode = self.sbarb_cast_spells_mode_reverse_map.get(target_mode, 'Clumps')
+                        target_mode = self.profiles[current_profile].get("sbarb_cast_spells_target_mode", "clumps")
+                        display_mode = self.sbarb_cast_spells_mode_reverse_map.get(target_mode, "Clumps")
                         self.sbarb_cast_spells_mode_var.set(display_mode)
 
             # Update targeting mode visibility (depends on cast spells state)
@@ -475,7 +489,7 @@ class VisibilityMixin:
     def update_sbarb_cast_spells_mode_visibility(self):
         """Show/hide SBarb cast spells targeting mode dropdown based on checkbox state"""
         current_profile = self.profile_var.get()
-        if current_profile != 'SBarb Farm':
+        if current_profile != "SBarb Farm":
             return
 
         cast_spells_enabled = self.sbarb_cast_spells_var.get()
@@ -500,7 +514,7 @@ class VisibilityMixin:
     def on_turbo_mode_changed(self):
         """Updates option visibility based on turbo mode state"""
         current_profile = self.profile_var.get()
-        if current_profile != 'SBarb Farm':
+        if current_profile != "SBarb Farm":
             return
 
         turbo_enabled = self.sbarb_turbo_deployment_var.get()
@@ -538,7 +552,7 @@ class VisibilityMixin:
         """Show/hide BB Gold troop mode dropdown and debug checkbox based on current profile"""
         current_profile = self.profile_var.get()
 
-        if current_profile == 'BB Gold':
+        if current_profile == "BB Gold":
             # Show troop mode dropdown
             if not self.bb_gold_troop_mode_row_visible:
                 self.bb_gold_troop_mode_frame.grid(row=4, column=0, columnspan=3, sticky=tk.W, pady=(10, 0))
@@ -547,13 +561,13 @@ class VisibilityMixin:
                 # Set initial value from profile if available
                 if current_profile in self.profiles:
                     # Try new setting first, fall back to migration from old setting
-                    saved_mode = self.profiles[current_profile].get('bb_gold_troop_mode', None)
+                    saved_mode = self.profiles[current_profile].get("bb_gold_troop_mode", None)
                     if saved_mode is None:
-                        if self.profiles[current_profile].get('bb_gold_using_bomber', False):
-                            saved_mode = 'bomber_night_witches'
+                        if self.profiles[current_profile].get("bb_gold_using_bomber", False):
+                            saved_mode = "bomber_night_witches"
                         else:
-                            saved_mode = 'night_witches'
-                    display_mode = self.bb_gold_troop_mode_reverse_map.get(saved_mode, 'Night Witches')
+                            saved_mode = "night_witches"
+                    display_mode = self.bb_gold_troop_mode_reverse_map.get(saved_mode, "Night Witches")
                     self.bb_gold_troop_mode_var.set(display_mode)
 
             # Update debug checkbox visibility based on troop mode
@@ -573,7 +587,7 @@ class VisibilityMixin:
         """Show/hide BB Gold Baby Dragons options based on troop mode"""
         current_mode = self.bb_gold_troop_mode_var.get()
 
-        if current_mode == 'Baby Dragons':
+        if current_mode == "Baby Dragons":
             # Show debug checkbox
             if not self.bb_gold_dragon_debug_row_visible:
                 self.bb_gold_dragon_debug_frame.grid(row=5, column=0, columnspan=3, sticky=tk.W, pady=(5, 0))
@@ -585,7 +599,7 @@ class VisibilityMixin:
             if not self.bb_gold_try_3_stars_row_visible:
                 self.bb_gold_try_3_stars_frame.grid(row=6, column=0, columnspan=3, sticky=tk.W, pady=(5, 0))
                 self.bb_gold_try_3_stars_row_visible = True
-                saved_value = self.profiles.get(self.current_profile, {}).get('bb_gold_try_3_stars', False)
+                saved_value = self.profiles.get(self.current_profile, {}).get("bb_gold_try_3_stars", False)
                 self.bb_gold_try_3_stars_var.set(saved_value)
         else:
             # Hide debug checkbox
@@ -599,9 +613,9 @@ class VisibilityMixin:
         """Handle BB Gold troop mode dropdown change"""
         self.save_settings()
         # Sync to web GUI
-        if hasattr(self, 'state_manager') and self.state_manager:
-            mode = self.bb_gold_troop_mode_map.get(self.bb_gold_troop_mode_var.get(), 'night_witches')
-            self.state_manager.set('bb_gold_troop_mode', mode)
+        if hasattr(self, "state_manager") and self.state_manager:
+            mode = self.bb_gold_troop_mode_map.get(self.bb_gold_troop_mode_var.get(), "night_witches")
+            self.state_manager.set("bb_gold_troop_mode", mode)
         # Update debug checkbox visibility
         self._update_bb_gold_dragon_debug_visibility()
 
@@ -609,36 +623,36 @@ class VisibilityMixin:
         """Handle BB Gold try 3 stars checkbox change"""
         self.save_settings()
         # Sync to web GUI
-        if hasattr(self, 'state_manager') and self.state_manager:
-            self.state_manager.set('bb_gold_try_3_stars', self.bb_gold_try_3_stars_var.get())
+        if hasattr(self, "state_manager") and self.state_manager:
+            self.state_manager.set("bb_gold_try_3_stars", self.bb_gold_try_3_stars_var.get())
 
     def _on_achievement_building_toggled(self, building_type):
         """Sync achievement building scan toggle to web GUI."""
         var_map = {
-            'eagle_artillery': self.achievement_eagle_var,
-            'monolith': self.achievement_monolith_var,
-            'xbow': self.achievement_xbow_var,
-            'inferno_tower': self.achievement_inferno_var,
-            'scattershot': self.achievement_scattershot_var,
-            'spell_tower': self.achievement_spell_tower_var,
-            'multi_archer_tower': self.achievement_multi_archer_var,
-            'ricochet_cannon': self.achievement_ricochet_var,
-            'firespitter': self.achievement_firespitter_var,
-            'multi_gear_tower': self.achievement_multi_gear_var,
+            "eagle_artillery": self.achievement_eagle_var,
+            "monolith": self.achievement_monolith_var,
+            "xbow": self.achievement_xbow_var,
+            "inferno_tower": self.achievement_inferno_var,
+            "scattershot": self.achievement_scattershot_var,
+            "spell_tower": self.achievement_spell_tower_var,
+            "multi_archer_tower": self.achievement_multi_archer_var,
+            "ricochet_cannon": self.achievement_ricochet_var,
+            "firespitter": self.achievement_firespitter_var,
+            "multi_gear_tower": self.achievement_multi_gear_var,
         }
         value = var_map[building_type].get()
         self.save_settings()
-        if hasattr(self, 'state_manager') and self.state_manager:
-            self.state_manager.set(f'achievement_scan_{building_type}', value)
+        if hasattr(self, "state_manager") and self.state_manager:
+            self.state_manager.set(f"achievement_scan_{building_type}", value)
 
     def _on_sgoblin_skip_logging_changed(self):
         """Handle SGoblin skip logging checkbox change."""
         self.save_settings()
-        if hasattr(self, 'state_manager') and self.state_manager:
-            self.state_manager.set('sgoblin_skip_logging', self.sgoblin_skip_logging_var.get())
+        if hasattr(self, "state_manager") and self.state_manager:
+            self.state_manager.set("sgoblin_skip_logging", self.sgoblin_skip_logging_var.get())
 
     def _on_bb_gold_dragon_debug_changed(self):
         """Handle BB Gold dragon debug checkbox change."""
         self.save_settings()
-        if hasattr(self, 'state_manager') and self.state_manager:
-            self.state_manager.set('bb_gold_dragon_debug_positions', self.bb_gold_dragon_debug_var.get())
+        if hasattr(self, "state_manager") and self.state_manager:
+            self.state_manager.set("bb_gold_dragon_debug_positions", self.bb_gold_dragon_debug_var.get())

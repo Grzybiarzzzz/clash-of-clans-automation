@@ -114,7 +114,7 @@ def gamma_delay(min_ms: float = 100, max_ms: float = 500, shape: float = 2.0, sc
     return delay
 
 
-def human_delay(min_ms: float = 60, max_ms: float = 130, distribution: str = 'lognormal') -> float:
+def human_delay(min_ms: float = 60, max_ms: float = 130, distribution: str = "lognormal") -> float:
     """
     Unified delay function with multiple distribution options.
 
@@ -126,16 +126,17 @@ def human_delay(min_ms: float = 60, max_ms: float = 130, distribution: str = 'lo
     Returns:
         Delay in seconds
     """
-    if distribution == 'lognormal':
+    if distribution == "lognormal":
         return lognormal_delay(min_ms, max_ms)
-    elif distribution == 'gamma':
+    elif distribution == "gamma":
         return gamma_delay(min_ms, max_ms)
     else:  # uniform fallback
         return random.uniform(min_ms / 1000, max_ms / 1000)
 
 
-def generate_bezier_points(start: Tuple[int, int], end: Tuple[int, int],
-                          control_points: int = 2, num_points: int = 50) -> List[Tuple[float, float]]:
+def generate_bezier_points(
+    start: Tuple[int, int], end: Tuple[int, int], control_points: int = 2, num_points: int = 50
+) -> List[Tuple[float, float]]:
     """
     Generate points along a bezier curve with variable control points.
 
@@ -176,16 +177,38 @@ def generate_bezier_points(start: Tuple[int, int], end: Tuple[int, int],
 
         if len(control) == 1:
             # Quadratic: B(t) = (1-t)²P₀ + 2(1-t)tP₁ + t²P₂
-            x = (1-t)**2 * start[0] + 2*(1-t)*t * control[0][0] + t**2 * end[0]
-            y = (1-t)**2 * start[1] + 2*(1-t)*t * control[0][1] + t**2 * end[1]
+            x = (1 - t) ** 2 * start[0] + 2 * (1 - t) * t * control[0][0] + t**2 * end[0]
+            y = (1 - t) ** 2 * start[1] + 2 * (1 - t) * t * control[0][1] + t**2 * end[1]
         elif len(control) == 2:
             # Cubic: B(t) = (1-t)³P₀ + 3(1-t)²tP₁ + 3(1-t)t²P₂ + t³P₃
-            x = (1-t)**3 * start[0] + 3*(1-t)**2*t * control[0][0] + 3*(1-t)*t**2 * control[1][0] + t**3 * end[0]
-            y = (1-t)**3 * start[1] + 3*(1-t)**2*t * control[0][1] + 3*(1-t)*t**2 * control[1][1] + t**3 * end[1]
+            x = (
+                (1 - t) ** 3 * start[0]
+                + 3 * (1 - t) ** 2 * t * control[0][0]
+                + 3 * (1 - t) * t**2 * control[1][0]
+                + t**3 * end[0]
+            )
+            y = (
+                (1 - t) ** 3 * start[1]
+                + 3 * (1 - t) ** 2 * t * control[0][1]
+                + 3 * (1 - t) * t**2 * control[1][1]
+                + t**3 * end[1]
+            )
         else:
             # Higher order bezier
-            x = (1-t)**4 * start[0] + 4*(1-t)**3*t * control[0][0] + 6*(1-t)**2*t**2 * control[1][0] + 4*(1-t)*t**3 * control[2][0] + t**4 * end[0]
-            y = (1-t)**4 * start[1] + 4*(1-t)**3*t * control[0][1] + 6*(1-t)**2*t**2 * control[1][1] + 4*(1-t)*t**3 * control[2][1] + t**4 * end[1]
+            x = (
+                (1 - t) ** 4 * start[0]
+                + 4 * (1 - t) ** 3 * t * control[0][0]
+                + 6 * (1 - t) ** 2 * t**2 * control[1][0]
+                + 4 * (1 - t) * t**3 * control[2][0]
+                + t**4 * end[0]
+            )
+            y = (
+                (1 - t) ** 4 * start[1]
+                + 4 * (1 - t) ** 3 * t * control[0][1]
+                + 6 * (1 - t) ** 2 * t**2 * control[1][1]
+                + 4 * (1 - t) * t**3 * control[2][1]
+                + t**4 * end[1]
+            )
 
         points.append((x, y))
 
@@ -214,8 +237,9 @@ def add_tremor(x: float, y: float, intensity: float = 1.0) -> Tuple[float, float
     return (x + tremor_x, y + tremor_y)
 
 
-def advanced_mouse_movement(start: Tuple[int, int], end: Tuple[int, int],
-                           overshoot: bool = None, duration: float = None) -> None:
+def advanced_mouse_movement(
+    start: Tuple[int, int], end: Tuple[int, int], overshoot: bool = None, duration: float = None
+) -> None:
     """
     Advanced mouse movement with overshoots, tremor, and variable acceleration.
     Optimized for speed and smoothness - humans move mouse FAST.
@@ -227,7 +251,7 @@ def advanced_mouse_movement(start: Tuple[int, int], end: Tuple[int, int],
         duration: Movement duration in seconds (None = calculate based on distance)
     """
     # Calculate movement distance for duration estimation
-    distance = math.sqrt((end[0] - start[0])**2 + (end[1] - start[1])**2)
+    distance = math.sqrt((end[0] - start[0]) ** 2 + (end[1] - start[1]) ** 2)
 
     # Much faster base duration - humans move mouse quickly
     # Short distances: 0.08-0.12s, Long distances: up to 0.25s
@@ -298,8 +322,7 @@ def mouse_drift_idle(max_drift: int = None) -> None:
     pyautogui.moveTo(drift_x, drift_y, duration=duration, tween=pyautogui.easeInOutQuad)
 
 
-def human_like_move_click_enhanced(x: int, y: int, region_size: int = 8,
-                                   pre_click_pause: bool = True) -> None:
+def human_like_move_click_enhanced(x: int, y: int, region_size: int = 8, pre_click_pause: bool = True) -> None:
     """
     Enhanced version of human_like_move_click with advanced features.
     Drop-in replacement for the original function.

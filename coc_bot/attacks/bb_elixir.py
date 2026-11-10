@@ -55,7 +55,7 @@ def handle_bb_elixir_mode():
         send_discord_debug_log(f"BB Elixir: Attempt {deployment_attempt} at {chosen_coord}")
 
         # Select troop and try to deploy
-        keyboard.send(KEYS['troop1'])
+        keyboard.send(KEYS["troop1"])
         time.sleep(0.1)
         human_like_move_click(chosen_coord[0], chosen_coord[1])
         time.sleep(0.3)  # Wait briefly for troop to deploy
@@ -65,7 +65,9 @@ def handle_bb_elixir_mode():
 
         if button_type:
             surrender_pos = (button_x, button_y)  # Store for later use
-            print(f"[BB ELIXIR] {button_type.replace('_', ' ').title()} button detected! Troop successfully deployed at {chosen_coord}")
+            print(
+                f"[BB ELIXIR] {button_type.replace('_', ' ').title()} button detected! Troop successfully deployed at {chosen_coord}"
+            )
             send_discord_debug_log(f"BB Elixir: Success - {button_type} button found at ({button_x}, {button_y})")
             break
         else:
@@ -84,10 +86,12 @@ def handle_bb_elixir_mode():
             random_x = random.randint(300, 2200)
             random_y = random.randint(200, 1100)  # Avoid unit bar at bottom
 
-            print(f"[BB ELIXIR] Random attempt {deployment_attempt - 10}/{max_random_attempts} at ({random_x}, {random_y})")
+            print(
+                f"[BB ELIXIR] Random attempt {deployment_attempt - 10}/{max_random_attempts} at ({random_x}, {random_y})"
+            )
 
             # Select troop and try to deploy
-            keyboard.send(KEYS['troop1'])
+            keyboard.send(KEYS["troop1"])
             time.sleep(0.1)
             human_like_move_click(random_x, random_y)
             time.sleep(0.3)
@@ -96,7 +100,9 @@ def handle_bb_elixir_mode():
             button_type, button_x, button_y = detect_surrender_or_end_battle()
 
             if button_type:
-                print(f"[BB ELIXIR] SUCCESS! Troop deployed at random coordinate ({random_x}, {random_y}), {button_type} button detected")
+                print(
+                    f"[BB ELIXIR] SUCCESS! Troop deployed at random coordinate ({random_x}, {random_y}), {button_type} button detected"
+                )
                 send_discord_debug_log(f"BB Elixir: Success with random coords - {button_type} button found")
                 surrender_pos = (button_x, button_y)  # Store position for use below
                 break
@@ -120,10 +126,10 @@ def handle_bb_elixir_mode():
 
         detected_state = detect_current_game_state()
 
-        if detected_state == 'in_base':
+        if detected_state == "in_base":
             print("[BB ELIXIR] Already at base - no surrender needed")
             send_discord_debug_log("BB Elixir: Already at base")
-        elif detected_state == 'battle_ending' or detected_state == 'end_screen':
+        elif detected_state == "battle_ending" or detected_state == "end_screen":
             print(f"[BB ELIXIR] Battle already ending ({detected_state}) - no surrender needed")
             send_discord_debug_log(f"BB Elixir: Battle ending - {detected_state}")
         else:
@@ -134,13 +140,13 @@ def handle_bb_elixir_mode():
 
             # Try finding surrender again
             button_type, x, y = detect_surrender_or_end_battle()
-            if button_type == 'surrender':
+            if button_type == "surrender":
                 print(f"[BB ELIXIR] Surrender now available at {x}, {y}")
                 fast_click(x, y)
                 time.sleep(0.3)
                 fast_click(1483, 898)  # Confirmation
                 time.sleep(0.3)
-            elif button_type == 'end_battle':
+            elif button_type == "end_battle":
                 print("[BB ELIXIR] Battle ended - clicking end battle")
                 fast_click(x, y)
                 time.sleep(0.3)
@@ -164,7 +170,7 @@ def handle_bb_elixir_mode():
     # Increment BB Elixir attack counter
     global bb_elixir_attack_count
     settings = runtime.gui.get_settings()
-    collect_interval = settings.get('bb_collect_interval', 12)
+    collect_interval = settings.get("bb_collect_interval", 12)
     bb_elixir_attack_count += 1
     print(f"[BB ELIXIR] Attack count: {bb_elixir_attack_count}/{collect_interval}")
     send_discord_debug_log(f"BB Elixir: Attack {bb_elixir_attack_count}/{collect_interval} completed")

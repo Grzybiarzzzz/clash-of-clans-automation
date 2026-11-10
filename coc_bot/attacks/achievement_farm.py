@@ -17,6 +17,7 @@ from coc_bot.overlay import overlay_clear, overlay_draw_spell_target, overlay_up
 from coc_bot.vision.buildings import detect_achievement_building, detect_all_achievement_buildings
 from coc_bot.vision.screens import wait_for_attack_screen_ready
 
+
 def perform_achievement_farm_attack():
     """Perform Achievement Farm attack with 3 targeting modes: Target, Clumps, First Detected"""
     print("=== ENTERING ACHIEVEMENT FARM MODE ===")
@@ -27,20 +28,41 @@ def perform_achievement_farm_attack():
     settings = runtime.gui.get_settings()
 
     # Get priority building type, targeting mode, and priority list from settings
-    priority_building = settings.get('achievement_target_building', 'eagle_artillery')
-    target_mode = settings.get('achievement_farm_target_mode', 'clumps')
-    priority_list = settings.get('achievement_priority_list', [
-        'eagle_artillery', 'monolith', 'xbow', 'inferno_tower', 'scattershot',
-        'spell_tower', 'multi_archer_tower', 'ricochet_cannon', 'firespitter', 'multi_gear_tower'
-    ])
+    priority_building = settings.get("achievement_target_building", "eagle_artillery")
+    target_mode = settings.get("achievement_farm_target_mode", "clumps")
+    priority_list = settings.get(
+        "achievement_priority_list",
+        [
+            "eagle_artillery",
+            "monolith",
+            "xbow",
+            "inferno_tower",
+            "scattershot",
+            "spell_tower",
+            "multi_archer_tower",
+            "ricochet_cannon",
+            "firespitter",
+            "multi_gear_tower",
+        ],
+    )
 
     # Build list of enabled buildings from checkboxes
     # Uses full key names: achievement_scan_eagle_artillery, achievement_scan_inferno_tower, etc.
     enabled_buildings = []
-    building_types = ['eagle_artillery', 'monolith', 'xbow', 'inferno_tower', 'scattershot',
-                      'spell_tower', 'multi_archer_tower', 'ricochet_cannon', 'firespitter', 'multi_gear_tower']
+    building_types = [
+        "eagle_artillery",
+        "monolith",
+        "xbow",
+        "inferno_tower",
+        "scattershot",
+        "spell_tower",
+        "multi_archer_tower",
+        "ricochet_cannon",
+        "firespitter",
+        "multi_gear_tower",
+    ]
     for bt in building_types:
-        if settings.get(f'achievement_scan_{bt}', True):
+        if settings.get(f"achievement_scan_{bt}", True):
             enabled_buildings.append(bt)
 
     if not enabled_buildings:
@@ -53,7 +75,9 @@ def perform_achievement_farm_attack():
     print(f"Priority target: {priority_building.replace('_', ' ').title()}")
     print(f"Enabled buildings: {', '.join([b.replace('_', ' ').title() for b in enabled_buildings])}")
     runtime.gui.log_message(f"Mode: {target_mode.replace('_', ' ').title()}")
-    send_discord_debug_log(f"Achievement Farm: Mode={target_mode}, Target={priority_building.replace('_', ' ')}, Enabled={len(enabled_buildings)}")
+    send_discord_debug_log(
+        f"Achievement Farm: Mode={target_mode}, Target={priority_building.replace('_', ' ')}, Enabled={len(enabled_buildings)}"
+    )
 
     # Wait for attack screen to load by detecting End Battle button
     if not wait_for_attack_screen_ready(timeout=10):
@@ -80,7 +104,7 @@ def perform_achievement_farm_attack():
     # Determine attack target based on targeting mode
     x, y = None, None
 
-    if target_mode == 'target':
+    if target_mode == "target":
         # MODE 1: Target - Try buildings in priority order until one is found
         print("[TARGET MODE] Trying buildings in priority order...")
 
@@ -133,7 +157,7 @@ def perform_achievement_farm_attack():
             runtime.skipped_bases += 1
             return False  # Continue to next base
 
-    elif target_mode == 'first_detected':
+    elif target_mode == "first_detected":
         # MODE 3: First Detected - FAST MODE: Stop scanning as soon as ANY building is found (PRIORITY ORDER)
         print("[FIRST DETECTED MODE] Scanning in priority order for first match...")
         overlay_clear()  # Clear overlay before scanning
@@ -159,7 +183,9 @@ def perform_achievement_farm_attack():
             bw, bh = config.ACHIEVEMENT_BUILDING_SIZES.get(found_type, (70, 70))
             x = x + bw // 2
             y = y + bh // 2
-            print(f"FIRST DETECTED: {found_type.replace('_', ' ').title()} at center ({x}, {y}) - Confidence: {confidence:.3f}")
+            print(
+                f"FIRST DETECTED: {found_type.replace('_', ' ').title()} at center ({x}, {y}) - Confidence: {confidence:.3f}"
+            )
             runtime.gui.log_message(f"First detected: {found_type.replace('_', ' ')} - attacking!")
             send_discord_debug_log(f"Achievement Farm [FIRST]: {found_type.replace('_', ' ')} at ({x}, {y})")
             # Draw spell target on overlay at building center
@@ -179,7 +205,7 @@ def perform_achievement_farm_attack():
         print("[CLUMPS MODE] Scanning enabled building types for clusters...")
         overlay_clear()  # Clear overlay before scanning
         if runtime.gui.overlay and runtime.gui.overlay_enabled:
-            runtime.gui.overlay.draw_text(100, 50, "CLUMPS MODE: Scanning all building types...", '#FFFF00')
+            runtime.gui.overlay.draw_text(100, 50, "CLUMPS MODE: Scanning all building types...", "#FFFF00")
             runtime.gui.overlay.update()
         all_buildings = detect_all_achievement_buildings(enabled_buildings)
 
@@ -243,9 +269,15 @@ def perform_achievement_farm_attack():
                 bw, bh = config.ACHIEVEMENT_BUILDING_SIZES.get(target_type, (70, 70))
                 center_x = x + bw // 2
                 center_y = y + bh // 2
-                print(f"PRIORITY TARGET: {target_type.replace('_', ' ').title()} at ({center_x}, {center_y}) - Confidence: {confidence:.3f}")
-                runtime.gui.log_message(f"Single {target_type.replace('_', ' ')} (priority #{priority_list.index(target_type)+1}) - attacking")
-                send_discord_debug_log(f"Achievement Farm [CLUMPS-PRIORITY]: {target_type.replace('_', ' ')} at ({center_x}, {center_y})")
+                print(
+                    f"PRIORITY TARGET: {target_type.replace('_', ' ').title()} at ({center_x}, {center_y}) - Confidence: {confidence:.3f}"
+                )
+                runtime.gui.log_message(
+                    f"Single {target_type.replace('_', ' ')} (priority #{priority_list.index(target_type) + 1}) - attacking"
+                )
+                send_discord_debug_log(
+                    f"Achievement Farm [CLUMPS-PRIORITY]: {target_type.replace('_', ' ')} at ({center_x}, {center_y})"
+                )
                 # Draw priority target on overlay at building center
                 overlay_draw_spell_target(center_x, center_y, f"PRIORITY: {target_type.replace('_', ' ')}")
                 # Update x, y to center for spell casting
@@ -258,9 +290,13 @@ def perform_achievement_farm_attack():
                 bw, bh = config.ACHIEVEMENT_BUILDING_SIZES.get(target_type, (70, 70))
                 center_x = x + bw // 2
                 center_y = y + bh // 2
-                print(f"FALLBACK TARGET: {target_type.replace('_', ' ').title()} at ({center_x}, {center_y}) - Confidence: {confidence:.3f}")
+                print(
+                    f"FALLBACK TARGET: {target_type.replace('_', ' ').title()} at ({center_x}, {center_y}) - Confidence: {confidence:.3f}"
+                )
                 runtime.gui.log_message(f"Single {target_type.replace('_', ' ')} (fallback) - attacking")
-                send_discord_debug_log(f"Achievement Farm [CLUMPS-FALLBACK]: {target_type.replace('_', ' ')} at ({center_x}, {center_y})")
+                send_discord_debug_log(
+                    f"Achievement Farm [CLUMPS-FALLBACK]: {target_type.replace('_', ' ')} at ({center_x}, {center_y})"
+                )
                 # Draw fallback target on overlay at building center
                 overlay_draw_spell_target(center_x, center_y, f"FALLBACK: {target_type.replace('_', ' ')}")
                 # Update x, y to center for spell casting
@@ -277,7 +313,7 @@ def perform_achievement_farm_attack():
     spell_start = time.time()
 
     # Earthquake spell
-    keyboard.send('a')
+    keyboard.send("a")
     time.sleep(SPELL_CLICK_DELAY_MS / 1000)
     turbo_move_cursor(x, y)
     turbo_fast_click()
@@ -285,7 +321,7 @@ def perform_achievement_farm_attack():
 
     # Lightning spells - Windows API fast clicks (tight spread)
     for i in range(10):
-        keyboard.send('s')
+        keyboard.send("s")
         time.sleep(SPELL_CLICK_DELAY_MS / 1000)
         spell_x = x + random.randint(-3, 3)
         spell_y = y + random.randint(-3, 3)
@@ -294,7 +330,7 @@ def perform_achievement_farm_attack():
         time.sleep(SPELL_CLICK_DELAY_MS / 1000)
 
     spell_elapsed = time.time() - spell_start
-    print(f"[ACH FARM] Cast 11 spells in {spell_elapsed*1000:.0f}ms (~{11/spell_elapsed:.0f} CPS)")
+    print(f"[ACH FARM] Cast 11 spells in {spell_elapsed * 1000:.0f}ms (~{11 / spell_elapsed:.0f} CPS)")
 
     print("[ACH FARM] All spells deployed - surrendering...")
     runtime.gui.log_message("Spells deployed - surrendering")

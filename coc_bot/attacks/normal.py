@@ -20,21 +20,24 @@ from coc_bot.vision.buildings import detect_air_defenses, detect_town_hall
 from coc_bot.vision.ocr import evaluate_base_resources
 from coc_bot.vision.screens import detect_alt_hotkeys
 
+
 def perform_normal_attack():
     """Perform a normal attack (non-derank mode)"""
     # SANITY CHECK: Verify we should be here
     settings = runtime.gui.get_settings()
-    current_profile = settings.get('current_profile', 'Unknown')
-    sbarb_mode_check = settings.get('sbarb_farm_mode', False)
+    current_profile = settings.get("current_profile", "Unknown")
+    sbarb_mode_check = settings.get("sbarb_farm_mode", False)
 
     if sbarb_mode_check:
-        print(f"\n{'!'*70}")
+        print(f"\n{'!' * 70}")
         print("[ERROR] ❌ CRITICAL: perform_normal_attack() called with sbarb_farm_mode=True!")
         print(f"[ERROR] Profile: {current_profile}")
         print("[ERROR] This should NEVER happen - SBarb Farm should skip evaluation!")
         print("[ERROR] Check that bot was restarted after code changes!")
-        print(f"{'!'*70}\n")
-        send_discord_debug_log(f"ERROR: perform_normal_attack() called with sbarb_farm_mode=True! Profile: {current_profile}", "ERROR")
+        print(f"{'!' * 70}\n")
+        send_discord_debug_log(
+            f"ERROR: perform_normal_attack() called with sbarb_farm_mode=True! Profile: {current_profile}", "ERROR"
+        )
 
     # Get current settings from GUI
     settings = runtime.gui.get_settings()
@@ -50,7 +53,7 @@ def perform_normal_attack():
     print(f"Air defenses detected (count): {len(air_defenses)}")
     for i, ad in enumerate(air_defenses):
         x, y, level, conf = ad
-        print(f"  AD {i+1}: ({x}, {y}), Level: {level}, Confidence: {conf:.2f}")
+        print(f"  AD {i + 1}: ({x}, {y}), Level: {level}, Confidence: {conf:.2f}")
 
     # Human-like pause to "analyze" the base and make decision
     thinking_pause(0.3, 0.8)  # Quick analysis
@@ -60,15 +63,15 @@ def perform_normal_attack():
     if should_skip:
         skip_base()
         return False  # Attack not completed
-    
+
     send_discord_debug_log(f"Base selected for attack: {len(air_defenses)} air defenses, {gold + elixir:,} resources")
-    
+
     # Choose attack side
     town_hall = detect_town_hall()
     if check_town_hall_level(town_hall, settings):
         skip_base()
         return False  # Attack not completed
-    
+
     chosen_side, side_coords = choose_attack_side(settings, town_hall)
 
     # Brief pause before committing to attack (simulates final decision)
@@ -79,8 +82,8 @@ def perform_normal_attack():
     KEYS = prepare_hotkeys(alt_hotkeys)
 
     # Get lightning spell targets
-    ad_target_mode = settings.get('ad_target_mode', 'level')
-    if ad_target_mode == 'proximity':
+    ad_target_mode = settings.get("ad_target_mode", "level")
+    if ad_target_mode == "proximity":
         sorter = get_air_defense_proximity_sorter(chosen_side)
         sorted_air_defenses = sorted(air_defenses, key=sorter)
         lightning_targets = [(x, y) for x, y, _, _ in sorted_air_defenses]
@@ -94,19 +97,19 @@ def perform_normal_attack():
     # - Reinforcements mode: 13 spells on 4 air defenses (3 per AD + 1 random)
     # - Non-reinforcements mode: 9 spells on 3 air defenses + 2 spells on air sweepers
     deploy_lightning_spells(air_defenses, lightning_targets, chosen_side, settings, KEYS)
-    
+
     # Move camera to chosen side
     move_camera_to_side(chosen_side)
-    
+
     # Deploy troops
     deploy_troops(side_coords, settings, KEYS)
-    
+
     # Wait for battle to end
     wait_for_battle_end()
-    
+
     # Handle post-battle activities
     should_pause = handle_post_battle()
     if should_pause:
         return True  # Signal to pause bot
-    
+
     return False  # Attack completed successfully

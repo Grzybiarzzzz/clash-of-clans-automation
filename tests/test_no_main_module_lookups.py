@@ -5,6 +5,7 @@ code looked them up by name (``globals()``, ``sys.modules['__main__']``).
 Those lookups silently stop working once the code lives in a package, so
 they are not allowed to come back.
 """
+
 import ast
 import pathlib
 
@@ -23,8 +24,12 @@ def offenders():
             if isinstance(node, ast.Constant) and node.value == "__main__":
                 parent_is_guard = False
                 for guard in ast.walk(tree):
-                    if isinstance(guard, ast.Compare) and node in guard.comparators \
-                            and isinstance(guard.left, ast.Name) and guard.left.id == "__name__":
+                    if (
+                        isinstance(guard, ast.Compare)
+                        and node in guard.comparators
+                        and isinstance(guard.left, ast.Name)
+                        and guard.left.id == "__name__"
+                    ):
                         parent_is_guard = True
                 if not parent_is_guard:
                     found.append(f"{path.relative_to(PACKAGE)}:{node.lineno} '__main__' lookup")
