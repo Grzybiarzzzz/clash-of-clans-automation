@@ -1,4 +1,3 @@
-import json
 import os
 import random
 import threading
@@ -18,6 +17,15 @@ import config
 from bot_gui import BotGUI
 from bot_state import BotStateManager
 from coc_bot import runtime
+from coc_bot.connection import start_connection_monitor
+from coc_bot.controls import (
+    check_discord_commands,
+    exit_app,
+    on_pause_from_web,
+    stop_bot,
+    toggle_pause,
+    update_status,
+)
 from coc_bot.discord_log import send_discord_debug_log, send_discord_notification
 from coc_bot.geometry import (
     calculate_deployment_step,
@@ -45,11 +53,15 @@ from coc_bot.overlay import (
     overlay_update,
     save_overlay_screenshot_hotkey,
 )
-from coc_bot.profiles import (
-    auto_switch_profile_if_needed,
-    get_global_reinforcements_enabled,
-    get_global_skip_on_th_fail,
+from coc_bot.profiles import get_global_reinforcements_enabled, get_global_skip_on_th_fail
+from coc_bot.session import check_auto_pause, save_loot_data, schedule_next_break
+from coc_bot.storages import (
+    check_and_pause_if_storages_full,
+    read_bb_base_storages,
+    read_own_base_storages,
+    track_resources,
 )
+from coc_bot.village import collect_bb_loot, switch_village
 from coc_bot.vision.bb_deployment_zone import (
     detect_bb_deployment_zone,
     detect_bb_deployment_zone_advanced,
@@ -79,14 +91,11 @@ from coc_bot.vision.ocr import (
 from coc_bot.vision.screens import (
     detect_alt_hotkeys,
     detect_army_button,
-    detect_bb_boat,
-    detect_connection_lost,
     detect_current_game_state,
     detect_end_battle_button,
     detect_end_screen_state,
     detect_ghost_attack,
     detect_in_base_state,
-    detect_main_base_boat,
     detect_return_home_button,
     detect_star_bonus_screen,
     detect_surrender_or_end_battle,
@@ -126,11 +135,6 @@ print("PyAutoGUI corner failsafe is disabled; use F2 to stop or ESC to exit")
 bb_elixir_attack_count = 0  # Counter for BB Elixir loot collection every 12 attacks
 bb_gold_attack_count = 0  # Counter for BB Gold loot collection every 12 attacks
 
-# Resource tracking for full storage detection (auto-pause when no loot gained)
-last_3_resources = {
-    'main_base': [],  # List of (gold, elixir, dark_elixir) tuples
-    'builder_base': []  # List of (gold, elixir) tuples
-}
 
 # BB Gold State Machine Enum
 class BBGoldState(Enum):
@@ -144,11 +148,6 @@ class BBGoldState(Enum):
     END_SCREEN = auto()           # Battle finished, on victory/defeat screen
     RETURNING_HOME = auto()       # Return button clicked, transitioning to base
     ERROR_RECOVERY = auto()       # Ghost attack or error state, recovering
-
-
-# Discord control integration
-last_settings_check = 0
-settings_check_interval = 1.0  # Check every second
 
 
 # Create GUI
@@ -183,11 +182,6 @@ runtime.gui.state_manager = runtime.state_manager
 runtime.gui._sync_state_to_manager()
 runtime.state_manager.subscribe(runtime.gui._on_state_change)
 
-# Register pause callback to update main.py's global paused variable
-def on_pause_from_web(new_paused_state):
-    """Called when web GUI toggles pause - updates main.py global."""
-    runtime.paused = new_paused_state
-    print(f"[MAIN] Pause state updated from web GUI: {runtime.paused}")
 
 runtime.gui.set_control_callback('pause', on_pause_from_web)
 print("[MAIN] GUI connected to state manager for web sync")
@@ -237,323 +231,8 @@ except Exception as e:
 # CONNECTION LOST DETECTION AND RECOVERY
 # ============================================================================
 
-# Global flag to track if connection monitor is running
-_connection_monitor_running = False
-_connection_monitor_paused = False
-
-
-def handle_connection_lost():
-    """
-    Handle connection lost by clicking "TRY AGAIN" and waiting for reconnection.
-    After reconnect, detects current screen state.
-
-    Returns:
-        bool: True if reconnection successful, False otherwise
-    """
-    global _connection_monitor_paused
-
-    try_again_pos = detect_connection_lost()
-    if try_again_pos is None:
-        return False
-
-    # Pause the monitor while handling reconnection
-    _connection_monitor_paused = True
-
-    print("[CONNECTION] *** CONNECTION LOST - Attempting reconnect ***")
-    runtime.gui.log_message("Connection lost! Clicking Try Again...")
-    send_discord_debug_log("Connection lost detected - attempting reconnect", "WARNING")
-
-    # Click "TRY AGAIN" button
-    fast_click(try_again_pos[0], try_again_pos[1])
-    time.sleep(2)  # Wait for reconnection attempt
-
-    # Wait for reconnection (check if popup disappears and base loads)
-    max_wait = 30  # seconds
-    start_time = time.time()
-
-    while time.time() - start_time < max_wait:
-        # Check if still showing connection lost
-        if detect_connection_lost() is not None:
-            # Still showing popup - click again
-            print("[CONNECTION] Still disconnected, clicking Try Again...")
-            fast_click(try_again_pos[0], try_again_pos[1])
-            time.sleep(3)
-            continue
-
-        # Popup gone - wait a moment for screen to settle
-        time.sleep(1)
-
-        # Try to detect where we are
-        if detect_in_base_state():
-            print("[CONNECTION] ✓ Reconnected - at home base")
-            runtime.gui.log_message("Reconnected successfully - at home base")
-            send_discord_debug_log("Reconnected successfully - at home base", "INFO")
-            _connection_monitor_paused = False
-            return True
-
-        # Could be in attack screen or elsewhere - just continue
-        print("[CONNECTION] ✓ Reconnected - determining screen state...")
-        runtime.gui.log_message("Reconnected - screen state unknown, continuing...")
-        send_discord_debug_log("Reconnected - screen state unknown", "INFO")
-        _connection_monitor_paused = False
-        return True
-
-    print("[CONNECTION] ✗ Failed to reconnect after 30 seconds")
-    runtime.gui.log_message("Failed to reconnect after 30 seconds")
-    send_discord_debug_log("Failed to reconnect after 30 seconds", "ERROR")
-    _connection_monitor_paused = False
-    return False
-
-
-def connection_monitor_loop():
-    """
-    Background thread that checks for connection lost every 5 seconds.
-    Runs continuously while the bot is active.
-    """
-    global _connection_monitor_running, _connection_monitor_paused
-
-    print("[CONNECTION MONITOR] Started - checking every 5 seconds")
-
-    while _connection_monitor_running:
-        try:
-            # Skip check if paused or handling reconnection
-            if not _connection_monitor_paused:
-                try_again_pos = detect_connection_lost()
-                if try_again_pos is not None:
-                    handle_connection_lost()
-
-            # Wait 5 seconds before next check
-            time.sleep(5)
-
-        except Exception as e:
-            print(f"[CONNECTION MONITOR] Error: {e}")
-            time.sleep(5)
-
-    print("[CONNECTION MONITOR] Stopped")
-
-
-def start_connection_monitor():
-    """Start the connection monitor background thread."""
-    global _connection_monitor_running
-
-    if _connection_monitor_running:
-        print("[CONNECTION MONITOR] Already running")
-        return
-
-    _connection_monitor_running = True
-    monitor_thread = threading.Thread(target=connection_monitor_loop, daemon=True)
-    monitor_thread.start()
-    print("[CONNECTION MONITOR] Thread started")
-
-
-def stop_connection_monitor():
-    """Stop the connection monitor background thread."""
-    global _connection_monitor_running
-    _connection_monitor_running = False
-    print("[CONNECTION MONITOR] Stop requested")
-
-
-def track_resources(gold, elixir, dark_elixir=None, base_type='main_base'):
-    """
-    Track resource readings to detect full storages (no loot gained over 3 attacks).
-
-    Args:
-        gold (int): Gold amount
-        elixir (int): Elixir amount
-        dark_elixir (int, optional): Dark elixir amount (None for Builder Base)
-        base_type (str): 'main_base' or 'builder_base'
-    """
-    global last_3_resources
-
-    # Create resource tuple
-    if base_type == 'main_base' and dark_elixir is not None:
-        resource_tuple = (gold, elixir, dark_elixir)
-    else:
-        resource_tuple = (gold, elixir)
-
-    # Add to tracking list
-    last_3_resources[base_type].append(resource_tuple)
-
-    # Keep only last 3
-    if len(last_3_resources[base_type]) > 3:
-        last_3_resources[base_type] = last_3_resources[base_type][-3:]
-
-
-def check_and_pause_if_storages_full(base_type='main_base'):
-    """
-    Check if last 3 resource readings are the same (storages full, no loot gained).
-    If so, pause the bot and notify the user.
-
-    Args:
-        base_type (str): 'main_base' or 'builder_base'
-
-    Returns:
-        bool: True if bot was paused, False otherwise
-    """
-    global last_3_resources
-
-    readings = last_3_resources[base_type]
-
-    # Need exactly 3 readings
-    if len(readings) < 3:
-        return False
-
-    # Check if all 3 readings are exactly the same
-    first = readings[0]
-    all_same = all(reading == first for reading in readings[1:])
-
-    if all_same:
-        # All 3 consecutive attacks had same resources - storages are full!
-        if base_type == 'main_base':
-            resource_str = f"Gold: {first[0]:,}, Elixir: {first[1]:,}"
-            if len(first) == 3:
-                resource_str += f", Dark: {first[2]:,}"
-        else:
-            resource_str = f"Gold: {first[0]:,}, Elixir: {first[1]:,}"
-
-        print(f"\n{'='*60}")
-        print(f"⚠️ STORAGES FULL - NO LOOT GAINED")
-        print(f"{'='*60}")
-        print(f"Same resources detected for 3 consecutive attacks:")
-        print(f"  {resource_str}")
-        print(f"Likely max storage values are outdated or storages are full.")
-        print(f"AUTO-PAUSING BOT - Please update profile storage maximums!")
-        print(f"{'='*60}\n")
-
-        runtime.gui.log_message("⚠️ STORAGES FULL - Pausing bot")
-        runtime.gui.log_message(f"Same resources: {resource_str}")
-        runtime.gui.log_message("Update profile storage maximums!")
-
-        send_discord_debug_log(
-            f"🛑 Storages Full - Auto-pausing bot\n"
-            f"Same resources for 3 attacks: {resource_str}\n"
-            f"Update profile storage maximums!",
-            "WARNING"
-        )
-
-        # Pause the bot
-        runtime.paused = True
-        runtime.gui.toggle_pause()  # Update GUI state
-
-        # Clear tracking to avoid repeated pauses
-        last_3_resources[base_type] = []
-
-        return True
-
-    return False
-
-
-def save_loot_data(loot_data, loop_count):
-    """
-    Save loot data to a CSV file for tracking.
-    """
-    import csv
-    from datetime import datetime
-
-    filename = 'data/loot_tracking.csv'
-    file_exists = os.path.exists(filename)
-
-    try:
-        with open(filename, 'a', newline='', encoding='utf-8') as csvfile:
-            fieldnames = ['timestamp', 'attack_number', 'gold', 'elixir', 'dark_elixir', 'total_loot']
-            writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
-
-            # Write header if file is new
-            if not file_exists:
-                writer.writeheader()
-
-            # Calculate total loot value
-            total_loot = loot_data['gold'] + loot_data['elixir'] + (loot_data['dark_elixir'] * 100)  # Dark elixir worth more
-
-            # Write loot data
-            writer.writerow({
-                'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-                'attack_number': loop_count,
-                'gold': loot_data['gold'],
-                'elixir': loot_data['elixir'],
-                'dark_elixir': loot_data['dark_elixir'],
-                'total_loot': total_loot
-            })
-
-        print(f"Loot data saved to {filename}")
-        runtime.gui.log_message(f"Loot data saved to {filename}")
-
-    except Exception as e:
-        print(f"Error saving loot data: {e}")
-        runtime.gui.log_message(f"Error saving loot data: {e}")
 
 # Control callbacks
-
-def update_status():
-    """Update GUI status from bot state (both main status and quick status indicator)"""
-    if runtime.gui.bot_running:
-        if runtime.gui.bot_paused:
-            runtime.gui.status_label.config(text='PAUSED', foreground='orange')
-            runtime.gui.quick_status_label.config(text='● Paused', foreground='orange')
-        else:
-            runtime.gui.status_label.config(text='RUNNING', foreground='green')
-            runtime.gui.quick_status_label.config(text='● Running', foreground='green')
-    else:
-        runtime.gui.status_label.config(text='STOPPED', foreground='red')
-        runtime.gui.quick_status_label.config(text='● Stopped', foreground='red')
-
-
-def toggle_pause():
-    runtime.paused = not runtime.paused
-    runtime.gui.bot_paused = runtime.paused
-    print(f"Paused set to {runtime.paused}")
-    runtime.gui.log_message(f"Bot {'paused' if runtime.paused else 'resumed'}")
-    runtime.root.after(0, update_status)
-
-
-def stop_bot():
-    """Stop the bot immediately without closing the GUI"""
-    runtime.running = False
-    runtime.paused = True
-
-    # Release all held keys immediately
-    try:
-        pyautogui.keyUp('shift')
-        pyautogui.keyUp('ctrl')
-        pyautogui.keyUp('alt')
-        # Release mouse buttons if held
-        try:
-            pyautogui.mouseUp()
-        except:
-            pass
-    except Exception as e:
-        print(f"Error releasing keys: {e}")
-
-    # Stop any ongoing PyAutoGUI operations
-    pyautogui.PAUSE = 0
-
-    print("Bot stopped immediately by user (F2)")
-    send_discord_debug_log("Bot stopped immediately by user hotkey (F2)", "INFO")
-
-    # Update GUI on main thread (handles button states and status labels)
-    runtime.root.after(0, runtime.gui.stop_bot)
-
-
-def exit_app():
-    """Stop the bot and close the entire program"""
-    runtime.running = False
-    runtime.gui.bot_running = False
-    runtime.gui.log_message("Bot stopped - closing program")
-
-    # Stop connection monitor
-    stop_connection_monitor()
-
-    # Unhook all keyboard hotkeys to prevent clicks after exit
-    try:
-        keyboard.unhook_all()
-        print("Keyboard hotkeys cleaned up")
-    except Exception as e:
-        print(f"Error unhooking keyboard: {e}")
-
-    # Stop any PyAutoGUI operations
-    pyautogui.PAUSE = 0  # Disable pause between actions for faster shutdown
-
-    runtime.root.quit()
 
 
 # Bind hotkeys
@@ -569,238 +248,7 @@ keyboard.add_hotkey('f7', clear_overlay_hotkey)
 keyboard.add_hotkey('f8', save_overlay_screenshot_hotkey)
 
 
-def check_discord_commands():
-    """
-    Check for Discord commands by monitoring bot_settings.json file.
-    This allows the main bot to respond to Discord controller commands.
-    """
-    global last_settings_check
-    current_time = time.time()
-    if current_time - last_settings_check < settings_check_interval:
-        return
-    last_settings_check = current_time
-    try:
-        # Check if bot_settings.json exists and has been modified
-        if not os.path.exists('bot_settings.json'):
-            return
-        # Load current settings from file
-        with open('bot_settings.json', 'r', encoding='utf-8') as f:
-            file_settings = json.load(f)
-        # Check for Discord control flags
-        discord_running = file_settings.get('discord_running', None)
-        discord_paused = file_settings.get('discord_paused', None)
-        # Only apply Discord commands if the flags actually exist in the file
-        if discord_running is not None and discord_paused is not None:
-            # Apply Discord commands
-            if discord_running and not runtime.gui.bot_running:
-                runtime.gui.bot_running = True
-                runtime.gui.bot_paused = False
-                runtime.paused = False
-                runtime.running = True
-                runtime.gui.log_message("Bot started via Discord command")
-                print("Bot started via Discord command")
-                runtime.root.after(0, update_status)
-            elif not discord_running and runtime.gui.bot_running:
-                runtime.gui.bot_running = False
-                runtime.gui.bot_paused = True
-                runtime.paused = True
-                runtime.running = False
-                runtime.gui.log_message("Bot stopped via Discord command")
-                print("Bot stopped via Discord command")
-                runtime.root.after(0, update_status)
-            elif discord_running and runtime.gui.bot_running:
-                if discord_paused and not runtime.gui.bot_paused:
-                    runtime.gui.bot_paused = True
-                    runtime.paused = True
-                    runtime.gui.log_message("Bot paused via Discord command")
-                    print("Bot paused via Discord command")
-                    runtime.root.after(0, update_status)
-                elif not discord_paused and runtime.gui.bot_paused:
-                    runtime.gui.bot_paused = False
-                    runtime.paused = False
-                    runtime.gui.log_message("Bot resumed via Discord command")
-                    print("Bot resumed via Discord command")
-                    runtime.root.after(0, update_status)
-    except Exception as e:
-        print(f"Error checking Discord commands: {e}")
-
-
-# Main action loop
-# Setup automatic break timing
-def schedule_next_break():
-    # Get settings from GUI
-    settings = runtime.gui.get_settings()
-    break_interval = settings.get('break_interval', 45)  # minutes
-    auto_pause_enabled = settings.get('auto_pause_enabled', True)
-    
-    if not auto_pause_enabled:
-        return None  # No break scheduled
-    
-    # Add some randomization (±5 minutes)
-    interval_seconds = (break_interval + random.uniform(-5, 5)) * 60
-    return time.time() + interval_seconds
-
 runtime.break_time = schedule_next_break()
-
-
-def switch_village(target_village):
-    """
-    Switch between Main Base and Builder Base.
-
-    Args:
-        target_village: 'main' or 'builder_base'
-
-    Returns:
-        True if switch successful, False otherwise
-    """
-    print(f"[VILLAGE SWITCH] Switching to {target_village}...")
-    send_discord_debug_log(f"Switching to {target_village}")
-
-    try:
-        # Determine which boat to look for based on target village
-        if target_village == 'builder_base':
-            # Currently on Main Base, need to find Main Base boat
-            print("[VILLAGE SWITCH] Preparing to detect boat on Main Base...")
-
-            # Zoom out to see more of the base
-            print("[VILLAGE SWITCH] Zooming out...")
-            pyautogui.scroll(-3)  # Scroll down to zoom out
-            time.sleep(0.5)
-
-            # Drag camera to left-bottom to make boat visible
-            # To see LEFT-BOTTOM area: drag RIGHT and UP
-            print("[VILLAGE SWITCH] Dragging camera to left-bottom area...")
-            start_x, start_y = 1280, 720  # Screen center
-            end_x, end_y = start_x + 600, start_y - 400  # Drag right and up
-            pyautogui.moveTo(start_x, start_y, duration=0.3)
-            pyautogui.drag(end_x - start_x, end_y - start_y, duration=0.5, button='left')
-            time.sleep(1)
-
-            # Now detect boat
-            print("[VILLAGE SWITCH] Looking for boat on Main Base...")
-            boat_pos = detect_main_base_boat()
-
-            if not boat_pos:
-                print("[VILLAGE SWITCH] Failed to find boat on Main Base")
-                send_discord_debug_log("Failed to find boat on Main Base", "ERROR")
-                return False
-
-        else:  # target_village == 'main'
-            # Currently on Builder Base, need to find BB boat
-            print("[VILLAGE SWITCH] Looking for boat on Builder Base...")
-            boat_pos = detect_bb_boat()
-
-            if not boat_pos:
-                # Boat not visible, try camera drag
-                print("[VILLAGE SWITCH] Boat not found, dragging camera...")
-                # Drag camera to see right side
-                start_x, start_y = 1280, 720
-                end_x, end_y = start_x - 800, start_y + 800
-                pyautogui.moveTo(start_x, start_y, duration=0.3)
-                pyautogui.drag(end_x - start_x, end_y - start_y, duration=0.5, button='left')
-                time.sleep(1)
-
-                # Try detection again
-                boat_pos = detect_bb_boat()
-
-                if not boat_pos:
-                    print("[VILLAGE SWITCH] Failed to find boat on Builder Base")
-                    send_discord_debug_log("Failed to find boat on Builder Base", "ERROR")
-                    return False
-
-        # Click the boat (or cart position if using trees fallback)
-        click_x, click_y = boat_pos[0], boat_pos[1]
-        is_cart = boat_pos[2] if len(boat_pos) > 2 else False
-        if is_cart:
-            print(f"[VILLAGE SWITCH] Clicking elixir cart area at ({click_x}, {click_y})")
-        else:
-            print(f"[VILLAGE SWITCH] Clicking boat at ({click_x}, {click_y})")
-        human_like_move_click(click_x, click_y)
-        time.sleep(0.5)
-
-        # Wait for village transition (animation takes ~3-4 seconds)
-        print("[VILLAGE SWITCH] Waiting for village transition...")
-        time.sleep(4)
-
-        # Verify we're in the correct village
-        print(f"[VILLAGE SWITCH] Successfully switched to {target_village}")
-        send_discord_debug_log(f"Successfully switched to {target_village}")
-        return True
-
-    except Exception as e:
-        print(f"[VILLAGE SWITCH] Error switching village: {e}")
-        send_discord_debug_log(f"Village switch error: {e}", "ERROR")
-        return False
-
-def collect_bb_loot():
-    """
-    Collect loot from Builder Base by finding the boat and clicking the relative position.
-    """
-    print("[BB LOOT] Starting loot collection...")
-    send_discord_debug_log("BB Elixir: Starting loot collection")
-    runtime.gui.log_message("BB Elixir: Collecting loot...")
-
-    # Drag camera to see right side and slightly up
-    # To see RIGHT: drag LEFT. To see UP: drag DOWN.
-    print("[BB LOOT] Dragging camera to boat area...")
-    start_x, start_y = 1280, 720  # Screen center
-    end_x, end_y = start_x - 800, start_y + 800  # Drag left 100px, down 50px
-
-    pyautogui.moveTo(start_x, start_y, duration=0.1)
-    time.sleep(0.1)
-    pyautogui.mouseDown()
-    time.sleep(0.1)
-    pyautogui.moveTo(end_x, end_y, duration=0.5)
-    time.sleep(0.1)
-    pyautogui.mouseUp()
-    time.sleep(1)  # Wait for camera to settle
-
-    # Try to detect boat (retry up to 3 times)
-    boat_pos = None
-    for attempt in range(3):
-        boat_pos = detect_bb_boat()
-        if boat_pos:
-            break
-        else:
-            print(f"[BB LOOT] Boat not found, retry {attempt + 1}/3...")
-            time.sleep(0.5)
-
-    if boat_pos:
-        pos_x, pos_y, is_cart = boat_pos
-
-        if is_cart:
-            # Trees fallback - click elixir cart directly
-            click_x = pos_x
-            click_y = pos_y
-            print(f"[BB LOOT] Clicking elixir cart directly at ({click_x}, {click_y})")
-        else:
-            # Boat detected - click at offset position
-            click_x = pos_x - 450
-            click_y = pos_y + 150
-            print(f"[BB LOOT] Clicking loot at ({click_x}, {click_y}) (relative to boat)")
-        send_discord_debug_log(f"BB Elixir: Clicking loot at ({click_x}, {click_y})")
-        human_like_move_click(click_x, click_y)
-        time.sleep(2)
-
-        # Click second position
-        print("[BB LOOT] Clicking confirmation at (1857, 1215)")
-        send_discord_debug_log("BB Elixir: Clicking loot confirmation (1857, 1215)")
-        human_like_move_click(1857, 1215)
-        time.sleep(1.5)
-
-        # Click third position
-        print("[BB LOOT] Clicking final button at (211, 900)")
-        send_discord_debug_log("BB Elixir: Clicking final loot button (211, 900)")
-        human_like_move_click(211, 900)
-        time.sleep(2)
-
-        print("[BB LOOT] Loot collection completed")
-        runtime.gui.log_message("BB Elixir: Loot collected successfully")
-        send_discord_debug_log("BB Elixir: Loot collection completed")
-    else:
-        print("[BB LOOT] WARNING: Boat not found after 3 attempts, skipping loot collection")
-        runtime.gui.log_message("BB Elixir: Boat not found - skipping loot")
-        send_discord_debug_log("BB Elixir: Boat not found - skipping loot collection", "WARNING")
 
 
 def handle_bb_elixir_mode():
@@ -3789,176 +3237,6 @@ def handle_sbarb_farm_mode():
 # STORAGE READING FUNCTIONS (for Queue System)
 # ============================================================================
 
-def read_own_base_storages():
-    """
-    Read own base storage percentages (Gold, Elixir, Dark Elixir).
-    Uses existing BASE_*_REGION coordinates to read absolute values,
-    then calculates percentages based on max_storage settings.
-
-    Returns:
-        dict: {
-            'gold_percent': int (0-100),
-            'elixir_percent': int (0-100),
-            'de_percent': int (0-100),
-            'gold_absolute': int,
-            'elixir_absolute': int,
-            'de_absolute': int,
-            'success': bool
-        }
-    """
-    result = {
-        'gold_percent': 0,
-        'elixir_percent': 0,
-        'de_percent': 0,
-        'gold_absolute': 0,
-        'elixir_absolute': 0,
-        'de_absolute': 0,
-        'success': False
-    }
-
-    try:
-        # Read absolute storage values using existing regions and OCR
-        # Retry if OCR returns 0 (usually an OCR error)
-        max_retries = 3
-
-        # Read Gold with template matching OCR
-        base_gold_img = ImageGrab.grab(bbox=config.BASE_GOLD_REGION)
-        gold_absolute = ocr_attack_resource_template_digits(base_gold_img, context='base_screen', debug=False, resource_type='gold')
-
-        # Read Elixir with template matching OCR
-        base_elixir_img = ImageGrab.grab(bbox=config.BASE_ELIXIR_REGION)
-        elixir_absolute = ocr_attack_resource_template_digits(base_elixir_img, context='base_screen', debug=False, resource_type='elixir')
-
-        # Read Dark Elixir with template matching OCR
-        de_absolute = 0
-        if hasattr(config, 'BASE_DARK_ELIXIR_REGION'):
-            base_dark_elixir_img = ImageGrab.grab(bbox=config.BASE_DARK_ELIXIR_REGION)
-            de_absolute = ocr_attack_resource_template_digits(base_dark_elixir_img, context='base_dark_elixir', debug=False, resource_type='dark_elixir')
-
-        # Get max storage values from settings
-        settings = runtime.gui.get_settings()
-        max_gold = settings.get('max_gold_storage', 18000000)
-        max_elixir = settings.get('max_elixir_storage', 14000000)
-        max_de = settings.get('max_dark_elixir_storage', 240000)
-
-        # Calculate percentages
-        gold_percent = min(100, int((gold_absolute / max_gold) * 100)) if max_gold > 0 else 0
-        elixir_percent = min(100, int((elixir_absolute / max_elixir) * 100)) if max_elixir > 0 else 0
-        de_percent = min(100, int((de_absolute / max_de) * 100)) if max_de > 0 else 0
-
-        # Update result
-        result['gold_absolute'] = gold_absolute
-        result['elixir_absolute'] = elixir_absolute
-        result['de_absolute'] = de_absolute
-        result['gold_percent'] = gold_percent
-        result['elixir_percent'] = elixir_percent
-        result['de_percent'] = de_percent
-        result['success'] = True
-
-        print(f"[STORAGE] Main Base: Gold={gold_percent}% ({gold_absolute:,}/{max_gold:,}), "
-              f"Elixir={elixir_percent}% ({elixir_absolute:,}/{max_elixir:,}), "
-              f"DE={de_percent}% ({de_absolute:,}/{max_de:,})")
-
-        send_discord_debug_log(
-            f"Storage Check: Gold={gold_percent}%, Elixir={elixir_percent}%, DE={de_percent}%"
-        )
-
-        # Track resources for 3-consecutive-same-readings detection (fallback safety)
-        # This ensures tracking happens regardless of where this function is called from
-        track_resources(gold_absolute, elixir_absolute, de_absolute, base_type='main_base')
-        # Check if 3 consecutive same readings detected (storages full, no loot gained)
-        check_and_pause_if_storages_full(base_type='main_base')
-
-        return result
-
-    except Exception as e:
-        print(f"[STORAGE] ERROR reading own base storages: {e}")
-        send_discord_debug_log(f"Storage read error: {e}", "ERROR")
-        return result
-
-
-def read_bb_base_storages():
-    """
-    Read Builder Base storage percentages (Gold, Elixir).
-    Uses BB storage regions to read absolute values,
-    then calculates percentages based on max BB storage values.
-
-    Note: BB max storages are fixed per Builder Hall level.
-    For now, we assume max values and calculate percentages.
-
-    Returns:
-        dict: {
-            'gold_percent': int (0-100),
-            'elixir_percent': int (0-100),
-            'gold_absolute': int,
-            'elixir_absolute': int,
-            'success': bool
-        }
-    """
-    result = {
-        'gold_percent': 0,
-        'elixir_percent': 0,
-        'gold_absolute': 0,
-        'elixir_absolute': 0,
-        'success': False
-    }
-
-    try:
-        # Check if BB storage regions are defined
-        if not hasattr(config, 'BB_BASE_GOLD_REGION') or not hasattr(config, 'BB_BASE_ELIXIR_REGION'):
-            print("[STORAGE] BB storage regions not defined in config.py")
-            return result
-
-        # Read absolute storage values with retry logic
-        max_retries = 3
-
-        # Read BB Gold with template matching OCR
-        bb_gold_img = ImageGrab.grab(bbox=config.BB_BASE_GOLD_REGION)
-        gold_absolute = ocr_attack_resource_template_digits(bb_gold_img, context='bb_base_screen', debug=False, resource_type='gold')
-
-        # Read BB Elixir with template matching OCR
-        bb_elixir_img = ImageGrab.grab(bbox=config.BB_BASE_ELIXIR_REGION)
-        elixir_absolute = ocr_attack_resource_template_digits(bb_elixir_img, context='bb_base_screen', debug=False, resource_type='elixir')
-
-        # Get BB max storage values from settings
-        settings = runtime.gui.get_settings()
-        max_bb_gold = settings.get('max_bb_gold_storage', 5000000)
-        max_bb_elixir = settings.get('max_bb_elixir_storage', 5000000)
-
-        # Calculate percentages
-        gold_percent = min(100, int((gold_absolute / max_bb_gold) * 100)) if max_bb_gold > 0 else 0
-        elixir_percent = min(100, int((elixir_absolute / max_bb_elixir) * 100)) if max_bb_elixir > 0 else 0
-
-        # Update result
-        result['gold_absolute'] = gold_absolute
-        result['elixir_absolute'] = elixir_absolute
-        result['gold_percent'] = gold_percent
-        result['elixir_percent'] = elixir_percent
-        result['success'] = True
-
-        print(f"[STORAGE] Builder Base: Gold={gold_percent}% ({gold_absolute:,}/{max_bb_gold:,}), "
-              f"Elixir={elixir_percent}% ({elixir_absolute:,}/{max_bb_elixir:,})")
-
-        send_discord_debug_log(
-            f"BB Storage Check: Gold={gold_percent}%, Elixir={elixir_percent}%"
-        )
-
-        # Track resources for 3-consecutive-same-readings detection (fallback safety)
-        # This ensures tracking happens regardless of where this function is called from
-        track_resources(gold_absolute, elixir_absolute, dark_elixir=None, base_type='builder_base')
-        # Check if 3 consecutive same readings detected (storages full, no loot gained)
-        check_and_pause_if_storages_full(base_type='builder_base')
-
-        # Auto-switch profile if BB resources suggest wrong account (no dark elixir in BB)
-        auto_switch_profile_if_needed(gold_absolute, elixir_absolute, dark_elixir=None)
-
-        return result
-
-    except Exception as e:
-        print(f"[STORAGE] ERROR reading BB storages: {e}")
-        send_discord_debug_log(f"BB storage read error: {e}", "ERROR")
-        return result
-
 
 # ============================================================================
 # ATTACK MODE HANDLERS
@@ -5435,132 +4713,6 @@ def perform_sgoblin_farm_attack():
             return True  # Signal to pause bot
         return False  # Attack completed successfully
 
-def check_auto_pause():
-    """Check if auto-pause condition is met and pause bot if needed"""
-
-    settings = runtime.gui.get_settings()
-    auto_pause_mode = settings.get('auto_pause_mode', 'manual')
-    auto_pause_value = settings.get('auto_pause_value', 50)
-
-    # Debug: Log auto-pause mode
-    print(f"[AUTO-PAUSE] Mode: {auto_pause_mode}")
-
-    should_pause = False
-    pause_reason = ""
-
-    if auto_pause_mode == 'loops':
-        # Check if loop count reached target
-        if runtime.loop_count >= auto_pause_value:
-            should_pause = True
-            pause_reason = f"Auto-pause: {auto_pause_value} attacks completed"
-
-    elif auto_pause_mode == 'time':
-        # Check if time limit reached (read from GUI to avoid circular import)
-        if hasattr(runtime.gui, 'auto_pause_start_time') and runtime.gui.auto_pause_start_time is not None:
-            elapsed_minutes = (time.time() - runtime.gui.auto_pause_start_time) / 60
-            if elapsed_minutes >= auto_pause_value:
-                should_pause = True
-                pause_reason = f"Auto-pause: {auto_pause_value} minutes elapsed"
-
-    elif auto_pause_mode == 'storage_full':
-        # Check if storages are full based on current profile and user-selected resources
-        current_profile = runtime.gui.current_profile
-        settings = runtime.gui.get_settings()
-        check_gold = settings.get('storage_full_gold', True)
-        check_elixir = settings.get('storage_full_elixir', True)
-        check_de = settings.get('storage_full_de', False)
-        print(f"[AUTO-PAUSE] Storage Full check - Gold:{check_gold}, Elixir:{check_elixir}, DE:{check_de}")
-
-        # Get the selected preset's max values for storage full check
-        storage_full_preset = settings.get('storage_full_preset', 'main')
-        storage_presets = settings.get('storage_presets', {})
-        preset_values = storage_presets.get(storage_full_preset, {})
-
-        # Use preset values if available, otherwise fall back to global settings
-        max_gold = preset_values.get('max_gold_storage', settings.get('max_gold_storage', 18000000))
-        max_elixir = preset_values.get('max_elixir_storage', settings.get('max_elixir_storage', 14000000))
-        max_de = preset_values.get('max_dark_elixir_storage', settings.get('max_dark_elixir_storage', 240000))
-        max_bb_gold = preset_values.get('max_bb_gold_storage', settings.get('max_bb_gold_storage', 5000000))
-        max_bb_elixir = preset_values.get('max_bb_elixir_storage', settings.get('max_bb_elixir_storage', 5000000))
-
-        if current_profile in ["BB Gold", "BB Elixir"]:
-            # Check Builder Base storages (DE is ignored for BB)
-            # Note: track_resources is called internally by read_bb_base_storages()
-            bb_storages = read_bb_base_storages()
-            if bb_storages['success']:
-                # Check if 3-consecutive-same-readings triggered a pause
-                if check_and_pause_if_storages_full(base_type='builder_base'):
-                    return True  # Already paused by consecutive readings check
-
-                # Calculate percentages using preset's max values
-                bb_gold_percent = min(100, int((bb_storages['gold_absolute'] / max_bb_gold) * 100)) if max_bb_gold > 0 else 0
-                bb_elixir_percent = min(100, int((bb_storages['elixir_absolute'] / max_bb_elixir) * 100)) if max_bb_elixir > 0 else 0
-                bb_gold_full = bb_gold_percent >= 99
-                bb_elixir_full = bb_elixir_percent >= 99
-
-                # Check only the resources the user selected (DE ignored for BB)
-                resources_to_check = []
-                full_status = []
-                if check_gold:
-                    resources_to_check.append('Gold')
-                    full_status.append(bb_gold_full)
-                if check_elixir:
-                    resources_to_check.append('Elixir')
-                    full_status.append(bb_elixir_full)
-
-                # Pause if ALL selected resources are full
-                if resources_to_check and all(full_status):
-                    should_pause = True
-                    pause_reason = f"Auto-pause: BB {'+'.join(resources_to_check)} full using '{storage_full_preset}' preset (Gold: {bb_gold_percent}%, Elixir: {bb_elixir_percent}%)"
-        else:
-            # Check main base storages
-            # Note: track_resources is called internally by read_own_base_storages()
-            storages = read_own_base_storages()
-            if storages['success']:
-                # Check if 3-consecutive-same-readings triggered a pause
-                if check_and_pause_if_storages_full(base_type='main_base'):
-                    return True  # Already paused by consecutive readings check
-
-                # Calculate percentages using preset's max values
-                gold_percent = min(100, int((storages['gold_absolute'] / max_gold) * 100)) if max_gold > 0 else 0
-                elixir_percent = min(100, int((storages['elixir_absolute'] / max_elixir) * 100)) if max_elixir > 0 else 0
-                de_percent = min(100, int((storages['de_absolute'] / max_de) * 100)) if max_de > 0 else 0
-                gold_full = gold_percent >= 99
-                elixir_full = elixir_percent >= 99
-                de_full = de_percent >= 99
-
-                # Check only the resources the user selected
-                resources_to_check = []
-                full_status = []
-                if check_gold:
-                    resources_to_check.append('Gold')
-                    full_status.append(gold_full)
-                if check_elixir:
-                    resources_to_check.append('Elixir')
-                    full_status.append(elixir_full)
-                if check_de:
-                    resources_to_check.append('DE')
-                    full_status.append(de_full)
-
-                # Debug output
-                print(f"[AUTO-PAUSE] Calculated: Gold={gold_percent}% (full:{gold_full}), Elixir={elixir_percent}% (full:{elixir_full}), DE={de_percent}% (full:{de_full})")
-                print(f"[AUTO-PAUSE] Checking: {resources_to_check}, Status: {full_status}, All full: {all(full_status) if full_status else False}")
-
-                # Pause if ALL selected resources are full
-                if resources_to_check and all(full_status):
-                    should_pause = True
-                    pause_reason = f"Auto-pause: {'+'.join(resources_to_check)} full using '{storage_full_preset}' preset (Gold: {gold_percent}%, Elixir: {elixir_percent}%, DE: {de_percent}%)"
-
-    if should_pause:
-        runtime.paused = True
-        runtime.gui.bot_paused = True
-        print(f"[AUTO-PAUSE] {pause_reason}")
-        runtime.gui.log_message(pause_reason)
-        send_discord_debug_log(pause_reason, "INFO")
-        runtime.root.after(0, update_status)
-        return True
-
-    return False
 
 def main_loop():
     
