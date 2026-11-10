@@ -30,6 +30,242 @@ from coc_bot.vision.screens import (
     wait_for_base_screen,
 )
 
+def _take_scheduled_break_if_due():
+    """Pause for the configured break when its time has come and schedule the next one."""
+    if runtime.break_time is not None and time.time() >= runtime.break_time:
+        print("Taking scheduled break.")
+        runtime.paused = True
+        runtime.gui.bot_paused = True
+        runtime.gui.log_message("Taking scheduled break")
+        send_discord_debug_log("Taking scheduled break", "INFO")
+        runtime.root.after(0, update_status)
+
+        # Get break duration from settings and schedule auto-resume
+        settings = runtime.gui.get_settings()
+        break_duration = settings.get('break_duration', 5)  # minutes
+        runtime.root.after(0, lambda: runtime.gui.schedule_auto_resume(break_duration))
+
+        # schedule next break after auto-resume
+        runtime.break_time = schedule_next_break()
+
+
+
+def _recover_from_end_screen(return_home_pos):
+    """Leave a stuck end screen: click Return Home, close the star bonus and wait for the base."""
+    print(f"[MAIN LOOP] !! Return Home detected at loop start - recovering from stuck end screen")
+    runtime.gui.log_message("Recovery: Clicking Return Home (stuck on end screen)")
+    send_discord_debug_log("Main Loop: Return Home recovery triggered", "WARNING")
+
+    # Click Return Home button
+    fast_click(*return_home_pos)
+    time.sleep(1.5)  # Wait for transition
+
+    # Handle potential star bonus screen
+    if detect_star_bonus_screen():
+        print("[MAIN LOOP] Star bonus detected during recovery - closing")
+        fast_click(102, 824)  # Close star bonus
+        time.sleep(0.5)
+
+    # Wait for base screen to load
+    wait_for_base_screen(timeout=10)
+
+    print("[MAIN LOOP] Recovery complete - restarting loop iteration")
+
+
+
+def _start_search(bb_elixir_mode, bb_gold_mode):
+    """Start searching for an opponent: Builder Base search with load retries, or the Home Village attack buttons."""
+    if bb_elixir_mode or bb_gold_mode:
+        # Builder Base modes - skip main base search/attack buttons
+        if bb_elixir_mode:
+            mode_name = "BB ELIXIR"
+
+            # Retry loop for base loading
+            retry_count = 0
+            base_loaded = False
+
+            while retry_count < config.BB_LOAD_MAX_RETRIES and not base_loaded:
+                # Click BB search button
+                click_in_square(config.BB_SEARCH_BUTTON)
+                print(f"[{mode_name}] Using Builder Base search button")
+                runtime.gui.log_message(f"{mode_name}: Searching for base...")
+                send_discord_debug_log(f"{mode_name}: Using Builder Base search button")
+
+                # Poll for "Attacker" text with timeout
+                print(f"[{mode_name}] Checking for Attacker text...")
+                runtime.gui.log_message(f"{mode_name}: Checking for Attacker text...")
+                send_discord_debug_log(f"{mode_name}: Checking for Attacker text")
+
+                start_time = time.time()
+                found = False
+
+                while not found and (time.time() - start_time) < config.BB_LOAD_TIMEOUT:
+                    if check_bb_attacker_text():
+                        found = True
+                        base_loaded = True
+                        print(f"[{mode_name}] ✓ Attacker text detected - base loaded!")
+                        runtime.gui.log_message(f"{mode_name}: Base loaded!")
+                        send_discord_debug_log(f"{mode_name}: Attacker text detected - base loaded")
+                        time.sleep(0.5)
+                        break
+                    time.sleep(config.BB_LOAD_CHECK_INTERVAL)
+
+                # If timeout, click return and retry
+                if not found:
+                    print(f"[{mode_name}] ⚠️ Base load timeout - no Attacker text found")
+                    runtime.gui.log_message(f"{mode_name}: Base load timeout")
+                    send_discord_debug_log(f"{mode_name}: Base load timeout - no Attacker text found", "WARNING")
+
+                    print(f"[{mode_name}] Clicking return button to recover from ghost attack")
+                    runtime.gui.log_message(f"{mode_name}: Returning to base...")
+                    send_discord_debug_log(f"{mode_name}: Clicking return button to recover from ghost attack")
+                    click_in_square(config.BB_RETURN_BUTTON_GHOST)
+                    time.sleep(config.BB_RETRY_WAIT_TIME)
+
+                    retry_count += 1
+
+                    if retry_count < config.BB_LOAD_MAX_RETRIES:
+                        print(f"[{mode_name}] Retrying search... (attempt {retry_count + 1}/{config.BB_LOAD_MAX_RETRIES})")
+                        runtime.gui.log_message(f"{mode_name}: Retry {retry_count + 1}/{config.BB_LOAD_MAX_RETRIES}")
+                        send_discord_debug_log(f"{mode_name}: Retrying search (attempt {retry_count + 1}/{config.BB_LOAD_MAX_RETRIES})")
+                    else:
+                        print(f"[{mode_name}] ❌ Base load failed after {config.BB_LOAD_MAX_RETRIES} retries - skipping to next search")
+                        runtime.gui.log_message(f"{mode_name}: Max retries exceeded - skipping")
+                        send_discord_debug_log(f"{mode_name}: Base load failed after {config.BB_LOAD_MAX_RETRIES} retries - skipping", "ERROR")
+                        # Skip to next search iteration - don't proceed with attack
+                        continue
+        # BB Gold mode doesn't need any clicks here - state machine handles everything internally
+    else:
+        # Main base modes only - click main base search and attack buttons
+        click_in_square(config.SEARCH_BUTTON)
+
+        # Wait for army selection screen to appear
+        print("Waiting for army selection screen...")
+        runtime.gui.log_message("Waiting for army screen...")
+        send_discord_debug_log("Waiting for army selection screen")
+
+        # Simple fixed delay for army selection screen to load
+        time.sleep(0.2)  # Fast delay for army selection screen
+
+        print("Army selection screen should be ready")
+        runtime.gui.log_message("Army screen ready")
+        send_discord_debug_log("Army selection screen ready")
+
+        # Click START_ATTACK_BUTTON (green "Attack!" button) for all home base modes
+        print(f"Clicking START_ATTACK_BUTTON at {config.START_ATTACK_BUTTON}")
+        send_discord_debug_log(f"Clicking START_ATTACK_BUTTON at {config.START_ATTACK_BUTTON}")
+        print(f"Current mouse position: {pyautogui.position()}")
+
+        x_coord, y_coord = config.START_ATTACK_BUTTON
+        print(f"Target coordinates: x={x_coord}, y={y_coord}")
+        human_like_move_click(x_coord, y_coord)
+
+        print(f"After click, mouse position: {pyautogui.position()}")
+
+
+
+def _run_evaluated_attack_cycle(sgoblin_farm_mode):
+    """Evaluation-based modes: skip bases until one is attacked (Super Goblin farming or the normal attack)."""
+    while runtime.running:
+        if sgoblin_farm_mode:
+            print(f"[DEBUG] ✓ sgoblin_farm_mode matched - using perform_sgoblin_farm_attack()")
+            # Handle SGoblin Farm mode (no TH/AD detection, resource-based only)
+            result = perform_sgoblin_farm_attack()
+            if result == True:
+                # Pause bot due to full storages
+                runtime.paused = True
+                runtime.gui.bot_paused = True
+                runtime.gui.log_message("Bot paused due to full storages. Discord notification sent.")
+                send_discord_debug_log("Bot paused due to full storages", "WARNING")
+                runtime.root.after(0, update_status)
+                break  # Exit inner while loop
+            elif result == "skipped":
+                # Base was skipped, increment skipped counter and wait for next base
+                runtime.skipped_bases += 1
+                runtime.gui.log_message(f"Base skipped (total: {runtime.skipped_bases})")
+                send_discord_debug_log(f"SGoblin Farm: Base skipped (total: {runtime.skipped_bases})")
+                runtime.root.after(0, lambda: runtime.gui.update_skipped_stats(runtime.skipped_bases, runtime.attacked_bases))
+
+                # Wait for next base to load automatically (skip initiates auto-search)
+                print("Waiting for next base after skip...")
+                base_found = False
+                max_wait_time = 30  # Maximum 30 seconds to find next base
+                start_time = time.time()
+
+                while not base_found and (time.time() - start_time) < max_wait_time:
+                    if is_base_search_ready():
+                        base_found = True
+                        print("Next base loaded after skip!")
+                        runtime.gui.log_message("Next base loaded")
+                        time.sleep(0.1)  # Small delay to ensure screen is stable
+                        break
+                    time.sleep(0.2)  # Check every 200ms
+
+                if not base_found:
+                    print("WARNING: Base search timed out after skip")
+                    runtime.gui.log_message("Base search timeout after skip")
+                    send_discord_debug_log("Base search timeout after skip", "WARNING")
+                    time.sleep(1)
+
+                # Continue loop to evaluate next base (don't break - stay in evaluation loop)
+                continue
+            else:
+                # Attack completed successfully
+                runtime.loop_count += 1
+                runtime.gui.update_loop_count(runtime.loop_count)
+                runtime.state_manager.set("loop_count", runtime.loop_count)
+                runtime.state_manager.set("bases_attacked", runtime.attacked_bases + 1)
+                runtime.gui.log_message(f"SGoblin Farm attack {runtime.loop_count} completed")
+                runtime.attacked_bases += 1
+                send_discord_debug_log(f"SGoblin Farm attack {runtime.loop_count} completed successfully")
+                runtime.root.after(0, lambda: runtime.gui.update_skipped_stats(runtime.skipped_bases, runtime.attacked_bases))
+                break  # Exit inner while loop to start a new attack cycle
+        else:
+            print(f"[DEBUG] Using NORMAL ATTACK mode (will evaluate and may skip)")
+            # Handle normal attack mode
+            should_pause = perform_normal_attack()
+            if should_pause:
+                runtime.paused = True
+                runtime.gui.bot_paused = True
+                runtime.gui.log_message("Bot paused due to full storages. Discord notification sent.")
+                send_discord_debug_log("Bot paused due to full storages", "WARNING")
+                runtime.root.after(0, update_status)
+                break  # Exit inner while loop
+
+            # Update loop count and continue
+            runtime.loop_count += 1
+            runtime.gui.update_loop_count(runtime.loop_count)
+            runtime.state_manager.set("loop_count", runtime.loop_count)
+            runtime.state_manager.set("bases_attacked", runtime.attacked_bases + 1)
+            runtime.gui.log_message(f"Attack {runtime.loop_count} completed")
+            runtime.attacked_bases += 1
+            send_discord_debug_log(f"Attack {runtime.loop_count} completed successfully")
+
+            # Update skipped/ratio statistics in GUI
+            runtime.root.after(0, lambda: runtime.gui.update_skipped_stats(runtime.skipped_bases, runtime.attacked_bases))
+            break  # Exit inner while loop to start a new attack cycle
+
+
+
+def _save_error_screenshot():
+    """Save a screenshot of the screen to errors/ for later diagnosis."""
+    try:
+        error_dir = "errors"
+        os.makedirs(error_dir, exist_ok=True)
+        timestamp = time.strftime("%Y%m%d_%H%M%S")
+        screenshot_path = os.path.join(error_dir, f"error_{timestamp}.png")
+        img = ImageGrab.grab()
+        img.save(screenshot_path)
+        print(f"Error screenshot saved: {screenshot_path}")
+        runtime.gui.log_message(f"Error screenshot saved: {screenshot_path}")
+        send_discord_debug_log(f"Error screenshot saved: {screenshot_path}", "WARNING")
+    except Exception as err:
+        print(f"Failed to save error screenshot: {err}")
+        runtime.gui.log_message(f"Failed to save error screenshot: {err}")
+        send_discord_debug_log(f"Failed to save error screenshot: {err}", "ERROR")
+
+
+
 def main_loop():
     
     # Each iteration covers one full attack cycle
@@ -47,21 +283,7 @@ def main_loop():
         runtime.paused = runtime.gui.bot_paused
         
         # Automatic break check
-        if runtime.break_time is not None and time.time() >= runtime.break_time:
-            print("Taking scheduled break.")
-            runtime.paused = True
-            runtime.gui.bot_paused = True
-            runtime.gui.log_message("Taking scheduled break")
-            send_discord_debug_log("Taking scheduled break", "INFO")
-            runtime.root.after(0, update_status)
-            
-            # Get break duration from settings and schedule auto-resume
-            settings = runtime.gui.get_settings()
-            break_duration = settings.get('break_duration', 5)  # minutes
-            runtime.root.after(0, lambda: runtime.gui.schedule_auto_resume(break_duration))
-            
-            # schedule next break after auto-resume
-            runtime.break_time = schedule_next_break()
+        _take_scheduled_break_if_due()
         
         time.sleep(0.1)
         if runtime.paused:
@@ -79,24 +301,7 @@ def main_loop():
         if not bb_mode_active:
             return_home_pos = detect_return_home_button(quiet=True)
             if return_home_pos:
-                print(f"[MAIN LOOP] !! Return Home detected at loop start - recovering from stuck end screen")
-                runtime.gui.log_message("Recovery: Clicking Return Home (stuck on end screen)")
-                send_discord_debug_log("Main Loop: Return Home recovery triggered", "WARNING")
-
-                # Click Return Home button
-                fast_click(*return_home_pos)
-                time.sleep(1.5)  # Wait for transition
-
-                # Handle potential star bonus screen
-                if detect_star_bonus_screen():
-                    print("[MAIN LOOP] Star bonus detected during recovery - closing")
-                    fast_click(102, 824)  # Close star bonus
-                    time.sleep(0.5)
-
-                # Wait for base screen to load
-                wait_for_base_screen(timeout=10)
-
-                print("[MAIN LOOP] Recovery complete - restarting loop iteration")
+                _recover_from_end_screen(return_home_pos)
                 continue  # Restart this loop iteration cleanly
 
         try:
@@ -178,92 +383,7 @@ def main_loop():
 
             # Skip-based fast modes (no evaluation): derank, sgoblin, sbarb, bb modes, achievement
             # Use BB-specific search button for BB Elixir mode (BB Gold uses state machine)
-            if bb_elixir_mode or bb_gold_mode:
-                # Builder Base modes - skip main base search/attack buttons
-                if bb_elixir_mode:
-                    mode_name = "BB ELIXIR"
-
-                    # Retry loop for base loading
-                    retry_count = 0
-                    base_loaded = False
-
-                    while retry_count < config.BB_LOAD_MAX_RETRIES and not base_loaded:
-                        # Click BB search button
-                        click_in_square(config.BB_SEARCH_BUTTON)
-                        print(f"[{mode_name}] Using Builder Base search button")
-                        runtime.gui.log_message(f"{mode_name}: Searching for base...")
-                        send_discord_debug_log(f"{mode_name}: Using Builder Base search button")
-
-                        # Poll for "Attacker" text with timeout
-                        print(f"[{mode_name}] Checking for Attacker text...")
-                        runtime.gui.log_message(f"{mode_name}: Checking for Attacker text...")
-                        send_discord_debug_log(f"{mode_name}: Checking for Attacker text")
-
-                        start_time = time.time()
-                        found = False
-
-                        while not found and (time.time() - start_time) < config.BB_LOAD_TIMEOUT:
-                            if check_bb_attacker_text():
-                                found = True
-                                base_loaded = True
-                                print(f"[{mode_name}] ✓ Attacker text detected - base loaded!")
-                                runtime.gui.log_message(f"{mode_name}: Base loaded!")
-                                send_discord_debug_log(f"{mode_name}: Attacker text detected - base loaded")
-                                time.sleep(0.5)
-                                break
-                            time.sleep(config.BB_LOAD_CHECK_INTERVAL)
-
-                        # If timeout, click return and retry
-                        if not found:
-                            print(f"[{mode_name}] ⚠️ Base load timeout - no Attacker text found")
-                            runtime.gui.log_message(f"{mode_name}: Base load timeout")
-                            send_discord_debug_log(f"{mode_name}: Base load timeout - no Attacker text found", "WARNING")
-
-                            print(f"[{mode_name}] Clicking return button to recover from ghost attack")
-                            runtime.gui.log_message(f"{mode_name}: Returning to base...")
-                            send_discord_debug_log(f"{mode_name}: Clicking return button to recover from ghost attack")
-                            click_in_square(config.BB_RETURN_BUTTON_GHOST)
-                            time.sleep(config.BB_RETRY_WAIT_TIME)
-
-                            retry_count += 1
-
-                            if retry_count < config.BB_LOAD_MAX_RETRIES:
-                                print(f"[{mode_name}] Retrying search... (attempt {retry_count + 1}/{config.BB_LOAD_MAX_RETRIES})")
-                                runtime.gui.log_message(f"{mode_name}: Retry {retry_count + 1}/{config.BB_LOAD_MAX_RETRIES}")
-                                send_discord_debug_log(f"{mode_name}: Retrying search (attempt {retry_count + 1}/{config.BB_LOAD_MAX_RETRIES})")
-                            else:
-                                print(f"[{mode_name}] ❌ Base load failed after {config.BB_LOAD_MAX_RETRIES} retries - skipping to next search")
-                                runtime.gui.log_message(f"{mode_name}: Max retries exceeded - skipping")
-                                send_discord_debug_log(f"{mode_name}: Base load failed after {config.BB_LOAD_MAX_RETRIES} retries - skipping", "ERROR")
-                                # Skip to next search iteration - don't proceed with attack
-                                continue
-                # BB Gold mode doesn't need any clicks here - state machine handles everything internally
-            else:
-                # Main base modes only - click main base search and attack buttons
-                click_in_square(config.SEARCH_BUTTON)
-
-                # Wait for army selection screen to appear
-                print("Waiting for army selection screen...")
-                runtime.gui.log_message("Waiting for army screen...")
-                send_discord_debug_log("Waiting for army selection screen")
-
-                # Simple fixed delay for army selection screen to load
-                time.sleep(0.2)  # Fast delay for army selection screen
-
-                print("Army selection screen should be ready")
-                runtime.gui.log_message("Army screen ready")
-                send_discord_debug_log("Army selection screen ready")
-
-                # Click START_ATTACK_BUTTON (green "Attack!" button) for all home base modes
-                print(f"Clicking START_ATTACK_BUTTON at {config.START_ATTACK_BUTTON}")
-                send_discord_debug_log(f"Clicking START_ATTACK_BUTTON at {config.START_ATTACK_BUTTON}")
-                print(f"Current mouse position: {pyautogui.position()}")
-
-                x_coord, y_coord = config.START_ATTACK_BUTTON
-                print(f"Target coordinates: x={x_coord}, y={y_coord}")
-                human_like_move_click(x_coord, y_coord)
-
-                print(f"After click, mouse position: {pyautogui.position()}")
+            _start_search(bb_elixir_mode, bb_gold_mode)
                 # No fixed delay needed - OCR and base detection will handle timing
 
             # 2. Fast attack modes (no evaluation) - handle immediately and skip evaluation loop
@@ -362,84 +482,7 @@ def main_loop():
             # These modes check resources/defenses and may skip bases
             print(f"[DEBUG] ❌ No fast modes matched - entering evaluation loop")
             print(f"[DEBUG] Will check: SGoblin Farm or Normal Attack")
-            while runtime.running:
-                if sgoblin_farm_mode:
-                    print(f"[DEBUG] ✓ sgoblin_farm_mode matched - using perform_sgoblin_farm_attack()")
-                    # Handle SGoblin Farm mode (no TH/AD detection, resource-based only)
-                    result = perform_sgoblin_farm_attack()
-                    if result == True:
-                        # Pause bot due to full storages
-                        runtime.paused = True
-                        runtime.gui.bot_paused = True
-                        runtime.gui.log_message("Bot paused due to full storages. Discord notification sent.")
-                        send_discord_debug_log("Bot paused due to full storages", "WARNING")
-                        runtime.root.after(0, update_status)
-                        break  # Exit inner while loop
-                    elif result == "skipped":
-                        # Base was skipped, increment skipped counter and wait for next base
-                        runtime.skipped_bases += 1
-                        runtime.gui.log_message(f"Base skipped (total: {runtime.skipped_bases})")
-                        send_discord_debug_log(f"SGoblin Farm: Base skipped (total: {runtime.skipped_bases})")
-                        runtime.root.after(0, lambda: runtime.gui.update_skipped_stats(runtime.skipped_bases, runtime.attacked_bases))
-
-                        # Wait for next base to load automatically (skip initiates auto-search)
-                        print("Waiting for next base after skip...")
-                        base_found = False
-                        max_wait_time = 30  # Maximum 30 seconds to find next base
-                        start_time = time.time()
-
-                        while not base_found and (time.time() - start_time) < max_wait_time:
-                            if is_base_search_ready():
-                                base_found = True
-                                print("Next base loaded after skip!")
-                                runtime.gui.log_message("Next base loaded")
-                                time.sleep(0.1)  # Small delay to ensure screen is stable
-                                break
-                            time.sleep(0.2)  # Check every 200ms
-
-                        if not base_found:
-                            print("WARNING: Base search timed out after skip")
-                            runtime.gui.log_message("Base search timeout after skip")
-                            send_discord_debug_log("Base search timeout after skip", "WARNING")
-                            time.sleep(1)
-
-                        # Continue loop to evaluate next base (don't break - stay in evaluation loop)
-                        continue
-                    else:
-                        # Attack completed successfully
-                        runtime.loop_count += 1
-                        runtime.gui.update_loop_count(runtime.loop_count)
-                        runtime.state_manager.set("loop_count", runtime.loop_count)
-                        runtime.state_manager.set("bases_attacked", runtime.attacked_bases + 1)
-                        runtime.gui.log_message(f"SGoblin Farm attack {runtime.loop_count} completed")
-                        runtime.attacked_bases += 1
-                        send_discord_debug_log(f"SGoblin Farm attack {runtime.loop_count} completed successfully")
-                        runtime.root.after(0, lambda: runtime.gui.update_skipped_stats(runtime.skipped_bases, runtime.attacked_bases))
-                        break  # Exit inner while loop to start a new attack cycle
-                else:
-                    print(f"[DEBUG] Using NORMAL ATTACK mode (will evaluate and may skip)")
-                    # Handle normal attack mode
-                    should_pause = perform_normal_attack()
-                    if should_pause:
-                        runtime.paused = True
-                        runtime.gui.bot_paused = True
-                        runtime.gui.log_message("Bot paused due to full storages. Discord notification sent.")
-                        send_discord_debug_log("Bot paused due to full storages", "WARNING")
-                        runtime.root.after(0, update_status)
-                        break  # Exit inner while loop
-
-                    # Update loop count and continue
-                    runtime.loop_count += 1
-                    runtime.gui.update_loop_count(runtime.loop_count)
-                    runtime.state_manager.set("loop_count", runtime.loop_count)
-                    runtime.state_manager.set("bases_attacked", runtime.attacked_bases + 1)
-                    runtime.gui.log_message(f"Attack {runtime.loop_count} completed")
-                    runtime.attacked_bases += 1
-                    send_discord_debug_log(f"Attack {runtime.loop_count} completed successfully")
-
-                    # Update skipped/ratio statistics in GUI
-                    runtime.root.after(0, lambda: runtime.gui.update_skipped_stats(runtime.skipped_bases, runtime.attacked_bases))
-                    break  # Exit inner while loop to start a new attack cycle
+            _run_evaluated_attack_cycle(sgoblin_farm_mode)
 
         except pytesseract.pytesseract.TesseractNotFoundError:
             print("OCR engine missing. Pausing.")
@@ -464,21 +507,7 @@ def main_loop():
                 runtime.root.after(0, update_status)
             except:
                 print("[ERROR] Failed to update status")
-            # --- Error screenshot saving ---
-            try:
-                error_dir = "errors"
-                os.makedirs(error_dir, exist_ok=True)
-                timestamp = time.strftime("%Y%m%d_%H%M%S")
-                screenshot_path = os.path.join(error_dir, f"error_{timestamp}.png")
-                img = ImageGrab.grab()
-                img.save(screenshot_path)
-                print(f"Error screenshot saved: {screenshot_path}")
-                runtime.gui.log_message(f"Error screenshot saved: {screenshot_path}")
-                send_discord_debug_log(f"Error screenshot saved: {screenshot_path}", "WARNING")
-            except Exception as err:
-                print(f"Failed to save error screenshot: {err}")
-                runtime.gui.log_message(f"Failed to save error screenshot: {err}")
-                send_discord_debug_log(f"Failed to save error screenshot: {err}", "ERROR")
+            _save_error_screenshot()
 
     if runtime.attacked_bases > 0:
         skip_ratio = runtime.skipped_bases / runtime.attacked_bases
