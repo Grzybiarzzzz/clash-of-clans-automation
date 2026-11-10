@@ -58,7 +58,7 @@ def stop_bot():
         # Release mouse buttons if held
         try:
             pyautogui.mouseUp()
-        except:
+        except Exception:
             pass
     except Exception as e:
         print(f"Error releasing keys: {e}")

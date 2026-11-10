@@ -62,7 +62,7 @@ class VisualizationOverlay:
         # Also try alpha transparency (Windows 7+)
         try:
             self.window.attributes('-alpha', 0.95)  # Slight transparency to help with layering
-        except:
+        except Exception:
             pass
 
         print(f"[Overlay] Window created: {width}x{height} at (0,0)")
@@ -83,7 +83,7 @@ class VisualizationOverlay:
             try:
                 self.window.attributes('-topmost', True)
                 self.window.lift()
-            except:
+            except Exception:
                 pass
         # Reschedule every 500ms
         if self.window.winfo_exists():
@@ -459,7 +459,7 @@ class VisualizationOverlay:
             try:
                 self.canvas.configure(bg=self.transparent_color)
                 self.window.attributes('-transparentcolor', self.transparent_color)
-            except:
+            except Exception:
                 pass
             return None
 
@@ -467,7 +467,7 @@ class VisualizationOverlay:
         """Destroy the overlay window."""
         try:
             self.window.destroy()
-        except:
+        except Exception:
             pass
 
 

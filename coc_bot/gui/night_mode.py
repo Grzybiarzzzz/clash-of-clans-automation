@@ -97,7 +97,7 @@ class NightModeMixin:
         try:
             self.log_text.configure(bg=bg_input, fg=fg_text, insertbackground=fg_text)
             self.debug_text.configure(bg=bg_input, fg=fg_text, insertbackground=fg_text)
-        except:
+        except Exception:
             pass
 
     def disable_night_mode(self):
@@ -125,5 +125,5 @@ class NightModeMixin:
         try:
             self.log_text.configure(bg='white', fg='black', insertbackground='black')
             self.debug_text.configure(bg='white', fg='black', insertbackground='black')
-        except:
+        except Exception:
             pass

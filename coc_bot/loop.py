@@ -500,12 +500,12 @@ def main_loop():
             runtime.gui.bot_paused = True
             try:
                 runtime.gui.log_message(f"ERROR: {str(e)}")
-            except:
+            except Exception:
                 print("[ERROR] Failed to log message to GUI")
             send_discord_debug_log(f"Error during attack loop: {str(e)}", "ERROR")
             try:
                 runtime.root.after(0, update_status)
-            except:
+            except Exception:
                 print("[ERROR] Failed to update status")
             _save_error_screenshot()
 

@@ -45,7 +45,7 @@ class BotGUI(
             with open('data/bot_settings.json', 'r', encoding='utf-8') as f:
                 settings_data = json.load(f)
                 prefer_second_monitor = settings_data.get('use_second_monitor', False)
-        except:
+        except Exception:
             pass
 
         # Set window size and position
@@ -181,7 +181,7 @@ class BotGUI(
             self.storage_preset_var.set(active_preset)
             # Trigger preset loading to update spinbox values
             self.on_storage_preset_selected()
-        except:
+        except Exception:
             pass
 
         # Initialize queue settings from loaded settings
