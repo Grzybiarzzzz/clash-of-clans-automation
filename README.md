@@ -124,11 +124,11 @@ The code is organised by responsibility (vision, input, attack routines, GUI pan
 | `coc_bot/loop.py` | Main loop: mode selection and dispatch to attack routines |
 | `coc_bot/runtime.py` | Session state shared by the bot thread, GUI, hotkeys, and web server |
 | `coc_bot/vision/` | Template matching, screen and button detection, OCR, Builder Base deployment zone |
-| `coc_bot/attacks/` | One module per attack routine, plus shared attack steps |
+| `coc_bot/attacks/` | Attack routines, their stage helpers, and shared attack steps |
 | `coc_bot/input/` | Windows `SendInput` clicks, turbo deployment, camera movement |
 | `coc_bot/humanized_input.py` | Mouse paths and input timing |
 | `coc_bot/geometry.py` | Pure helpers: clustering, interpolation, spell arithmetic |
-| `coc_bot/gui/` | Tkinter control panel, split into one mixin per panel |
+| `coc_bot/gui/` | Tkinter control panel, split into mixins by panel and concern |
 | `coc_bot/bot_state.py` | Observable state and change notifications for the web layer |
 | `coc_bot/queue_manager.py` | Mode sequencing and switching |
 | `coc_bot/visualization_overlay.py` | Detection overlays |

@@ -1077,7 +1077,7 @@ _scanning_active = False
 def load_achievement_templates_local():
     """
     Load all achievement building templates into memory (local cache for capture_templates.py).
-    Similar to load_achievement_building_templates() in main.py.
+    Similar to load_achievement_building_templates() in coc_bot/vision/buildings.py.
     """
     global _achievement_templates_cache
 
@@ -1254,8 +1254,8 @@ def detect_buildings_from_image(base_cv, building_types=None, threshold=0.6, par
 
 def _detect_building_standalone(building_type, base_cv, templates_cache):
     """
-    Standalone detection function that doesn't depend on main.py.
-    Copied logic from main.py's detect_achievement_building_from_image.
+    Standalone detection function that doesn't depend on the bot package.
+    Copied logic from detect_achievement_building_from_image in coc_bot/vision/buildings.py.
 
     Returns list of (x, y, confidence) - coordinates are GLOBAL (screen coords).
     """
