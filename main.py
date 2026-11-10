@@ -1,40 +1,70 @@
-# main.py
-import pyautogui
-import time
+import glob
+import json
+import os
 import random
 import threading
-from concurrent.futures import ThreadPoolExecutor, as_completed
-import keyboard
-from PIL import ImageGrab, Image
-import pytesseract
-import numpy as np
-import cv2
-import os
-import config  # external constants
-from bot_gui import BotGUI
-from coc_bot import runtime
+import time
 import tkinter as tk
-import requests  # Add for Discord webhook notifications
-import json # Added for wall coordinate saving/loading
-import glob
-from imutils.object_detection import non_max_suppression
+from concurrent.futures import as_completed, ThreadPoolExecutor
 from datetime import datetime
-from enum import Enum, auto
+from enum import auto, Enum
 
-# Web GUI server
+import cv2
+import keyboard
+import numpy as np
+import pyautogui
+import pytesseract
+from imutils.object_detection import non_max_suppression
+from PIL import Image, ImageGrab
+
+import config
+from bot_gui import BotGUI
 from bot_state import BotStateManager
-from web.server import start_web_server
-
-# Import enhanced humanized input functions
+from coc_bot import runtime
+from coc_bot.discord_log import (
+    send_discord_debug_log,
+    send_discord_notification,
+    send_discord_ocr_log,
+)
+from coc_bot.geometry import (
+    calculate_deployment_step,
+    calculate_lightning_spells_needed,
+    find_building_clusters,
+    get_air_defense_proximity_sorter,
+    get_cluster_center,
+    get_lightning_spell_targets,
+    get_opposite_side,
+)
+from coc_bot.input.camera import click_in_square, move_camera_to_opposite_side, move_camera_to_side
+from coc_bot.input.turbo import (
+    TURBO_CLICK_DELAY_MS,
+    turbo_deploy_along_path,
+    turbo_deploy_heroes,
+    turbo_deploy_siege,
+    TURBO_SIDE_CORNERS,
+)
+from coc_bot.input.win32 import turbo_fast_click, turbo_move_cursor
+from coc_bot.overlay import (
+    clear_overlay_hotkey,
+    overlay_clear,
+    overlay_draw_detection,
+    overlay_draw_ocr,
+    overlay_draw_side,
+    overlay_draw_spell_target,
+    overlay_update,
+    save_overlay_screenshot_hotkey,
+)
+from coc_bot.vision.matching import gpu_match_template
 from humanized_input import (
+    fast_click,
     human_like_move_click,
-    random_sleep,
-    thinking_pause,
-    reading_pause,
     humanized_sleep,
     mouse_drift_idle,
-    fast_click  # Ultra-fast click for speed-critical operations
+    random_sleep,
+    reading_pause,
+    thinking_pause,
 )
+from web.server import start_web_server
 
 # Ensure pytesseract knows its executable path
 pytesseract.pytesseract.tesseract_cmd = config.TESSERACT_CMD
@@ -43,213 +73,12 @@ pytesseract.pytesseract.tesseract_cmd = config.TESSERACT_CMD
 pyautogui.FAILSAFE = False
 print("PyAutoGUI corner failsafe is disabled; use F2 to stop or ESC to exit")
 
-# ============================================================
-# GPU TEMPLATE MATCHING (optional - offloads CPU to GPU)
-# ============================================================
-# Always try to load GPU module, but use it only when GUI setting is enabled
-try:
-    from gpu_template_matching import gpu_match_template as _gpu_match_template, GPU_AVAILABLE
-    if GPU_AVAILABLE:
-        print("[GPU] GPU template matching AVAILABLE - toggle in Global Settings")
-    else:
-        print("[GPU] PyTorch CUDA not available - GPU option will use CPU fallback")
-except ImportError as e:
-    print(f"[GPU] gpu_template_matching module not found: {e}")
-    GPU_AVAILABLE = False
-    _gpu_match_template = None
 
-def gpu_match_template(image, template, method='TM_CCOEFF_NORMED'):
-    """Wrapper that checks GUI setting to decide GPU vs CPU"""
-    # Check if GUI exists and GPU scanning is enabled
-    use_gpu = GPU_AVAILABLE and hasattr(runtime.gui, 'gpu_scanning_var') and runtime.gui.gpu_scanning_var.get()
-    if use_gpu and _gpu_match_template:
-        return _gpu_match_template(image, template, method)
-    else:
-        return cv2.matchTemplate(image, template, cv2.TM_CCOEFF_NORMED)
 
 # ============================================================
 # WINDOWS API FAST-CLICK (for Turbo Deployment mode)
 # ============================================================
-import ctypes
-from ctypes import wintypes
 
-# Windows API constants
-MOUSEEVENTF_LEFTDOWN = 0x0002
-MOUSEEVENTF_LEFTUP = 0x0004
-INPUT_MOUSE = 0
-
-class MOUSEINPUT(ctypes.Structure):
-    _fields_ = [
-        ("dx", wintypes.LONG),
-        ("dy", wintypes.LONG),
-        ("mouseData", wintypes.DWORD),
-        ("dwFlags", wintypes.DWORD),
-        ("time", wintypes.DWORD),
-        ("dwExtraInfo", ctypes.POINTER(wintypes.ULONG)),
-    ]
-
-class INPUT(ctypes.Structure):
-    _fields_ = [
-        ("type", wintypes.DWORD),
-        ("mi", MOUSEINPUT),
-    ]
-
-user32 = ctypes.windll.user32
-
-def create_mouse_input(flags):
-    """Create a mouse input event for Windows API."""
-    return INPUT(
-        type=INPUT_MOUSE,
-        mi=MOUSEINPUT(
-            dx=0, dy=0, mouseData=0, dwFlags=flags, time=0, dwExtraInfo=None
-        )
-    )
-
-def turbo_fast_click():
-    """Send a single ultra-fast click at current cursor position using Windows API."""
-    down = create_mouse_input(MOUSEEVENTF_LEFTDOWN)
-    up = create_mouse_input(MOUSEEVENTF_LEFTUP)
-    user32.SendInput(1, ctypes.byref(down), ctypes.sizeof(INPUT))
-    user32.SendInput(1, ctypes.byref(up), ctypes.sizeof(INPUT))
-
-def turbo_move_cursor(x, y):
-    """Move cursor to absolute position using Windows API."""
-    user32.SetCursorPos(int(x), int(y))
-
-# Turbo deployment corner coordinates (extracted from full SIDE_DEPLOYMENT_COORDS)
-TURBO_SIDE_CORNERS = {
-    'up': [
-        (229, 903),    # Left edge start
-        (1299, 121),   # Apex (middle-top)
-        (2330, 894),   # Right edge end
-    ],
-    'down': [
-        (273, 415),    # Left edge start
-        (1281, 1143),  # Apex (middle-bottom)
-        (2301, 424),   # Right edge end
-    ],
-}
-
-# Turbo deployment configuration
-TURBO_CLICK_DELAY_MS = 60  # 60ms delay = ~16 CPS (tested reliable)
-
-def interpolate_points(p1, p2, num_points):
-    """Generate intermediate points between two coordinates for turbo deployment."""
-    points = []
-    for i in range(num_points):
-        t = i / (num_points - 1) if num_points > 1 else 0
-        x = p1[0] + (p2[0] - p1[0]) * t
-        y = p1[1] + (p2[1] - p1[1]) * t
-        points.append((x, y))
-    return points
-
-def turbo_deploy_along_path(corners, num_clicks, delay_ms, sbarb_hotkey, destruction_check=None):
-    """
-    Deploy units by moving along path defined by corners while fast-clicking.
-    Uses Windows API for maximum speed. Stops immediately if 50% destruction reached.
-
-    Args:
-        corners: List of (x, y) corner points defining the path
-        num_clicks: Total number of clicks (units) to deploy
-        delay_ms: Delay between clicks in milliseconds
-        sbarb_hotkey: Hotkey to select the troop before deployment
-        destruction_check: Optional dict with 'value' key to check for early exit
-    """
-    # Select the troop
-    keyboard.send(sbarb_hotkey)
-    time.sleep(0.05)
-
-    # Calculate clicks per segment
-    num_segments = len(corners) - 1
-    clicks_per_segment = num_clicks // num_segments
-    extra_clicks = num_clicks % num_segments
-
-    total_deployed = 0
-    start_time = time.perf_counter()
-    stopped_early = False
-
-    for seg_idx in range(num_segments):
-        # Check for early exit
-        if destruction_check and destruction_check.get('value', False):
-            stopped_early = True
-            break
-
-        start_corner = corners[seg_idx]
-        end_corner = corners[seg_idx + 1]
-
-        # Add extra click to early segments if needed
-        segment_clicks = clicks_per_segment + (1 if seg_idx < extra_clicks else 0)
-
-        # Generate points along this segment
-        points = interpolate_points(start_corner, end_corner, segment_clicks)
-
-        for point in points:
-            # Check for early exit inside inner loop
-            if destruction_check and destruction_check.get('value', False):
-                stopped_early = True
-                break
-            turbo_move_cursor(point[0], point[1])
-            turbo_fast_click()
-            total_deployed += 1
-            time.sleep(delay_ms / 1000)
-
-        if stopped_early:
-            break
-
-    elapsed = time.perf_counter() - start_time
-    if stopped_early:
-        print(f"[TURBO DEPLOY] STOPPED EARLY - deployed {total_deployed}/{num_clicks} units in {elapsed*1000:.0f}ms (50% reached)")
-    else:
-        print(f"[TURBO DEPLOY] Deployed {total_deployed} units in {elapsed*1000:.0f}ms ({total_deployed/elapsed:.0f} CPS)")
-    return total_deployed
-
-def turbo_deploy_heroes(side, hero_timings, destruction_check=None):
-    """
-    Deploy all 4 heroes at the hero position for turbo mode.
-    Stops immediately if 50% destruction reached.
-
-    Args:
-        side: 'up' or 'down'
-        hero_timings: dict with queen/king/warden/rc timings
-        destruction_check: Optional dict with 'value' key to check for early exit
-    """
-    hero_pos = config.SIDE_DEPLOYMENT_COORDS[side]['hero']
-    print(f"[TURBO DEPLOY] Deploying heroes at {hero_pos}")
-
-    KEYS = config.KEYS
-    hero_keys = ['queen', 'king', 'warden', 'rc']
-    deployed_count = 0
-
-    for hero_key in hero_keys:
-        # Check for early exit
-        if destruction_check and destruction_check.get('value', False):
-            print(f"[TURBO DEPLOY] STOPPED EARLY - deployed {deployed_count}/4 heroes (50% reached)")
-            return
-        keyboard.send(KEYS[hero_key])
-        time.sleep(0.08)  # Wait for hotkey to register
-        turbo_move_cursor(hero_pos[0], hero_pos[1])
-        turbo_fast_click()
-        time.sleep(0.05)
-        deployed_count += 1
-
-    print(f"[TURBO DEPLOY] All heroes deployed")
-
-def turbo_deploy_siege(side, destruction_check=None):
-    """Deploy siege machine at hero position for turbo mode."""
-    # Check for early exit
-    if destruction_check and destruction_check.get('value', False):
-        print(f"[TURBO DEPLOY] Skipping siege (50% reached)")
-        return
-
-    hero_pos = config.SIDE_DEPLOYMENT_COORDS[side]['hero']
-    print(f"[TURBO DEPLOY] Deploying siege at {hero_pos}")
-
-    keyboard.send(config.KEYS['siege'])
-    time.sleep(0.08)
-    turbo_move_cursor(hero_pos[0], hero_pos[1])
-    turbo_fast_click()
-    time.sleep(0.1)
-    print(f"[TURBO DEPLOY] Siege deployed")
 
 # Session counters
 bb_elixir_attack_count = 0  # Counter for BB Elixir loot collection every 12 attacks
@@ -287,12 +116,6 @@ ATTACK_OCR_DEBUG = False
 last_settings_check = 0
 settings_check_interval = 1.0  # Check every second
 
-# Debug logging configuration
-DEBUG_LOG_ENABLED = getattr(config, 'DEBUG_LOG_ENABLED', True)
-DEBUG_LOG_INTERVAL = getattr(config, 'DEBUG_LOG_INTERVAL', 5)  # Send debug logs every 30 seconds
-DEBUG_LOG_LEVEL = getattr(config, 'DEBUG_LOG_LEVEL', 'INFO')
-last_debug_log = 0
-debug_log_buffer = []
 
 # Create GUI
 runtime.root = tk.Tk()
@@ -338,41 +161,6 @@ print("[MAIN] GUI connected to state manager for web sync")
 # ============================================================
 # VISUALIZATION OVERLAY HELPERS
 # ============================================================
-def overlay_clear():
-    """Clear the overlay canvas if enabled."""
-    if runtime.gui.overlay and runtime.gui.overlay_enabled:
-        print("[OVERLAY] Clearing overlay")
-        runtime.gui.overlay.clear()
-
-def overlay_update():
-    """Update/refresh the overlay display if enabled."""
-    if runtime.gui.overlay and runtime.gui.overlay_enabled:
-        print("[OVERLAY] Updating overlay")
-        runtime.gui.overlay.update()
-
-def overlay_draw_ocr(region, value, confidence, resource_type=''):
-    """Draw an OCR region visualization if overlay is enabled."""
-    if runtime.gui.overlay and runtime.gui.overlay_enabled:
-        print(f"[OVERLAY] Drawing OCR: {resource_type} = {value} ({confidence}%)")
-        runtime.gui.overlay.draw_ocr_region(region, str(value), confidence, resource_type)
-
-def overlay_draw_detection(x, y, w, h, building_type, level, confidence, color):
-    """Draw a building detection box if overlay is enabled."""
-    if runtime.gui.overlay and runtime.gui.overlay_enabled:
-        print(f"[OVERLAY] Drawing detection: {building_type} at ({x},{y})")
-        runtime.gui.overlay.draw_detection(x, y, w, h, building_type, level, confidence, color)
-
-def overlay_draw_side(side):
-    """Draw the attack side indicator if overlay is enabled."""
-    if runtime.gui.overlay and runtime.gui.overlay_enabled:
-        print(f"[OVERLAY] Drawing attack side: {side}")
-        runtime.gui.overlay.highlight_side(side, config.OVERLAY_COLORS.get('side_indicator', '#00FF00'))
-
-def overlay_draw_spell_target(x, y, spell_name):
-    """Draw a spell target crosshair if overlay is enabled."""
-    if runtime.gui.overlay and runtime.gui.overlay_enabled:
-        print(f"[OVERLAY] Drawing spell target: {spell_name} at ({x},{y})")
-        runtime.gui.overlay.draw_crosshair(x, y, 25, config.OVERLAY_COLORS.get('spell_target', '#FF00FF'), spell_name)
 
 
 # Initialize Queue Manager (callbacks will be set later after functions are defined)
@@ -392,32 +180,6 @@ except Exception as e:
     runtime.queue_manager = None
     print(f"[MAIN] Failed to initialize Queue Manager: {e}")
 
-# Helper functions
-def send_discord_ocr_log(message):
-    """
-    Send an OCR read log to a dedicated Discord channel using a webhook URL.
-    Set your webhook URL in DISCORD_OCR_WEBHOOK_URL in config.py.
-    """
-    import config
-    webhook_url = getattr(config, 'DISCORD_OCR_WEBHOOK_URL', None)
-    if not webhook_url:
-        print("No Discord OCR webhook URL set in config.py (DISCORD_OCR_WEBHOOK_URL)")
-        return
-    # Format numbers in the message with dots as thousands separators
-    import re
-    def format_number(match):
-        num = int(match.group(0))
-        return f"{num:,}".replace(",", ".")
-    formatted_message = re.sub(r"(?<![\w.])\d{4,}(?![\w.])", format_number, str(message))
-    data = {"content": formatted_message}
-    try:
-        # Add 5-second timeout to prevent hanging
-        response = requests.post(webhook_url, json=data, timeout=5)
-        # Success is silent, only report failures
-        if response.status_code != 204:
-            print(f"[Discord OCR] Warning: Failed with status {response.status_code}")
-    except Exception as e:
-        print(f"[Discord OCR] Warning: {type(e).__name__} - {e}")
 def get_global_reinforcements_enabled():
     """Get the global reinforcements enabled setting from bot_settings.json"""
     try:
@@ -438,13 +200,6 @@ def get_global_skip_on_th_fail():
 
 # human_like_move_click is now imported from humanized_input module
 # This provides enhanced movement with overshoots, tremor, and variable acceleration
-
-
-def click_in_square(coord):  # coord: (x1,y1,x2,y2)
-    x1, y1, x2, y2 = coord
-    rand_x = random.randint(x1, x2)
-    rand_y = random.randint(y1, y2)
-    human_like_move_click(rand_x, rand_y)
 
 
 # random_sleep is now imported from humanized_input module
@@ -837,103 +592,6 @@ def detect_achievement_building_from_image(building_type, base_cv):
 
     # Only return high confidence buildings for attack logic
     return high_conf_buildings
-
-
-def find_building_clusters(buildings_with_types, max_distance=125):
-    """
-    Find clusters of buildings that are ALL close together (not chained).
-
-    Uses COMPLETE LINKAGE: Every building in a cluster must be within max_distance
-    of every other building in that cluster. This ensures spells can hit all buildings.
-
-    Args:
-        buildings_with_types: List of (x, y, confidence, building_type) tuples (top-left corners)
-        max_distance: Maximum center-to-center distance between ANY two buildings in cluster (default: 125px)
-
-    Returns:
-        List of clusters, each cluster is a list of (x, y, confidence, building_type) tuples
-    """
-    if not buildings_with_types:
-        return []
-
-    def get_center(building):
-        """Get center coordinates of a building using its actual template size."""
-        x, y, _, building_type = building
-        w, h = config.ACHIEVEMENT_BUILDING_SIZES.get(building_type, (70, 70))
-        return (x + w // 2, y + h // 2)
-
-    def distance_between(b1, b2):
-        """Calculate center-to-center distance between two buildings."""
-        c1 = get_center(b1)
-        c2 = get_center(b2)
-        return ((c1[0] - c2[0]) ** 2 + (c1[1] - c2[1]) ** 2) ** 0.5
-
-    def all_within_distance(cluster, new_building):
-        """Check if new_building is within max_distance of ALL buildings in cluster."""
-        for existing in cluster:
-            if distance_between(existing, new_building) > max_distance:
-                return False
-        return True
-
-    # Find all pairs of buildings within max_distance
-    clusters = []
-    used = set()
-
-    # Sort buildings by confidence (highest first) for better cluster seeds
-    sorted_buildings = sorted(buildings_with_types, key=lambda b: b[2], reverse=True)
-
-    for i, seed in enumerate(sorted_buildings):
-        if i in used:
-            continue
-
-        # Start new cluster with this seed
-        cluster = [seed]
-        used.add(i)
-
-        # Try to add other buildings that are within max_distance of ALL cluster members
-        for j, candidate in enumerate(sorted_buildings):
-            if j in used:
-                continue
-
-            if all_within_distance(cluster, candidate):
-                cluster.append(candidate)
-                used.add(j)
-
-        clusters.append(cluster)
-
-    # Sort clusters by size (largest first)
-    clusters.sort(key=lambda c: len(c), reverse=True)
-
-    return clusters
-
-
-def get_cluster_center(cluster):
-    """
-    Calculate the center point of a cluster of buildings.
-
-    Note: Detection coordinates are TOP-LEFT corners of bounding boxes.
-    Uses actual template sizes for each building type for accurate centering.
-
-    Args:
-        cluster: List of (x, y, confidence, building_type) tuples (top-left corners)
-
-    Returns:
-        (center_x, center_y) tuple - the center point between all buildings
-    """
-    if not cluster:
-        return None
-
-    # Calculate center of each building using its actual template size
-    centers = []
-    for building in cluster:
-        x, y, _, building_type = building
-        w, h = config.ACHIEVEMENT_BUILDING_SIZES.get(building_type, (70, 70))
-        centers.append((x + w // 2, y + h // 2))
-
-    avg_x = sum(c[0] for c in centers) / len(centers)
-    avg_y = sum(c[1] for c in centers) / len(centers)
-
-    return (int(avg_x), int(avg_y))
 
 
 def detect_town_hall():
@@ -1895,103 +1553,6 @@ def detect_current_game_state():
     return 'unknown'
 
 
-def calculate_deployment_step(troop_count, coord_count):
-    """
-    Calculate optimal step size for even troop distribution across coordinates.
-
-    Args:
-        troop_count: Number of troops to deploy
-        coord_count: Number of available deployment coordinates
-
-    Returns:
-        Step size (int) - how many coordinates to skip between deployments
-    """
-    if troop_count == 0 or coord_count == 0:
-        return 1
-
-    # Calculate raw step based on troop density
-    raw_step = coord_count // troop_count
-
-    # Clamp between 1 and 10 for balance of coverage vs speed
-    # - step=1: use every coordinate (dense, slower)
-    # - step=10: skip 10 coords each (sparse, faster)
-    step = max(1, min(raw_step, 10))
-
-    return step
-
-
-def get_opposite_side(side):
-    """Get the opposite side for camera movement"""
-    opposite_map = {
-        'left': 'right',
-        'right': 'left',
-        'up': 'down',
-        'down': 'up'
-    }
-    return opposite_map.get(side, 'right')  # Default to right if unknown
-
-
-def move_camera_to_opposite_side(current_side, fast_mode=False):
-    """Move camera to the opposite side of the base"""
-    opposite_side = get_opposite_side(current_side)
-
-    print(f"Moving camera from {current_side} to {opposite_side}")
-    send_discord_debug_log(f"Moving camera from {current_side} to {opposite_side}")
-
-    # Define camera drag directions
-    # Drag from center outward in the direction we want to move
-    center_x, center_y = 1280, 720  # Screen center (adjust if needed)
-    drag_distance = 800  # pixels to drag - increased for more reliable camera movement
-
-    if opposite_side == 'left':
-        # Drag from center to right (moves camera left)
-        start_x, start_y = center_x, center_y
-        end_x, end_y = center_x + drag_distance, center_y
-    elif opposite_side == 'right':
-        # Drag from center to left (moves camera right)
-        start_x, start_y = center_x, center_y
-        end_x, end_y = center_x - drag_distance, center_y
-    elif opposite_side == 'up':
-        # Drag from center down (moves camera up)
-        start_x, start_y = center_x, center_y
-        end_x, end_y = center_x, center_y + drag_distance
-    elif opposite_side == 'down':
-        # Drag from center up (moves camera down)
-        start_x, start_y = center_x, center_y
-        end_x, end_y = center_x, center_y - drag_distance
-
-    # Perform the drag
-    pyautogui.moveTo(start_x, start_y)
-    time.sleep(0.1)
-    pyautogui.mouseDown()
-    time.sleep(0.1)
-    pyautogui.moveTo(end_x, end_y, duration=0.5)  # Slower drag for more reliable movement
-    time.sleep(0.1)
-    pyautogui.mouseUp()
-
-    # Fast mode for SGoblin Farm - minimal delay
-    if fast_mode:
-        pass  # time.sleep(0.3)  # COMMENTED OUT - no delay for maximum speed
-    else:
-        time.sleep(0.5)  # Wait for camera to settle
-
-    print(f"Camera moved to {opposite_side}")
-    send_discord_debug_log(f"Camera moved to {opposite_side}")
-
-
-def get_lightning_spell_targets(air_defenses):
-    """
-    Get air defense positions for lightning spell targeting.
-    Returns list of (x, y) coordinates sorted by priority (highest level first).
-    """
-    if not air_defenses:
-        return []
-    
-    # Sort by level (highest first) and return positions
-    sorted_defenses = sorted(air_defenses, key=lambda x: x[2], reverse=True)
-    return [(x, y) for x, y, _, _ in sorted_defenses]
-
-
 def ocr_resources(region, debug=False):
     """
     OCR a single resource region with preprocessing and return integer value,
@@ -2548,75 +2109,6 @@ def debug_save_loot_ocr_regions():
         print(f"Error saving loot OCR region screenshots: {e}")
         runtime.gui.log_message(f"Error saving loot OCR region screenshots: {e}")
 
-def send_discord_notification(message):
-    """
-    Send a notification to a Discord channel using a webhook URL with robust error handling.
-    Set your webhook URL in DISCORD_WEBHOOK_URL in config.py.
-    Bot continues running even if Discord is unreachable.
-    """
-    import config
-
-    # Check if Discord logging is enabled
-    if not getattr(config, 'DEBUG_LOG_ENABLED', True):
-        return
-
-    webhook_url = getattr(config, 'DISCORD_WEBHOOK_URL', None)
-    if not webhook_url:
-        return  # Silently skip if no webhook configured
-
-    data = {"content": message}
-
-    try:
-        # Add 5-second timeout to prevent hanging
-        response = requests.post(webhook_url, json=data, timeout=5)
-        if response.status_code != 204:
-            print(f"[Discord] Warning: Message failed with status {response.status_code}")
-    except requests.exceptions.RequestException as e:
-        # Catch all network errors: DNS failures, timeouts, connection errors
-        print(f"[Discord] Warning: Could not send message - {type(e).__name__}")
-        # Bot continues running - Discord failure doesn't stop execution
-    except Exception as e:
-        # Catch any other unexpected errors
-        print(f"[Discord] Warning: Unexpected error - {e}")
-
-def send_discord_debug_log(message, level="INFO"):
-    """
-    Send debug log to Discord channel.
-    Levels: DEBUG, INFO, WARNING, ERROR
-    """
-    global debug_log_buffer, last_debug_log
-    
-    if not DEBUG_LOG_ENABLED:
-        return
-    
-    # Check if level meets minimum threshold
-    level_priority = {"DEBUG": 0, "INFO": 1, "WARNING": 2, "ERROR": 3}
-    min_priority = level_priority.get(DEBUG_LOG_LEVEL, 1)
-    current_priority = level_priority.get(level, 1)
-    
-    if current_priority < min_priority:
-        return
-    
-    # Add timestamp and format message
-    timestamp = time.strftime("%H:%M:%S")
-    formatted_message = f"[{timestamp}] [{level}] {message}"
-    
-    # Add to buffer
-    debug_log_buffer.append(formatted_message)
-    
-    # Send immediately for errors and warnings
-    if level in ["ERROR", "WARNING"]:
-        send_discord_notification(f"🚨 **{level}**: {message}")
-        return
-    
-    # Send buffered logs periodically
-    current_time = time.time()
-    if current_time - last_debug_log >= DEBUG_LOG_INTERVAL and debug_log_buffer:
-        # Combine multiple messages
-        combined_message = "📊 **Debug Log Update:**\n" + "\n".join(debug_log_buffer[-10:])  # Last 10 messages
-        send_discord_notification(combined_message)
-        debug_log_buffer.clear()
-        last_debug_log = current_time
 
 # Bind hotkeys
 keyboard.add_hotkey('f1', toggle_pause)
@@ -2624,21 +2116,9 @@ keyboard.add_hotkey('f2', stop_bot)
 keyboard.add_hotkey('esc', exit_app)
 keyboard.add_hotkey('f6', debug_save_ocr_regions)
 
-def clear_overlay_hotkey():
-    """Clear all overlay drawings (F7 hotkey)."""
-    if runtime.gui.overlay and runtime.gui.overlay_enabled:
-        runtime.gui.overlay.clear()
-        runtime.gui.overlay.update()
-        print("[OVERLAY] Cleared via F7 hotkey")
 
 keyboard.add_hotkey('f7', clear_overlay_hotkey)
 
-def save_overlay_screenshot_hotkey():
-    """Save overlay screenshot with black background (F8 hotkey)."""
-    if runtime.gui.overlay and runtime.gui.overlay_enabled:
-        runtime.gui.overlay.save_screenshot()
-    else:
-        print("[OVERLAY] Cannot save - overlay not enabled")
 
 keyboard.add_hotkey('f8', save_overlay_screenshot_hotkey)
 
@@ -2852,28 +2332,6 @@ def detect_air_sweepers():
     filtered.sort(key=lambda x: x[3], reverse=True)
     # Return up to 2 sweepers
     return filtered[:2]
-
-def get_air_defense_proximity_sorter(side):
-    if side == 'left':
-        return lambda ad: ad[0]  # x coordinate, smaller is closer to left
-    elif side == 'right':
-        return lambda ad: -ad[0] # x coordinate, larger is closer to right
-    elif side == 'up':
-        return lambda ad: ad[1]  # y coordinate, smaller is closer to top
-    elif side == 'down':
-        return lambda ad: -ad[1] # y coordinate, larger is closer to bottom
-    else:
-        return lambda ad: 0
-
-
-def calculate_lightning_spells_needed(air_defense_level, lightning_damage):
-    """
-    Calculate how many lightning spells are needed to destroy an air defense.
-    Returns the number of spells needed.
-    """
-    hp = config.AIR_DEFENSE_HP.get(air_defense_level, 1000)  # Default to 1000 if level not found
-    spells_needed = (hp + lightning_damage - 1) // lightning_damage  # Ceiling division
-    return max(1, spells_needed)  # Minimum 1 spell
 
 
 def check_discord_commands():
@@ -7848,28 +7306,6 @@ def handle_remaining_lightning_spells(spells_used, chosen_side, KEYS):
                 pyautogui.click()
                 print(f"    Failsafe lightning spell {spells_used + i + 1}/11 at ({random_x}, {random_y})")
 
-def move_camera_to_side(chosen_side, fast_mode=False):
-    """Move camera to the chosen attack side"""
-    send_discord_debug_log(f"Moving camera to {chosen_side} side")
-    drag_map = {
-        'left': ((600, 700), (1500, 700)),    # Drag right to see left
-        'right': ((2000, 700), (1000, 700)),  # Drag left to see right
-        'up': ((1280, 300), (1280, 900)),     # Drag down to see up (top)
-        'down': ((1280, 1100), (1280, 700)),  # Drag up to see down (bottom)
-    }
-    drag_start, drag_end = drag_map[chosen_side]
-    pyautogui.moveTo(*drag_start, duration=config.DRAG_DURATION_START)
-    time.sleep(config.DRAG_DELAY)
-    pyautogui.mouseDown()
-    time.sleep(config.DRAG_DELAY)
-    pyautogui.moveTo(*drag_end, duration=config.DRAG_DURATION_END)
-    time.sleep(config.DRAG_DELAY)
-    pyautogui.mouseUp()
-    # Fast mode for SGoblin Farm - minimal delay
-    if fast_mode:
-        time.sleep(0.3)
-    else:
-        time.sleep(config.DRAG_POST_DELAY)
 
 def deploy_troops(side_coords, settings, KEYS):
     """Deploy all troops (generic troop slots 1-7, Siege, Heroes)"""
@@ -9860,5 +9296,3 @@ print("="*70 + "\n")
 
 # Start the GUI
 runtime.root.mainloop()
-
-
