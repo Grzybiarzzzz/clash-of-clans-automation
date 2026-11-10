@@ -23,7 +23,7 @@ import os
 from datetime import datetime
 
 
-# Constants from main.py detect_bb_deployment_zone() and filter_out_unit_bar()
+# Constants from detect_bb_deployment_zone() and filter_out_unit_bar() in coc_bot/vision/bb_deployment_zone.py
 SCREEN_REGION = (200, 100, 2360, 1200)
 
 # HSV red color ranges for deployment boundary detection

@@ -10,12 +10,13 @@ import numpy as np
 try:
     import torch
     import torch.nn.functional as F
+
     GPU_AVAILABLE = torch.cuda.is_available()
     if GPU_AVAILABLE:
-        DEVICE = torch.device('cuda')
+        DEVICE = torch.device("cuda")
         print(f"[GPU] CUDA available: {torch.cuda.get_device_name(0)}")
     else:
-        DEVICE = torch.device('cpu')
+        DEVICE = torch.device("cpu")
         print("[GPU] CUDA not available, using CPU")
 except ImportError:
     GPU_AVAILABLE = False
@@ -23,7 +24,7 @@ except ImportError:
     print("[GPU] PyTorch not installed, using CPU-only OpenCV")
 
 
-def gpu_match_template(image, template, method='TM_CCOEFF_NORMED'):
+def gpu_match_template(image, template, method="TM_CCOEFF_NORMED"):
     """
     GPU-accelerated template matching using PyTorch convolutions.
     Matches OpenCV's TM_CCOEFF_NORMED algorithm exactly.
@@ -64,7 +65,7 @@ def gpu_match_template(image, template, method='TM_CCOEFF_NORMED'):
     # Template statistics (computed once)
     tpl_mean = tpl.mean()
     tpl_zm = tpl - tpl_mean  # zero-mean template
-    tpl_norm_sq = (tpl_zm ** 2).sum()  # Σ(T - mean(T))²
+    tpl_norm_sq = (tpl_zm**2).sum()  # Σ(T - mean(T))²
 
     # Create kernels for convolutions
     ones_kernel = torch.ones(1, 1, th, tw, dtype=torch.float32, device=DEVICE)
@@ -75,7 +76,7 @@ def gpu_match_template(image, template, method='TM_CCOEFF_NORMED'):
     local_sum = F.conv2d(img_4d, ones_kernel)
 
     # local_sum_sq[y,x] = Σ I(y+h, x+w)² for all h,w in template region
-    local_sum_sq = F.conv2d(img_4d ** 2, ones_kernel)
+    local_sum_sq = F.conv2d(img_4d**2, ones_kernel)
 
     # Cross-correlation: Σ I(y+h, x+w) * T(h,w)
     # Note: PyTorch conv2d already does correlation (not convolution), no flip needed
@@ -91,7 +92,7 @@ def gpu_match_template(image, template, method='TM_CCOEFF_NORMED'):
 
     # denominator = sqrt(Σ(I - mean(I_patch))² * Σ(T - mean(T))²)
     # Σ(I - mean(I_patch))² = Σ I² - n * mean(I_patch)² = local_sum_sq - local_sum²/n
-    local_var = local_sum_sq - (local_sum ** 2) / n_pixels
+    local_var = local_sum_sq - (local_sum**2) / n_pixels
     local_var = torch.clamp(local_var, min=0)  # Numerical stability
 
     denominator = torch.sqrt(local_var * tpl_norm_sq)
@@ -138,7 +139,7 @@ def gpu_match_multiple_templates(image, templates_list, threshold=0.6):
 
     img = torch.from_numpy(image_gray.astype(np.float32)).to(DEVICE)
     img_4d = img.unsqueeze(0).unsqueeze(0)
-    img_sq = img_4d ** 2
+    img_sq = img_4d**2
 
     all_results = []
 
@@ -157,7 +158,7 @@ def gpu_match_multiple_templates(image, templates_list, threshold=0.6):
         # Template statistics
         tpl_mean = tpl.mean()
         tpl_zm = tpl - tpl_mean
-        tpl_norm_sq = (tpl_zm ** 2).sum()
+        tpl_norm_sq = (tpl_zm**2).sum()
 
         # Kernels
         ones_kernel = torch.ones(1, 1, th, tw, dtype=torch.float32, device=DEVICE)
@@ -174,7 +175,7 @@ def gpu_match_multiple_templates(image, templates_list, threshold=0.6):
         numerator = cross_corr - local_sum * tpl_mean
 
         # Denominator
-        local_var = local_sum_sq - (local_sum ** 2) / n_pixels
+        local_var = local_sum_sq - (local_sum**2) / n_pixels
         local_var = torch.clamp(local_var, min=0)
         denominator = torch.sqrt(local_var * tpl_norm_sq)
         denominator = torch.clamp(denominator, min=1e-10)
@@ -235,7 +236,7 @@ if __name__ == "__main__":
     print(f"CPU time: {cpu_time:.2f}ms per match")
     if gpu_time:
         print(f"GPU time: {gpu_time:.2f}ms per match")
-        print(f"Speedup: {cpu_time/gpu_time:.2f}x")
+        print(f"Speedup: {cpu_time / gpu_time:.2f}x")
 
     # Verify results match
     cpu_result = cv2.matchTemplate(image, template, cv2.TM_CCOEFF_NORMED)

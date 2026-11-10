@@ -1,0 +1,14 @@
+# Tools for linting and for the tests that run without Windows or the game
+-r requirements-web.txt
+pytest>=8.0
+httpx>=0.27
+ruff>=0.6
+# Libraries the package imports; the Windows-only input libraries are stubbed in tests/conftest.py
+numpy>=1.19.5
+opencv-python-headless>=4.5.1.48
+Pillow>=8.0.0
+imutils>=0.5.4
+pytesseract>=0.3.10
+matplotlib>=3.0.0
+pandas>=1.0.0
+requests>=2.25.1

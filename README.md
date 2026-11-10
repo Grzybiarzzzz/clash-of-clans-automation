@@ -112,28 +112,38 @@ The web API does not implement authentication. Its default listener is restricte
 
 The project uses visual templates and coordinates rather than a stable game-control API. Changes in resolution, zoom, interface layout, or building appearance can require recalibration. OCR and matching errors can propagate into decisions, so the debug views are an important part of understanding behavior.
 
-The attack loop and desktop UI remain large modules with coupled responsibilities. The web/state layer is more separated, but this is a personal automation project rather than a general automation framework. Timing measurements and their limits are documented in the performance report.
+The code is organised by responsibility (vision, input, attack routines, GUI panels), but the routines still share session state through one module, `coc_bot/runtime.py`, and the longest attack routines remain several hundred lines of sequential steps. This is a personal automation project rather than a general automation framework. Timing measurements and their limits are documented in the performance report.
 
 ## Code guide
 
 | Location | Responsibility |
 |---|---|
-| `main.py` | Screen analysis, attack flow, input, hotkeys, and integration startup |
-| `bot_gui.py` | Tkinter controls and plots |
-| `bot_state.py` | Shared state and change notifications |
-| `queue_manager.py` | Mode sequencing and switching |
+| `main.py` | Entry point; calls `coc_bot.app.main()` |
+| `config.py` | Screen regions, coordinates, thresholds, and hotkeys |
+| `coc_bot/app.py` | Startup: GUI, shared state, hotkeys, template caches, web server |
+| `coc_bot/loop.py` | Main loop: mode selection and dispatch to attack routines |
+| `coc_bot/runtime.py` | Session state shared by the bot thread, GUI, hotkeys, and web server |
+| `coc_bot/vision/` | Template matching, screen and button detection, OCR, Builder Base deployment zone |
+| `coc_bot/attacks/` | Attack routines, their stage helpers, and shared attack steps |
+| `coc_bot/input/` | Windows `SendInput` clicks, turbo deployment, camera movement |
+| `coc_bot/humanized_input.py` | Mouse paths and input timing |
+| `coc_bot/geometry.py` | Pure helpers: clustering, interpolation, spell arithmetic |
+| `coc_bot/gui/` | Tkinter control panel, split into mixins by panel and concern |
+| `coc_bot/bot_state.py` | Observable state and change notifications for the web layer |
+| `coc_bot/queue_manager.py` | Mode sequencing and switching |
+| `coc_bot/visualization_overlay.py` | Detection overlays |
+| `coc_bot/` (other modules) | Profiles, storages, session records, connection recovery, Discord logging |
 | `web/` | FastAPI, WebSocket, and Vue frontend |
-| `humanized_input.py` | Mouse paths and input timing |
-| `visualization_overlay.py` | Detection overlays |
 | `screenshots/reference/` | Visual matching templates |
 | `tools/` | Original calibration and diagnostic utilities |
-| `tests/` | State, API, WebSocket, and static-file regression tests |
+| `tests/` | Import, geometry, GUI composition, state, API, and WebSocket tests |
 
-For the isolated Python tests:
+For linting and the tests, which run on any platform:
 
 ```bash
-python -m pip install -r requirements-web.txt pytest httpx
+python -m pip install -r requirements-dev.txt
+ruff check .
 python -m pytest tests -q
 ```
 
-These tests exercise the state and web layers, not live gameplay or Windows input. Calibration and diagnostic scripts under `tools/` are separate interactive utilities and may capture the screen or send input.
+The tests stub the Windows-only input libraries. They cover imports of every module, undefined names, the pure geometry and line-merging helpers, the GUI composition, and the state and web layers. They do not exercise live gameplay, screen capture, or Windows input. Calibration and diagnostic scripts under `tools/` are separate interactive utilities and may capture the screen or send input.

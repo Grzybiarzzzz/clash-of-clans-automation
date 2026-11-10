@@ -4,7 +4,7 @@
 TESSERACT_CMD = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
 
 # OCR region for resources: (x1, y1, x2, y2)
-#RESOURCES_REGION = (46, 154, 282, 353)
+# RESOURCES_REGION = (46, 154, 282, 353)
 
 # Reinforcement Configuration
 ARMY_BUTTON_TEMPLATE_DIR = "screenshots/reference/reinforcements/"
@@ -17,20 +17,20 @@ Confirm_Coords = (1550, 1024)  # Confirmation button coordinates
 SKIP_BUTTON = (2384, 1096)
 SKIP_DELAY = 5  # seconds
 # Resource regions for enemy base viewing (during search)
-GOLD_REGION   = (106, 154, 282, 206)   # tylko linia z Gold
-ELIXIR_REGION = (100, 224, 276, 274)   # tylko linia z Elixir
+GOLD_REGION = (106, 154, 282, 206)  # tylko linia z Gold
+ELIXIR_REGION = (100, 224, 276, 274)  # tylko linia z Elixir
 # (Optionally add Dark elixir region here)
 
 # Resource regions for own base (after returning from attack)
-BASE_GOLD_REGION   = (2123, 45, 2433, 92)   # Base gold region (to be adjusted)
-BASE_ELIXIR_REGION = (2123, 157, 2433, 206)   # Base elixir region (to be adjusted)
+BASE_GOLD_REGION = (2123, 45, 2433, 92)  # Base gold region (to be adjusted)
+BASE_ELIXIR_REGION = (2123, 157, 2433, 206)  # Base elixir region (to be adjusted)
 BASE_DARK_ELIXIR_REGION = (2257, 266, 2441, 319)
 
 # Builder Base storage regions (when in Builder Base home)
 # Calibrate these coordinates using tools/testing/screenshot_region.py
 # These are placeholder values - adjust to match your screen resolution
-BB_BASE_GOLD_REGION = (2123, 45, 2433, 92)   # BB gold storage (to be calibrated)
-BB_BASE_ELIXIR_REGION = (2123, 157, 2433, 206)   # BB elixir storage (to be calibrated)
+BB_BASE_GOLD_REGION = (2123, 45, 2433, 92)  # BB gold storage (to be calibrated)
+BB_BASE_ELIXIR_REGION = (2123, 157, 2433, 206)  # BB elixir storage (to be calibrated)
 
 # Minimum resource threshold
 MIN_AMOUNT = 1700000
@@ -58,14 +58,14 @@ ARMY_BUTTON_DETECTION_THRESHOLD = 0.8
 
 # Button to open the attack GUI (left-bottom corner)
 OPEN_GUI_BUTTON = (41, 1205, 234, 1389)
-OPEN_GUI_DELAY = 1 # seconds
+OPEN_GUI_DELAY = 1  # seconds
 
 # Start attack button (new - must be clicked before START_BUTTON): (x, y)
 START_ATTACK_BUTTON = (2162, 1230)
 
 # Start attack button region: (x1, y1, x2, y2)
 START_BUTTON = (1650, 800, 2067, 943)
-START_DELAY = 1.5 # seconds
+START_DELAY = 1.5  # seconds
 
 
 # Black Bar suggests end of battle screen
@@ -78,8 +78,8 @@ RETURN_DELAY = 7  # sekundy
 
 # Loot tracking regions (after battle, before return button)
 # Format: (x1, y1, x2, y2) - top left and bottom right coordinates
-LOOT_GOLD_REGION = (988, 597, 1313, 675)      # Gold loot region
-LOOT_ELIXIR_REGION = (1000, 692, 1313, 771)   # Elixir loot region
+LOOT_GOLD_REGION = (988, 597, 1313, 675)  # Gold loot region
+LOOT_ELIXIR_REGION = (1000, 692, 1313, 771)  # Elixir loot region
 LOOT_DARK_ELIXIR_REGION = (1069, 783, 1313, 861)  # Dark Elixir loot region
 
 # Delay after battle ends to capture loot (seconds)
@@ -108,21 +108,21 @@ QUEEN_ARROW_FRAME_INTERVAL = 0.12  # Seconds between frame captures
 # Air Defense characteristics
 AIR_DEFENSE_RANGE = 10  # Tiles range (approximate)
 AIR_DEFENSE_PRIORITY = {
-    'level_1': 1,
-    'level_2': 2, 
-    'level_3': 3,
-    'level_4': 4,
-    'level_5': 5,
-    'level_6': 6,
-    'level_7': 7,
-    'level_8': 8,
-    'level_9': 9,
-    'level_10': 10,
-    'level_11': 11,
-    'level_12': 12,
-    'level_13': 13,
-    'level_14': 14,
-    'level_15': 15
+    "level_1": 1,
+    "level_2": 2,
+    "level_3": 3,
+    "level_4": 4,
+    "level_5": 5,
+    "level_6": 6,
+    "level_7": 7,
+    "level_8": 8,
+    "level_9": 9,
+    "level_10": 10,
+    "level_11": 11,
+    "level_12": 12,
+    "level_13": 13,
+    "level_14": 14,
+    "level_15": 15,
 }
 
 # Air Defense HP values by level
@@ -141,7 +141,7 @@ AIR_DEFENSE_HP = {
     12: 1650,
     13: 1750,
     14: 1850,
-    15: 1950
+    15: 1950,
 }
 
 # Default lightning spell damage (can be adjusted in GUI)
@@ -149,21 +149,21 @@ DEFAULT_LIGHTNING_DAMAGE = 300  # Damage per lightning spell
 
 # Deploy settings
 KEYS = {
-    'troop1': '1',
-    'troop2': '2',
-    'troop3': '3',
-    'troop4': '4',
-    'troop5': '5',
-    'troop6': '6',
-    'troop7': '7',
-    'queen': 'q',
-    'king': 'w',
-    'warden': 'e',
-    'rc': 'r',
-    'siege': 'z',
-    'haste': 'a',
-    'rage': 's',
-    'lightning': 'a'  # Lightning spell key
+    "troop1": "1",
+    "troop2": "2",
+    "troop3": "3",
+    "troop4": "4",
+    "troop5": "5",
+    "troop6": "6",
+    "troop7": "7",
+    "queen": "q",
+    "king": "w",
+    "warden": "e",
+    "rc": "r",
+    "siege": "z",
+    "haste": "a",
+    "rage": "s",
+    "lightning": "a",  # Lightning spell key
 }
 
 # Electro Dragon placement locations (9)
@@ -176,35 +176,24 @@ E_DRAG_LOCATIONS = [
     (1543, 1009),
     (1791, 814),
     (1983, 668),
-    (2190, 515)
+    (2190, 515),
 ]
 
 # Balloon deployment
 BALLOON_COUNT = 2
 BALLOON_POS1 = (631, 699)
 BALLOON_POS2 = (1983, 668)
-BALLOON_POSITIONS = [(631, 699),(1983, 668)]
+BALLOON_POSITIONS = [(631, 699), (1983, 668)]
 # Hero and siege deployments
-HERO_ROLES = ['queen', 'king', 'warden', 'rc', 'siege']
+HERO_ROLES = ["queen", "king", "warden", "rc", "siege"]
 HERO_DEPLOY_POS = (1301, 1152)
 HERO_DELAY = 0.05
 POST_DEPLOY_DELAY = 0.03
 
 # Spell deployment locations\ n
-HASTE_LOCATIONS = [
-    (740, 557),
-    (962, 746),
-    (1147, 884),
-    (1308, 825),
-    (1514, 774),
-    (1710, 670),
-    (1873, 546)
-]
+HASTE_LOCATIONS = [(740, 557), (962, 746), (1147, 884), (1308, 825), (1514, 774), (1710, 670), (1873, 546)]
 
-RAGE_LOCATIONS = [
-    (1121, 558),
-    (1460, 558)
-]
+RAGE_LOCATIONS = [(1121, 558), (1460, 558)]
 
 # Random sleep between clicks (milliseconds)
 SLEEP_MIN = 60
@@ -222,9 +211,9 @@ CAMERA_DRAG_DISTANCE = 400  # ile pikseli przeciągnąć myszką
 DRAG_START = (1284, 522)
 DRAG_END = (1305, 220)
 DRAG_DURATION_START = 0.01  # seconds for initial move
-DRAG_DURATION_END   = 0.02  # seconds for drag move
-DRAG_DELAY          = 0.05  # seconds between actions
-DRAG_POST_DELAY     = 3     # seconds to wait after drag
+DRAG_DURATION_END = 0.02  # seconds for drag move
+DRAG_DELAY = 0.05  # seconds between actions
+DRAG_POST_DELAY = 3  # seconds to wait after drag
 
 # Wall Upgrading Configuration
 # Resource threshold for wall upgrades (1.5M)
@@ -256,8 +245,8 @@ WALL_UPGRADE_COST = 1500000  # Cost per wall upgrade (1.5M)
 # Resource collection coordinates (to collect resources from generators before wall upgrading)
 RESOURCE_COLLECTION_COORDS = [
     (1191, 203),  # Coordinate 1
-    (1273, 140),  # Coordinate 2  
-    (1362, 205)   # Coordinate 3
+    (1273, 140),  # Coordinate 2
+    (1362, 205),  # Coordinate 3
 ]
 
 # Wall coordinates will be stored in a separate file: wall_coordinates.json
@@ -266,15 +255,16 @@ WALL_COORDINATES_FILE = "wall_coordinates.json"
 
 # Wall upgrade button coordinates (updated with user's coordinates)
 WALL_UPGRADE_BUTTONS = {
-    'gold': (1487, 1149),    # Gold upgrade button
-    'elixir': (1699, 1152),  # Elixir upgrade button
-    'confirm': (1774, 1249)  # Confirm upgrade button
+    "gold": (1487, 1149),  # Gold upgrade button
+    "elixir": (1699, 1152),  # Elixir upgrade button
+    "confirm": (1774, 1249),  # Confirm upgrade button
 }
 
 # --- PERSONAL/PRIVATE VARIABLES ---
 # NOTE: Make sure to add 'private_config.py' to your .gitignore so it is not tracked by version control!
 try:
     import private_config  # type: ignore  # Standard import for script-based projects
+
     for k in dir(private_config):
         if k.isupper():
             globals()[k] = getattr(private_config, k)
@@ -290,96 +280,331 @@ except ImportError:
 
 # Debug Logging Configuration
 DEBUG_LOG_ENABLED = True  # Set to False to disable debug logging to Discord
-DEBUG_LOG_INTERVAL = 30   # Send debug logs every 30 seconds (buffered)
+DEBUG_LOG_INTERVAL = 30  # Send debug logs every 30 seconds (buffered)
 DEBUG_LOG_LEVEL = "INFO"  # Minimum level to log: DEBUG, INFO, WARNING, ERROR
 DEBUG_DESTRUCTION_PERCENTAGE = False  # Set to False to disable destruction percentage debug logging
 
 # Side-based deployment coordinates
 SIDE_DEPLOYMENT_COORDS = {
-    'left': {
-        'hero': (324, 638),
-        'units': [
-            (443, 654), (530, 572), (695, 493), (763, 429), (841, 370), (888, 323), (956, 280), (1000, 245), (1063, 192), (1131, 144),
-            (391, 823), (430, 840), (496, 891), (536, 933), (570, 966), (613, 1003), (658, 1032), (681, 1047), (766, 1064), (633, 983),
-            (545, 939), (461, 884), (381, 790), (418, 634), (568, 534), (695, 453), (825, 384), (899, 344), (963, 290), (1015, 247),
-            (1055, 210), (1101, 170), (1116, 157)
-        ]
+    "left": {
+        "hero": (324, 638),
+        "units": [
+            (443, 654),
+            (530, 572),
+            (695, 493),
+            (763, 429),
+            (841, 370),
+            (888, 323),
+            (956, 280),
+            (1000, 245),
+            (1063, 192),
+            (1131, 144),
+            (391, 823),
+            (430, 840),
+            (496, 891),
+            (536, 933),
+            (570, 966),
+            (613, 1003),
+            (658, 1032),
+            (681, 1047),
+            (766, 1064),
+            (633, 983),
+            (545, 939),
+            (461, 884),
+            (381, 790),
+            (418, 634),
+            (568, 534),
+            (695, 453),
+            (825, 384),
+            (899, 344),
+            (963, 290),
+            (1015, 247),
+            (1055, 210),
+            (1101, 170),
+            (1116, 157),
+        ],
     },
-    'up': {
-        'hero': (1299, 121),  # Middle position from captured coordinates
-        'units': [
-            (229, 903), (250, 889), (271, 876), (292, 865), (313, 854), (334, 840), (355, 825), (376, 811), (397, 797), (418, 783),
-            (439, 768), (460, 750), (481, 730), (502, 715), (523, 697), (538, 676), (559, 656), (580, 639), (601, 626), (622, 611),
-            (643, 600), (664, 590), (685, 579), (706, 569), (727, 556), (748, 543), (769, 527), (790, 507), (809, 486), (827, 465),
-            (848, 448), (869, 432), (890, 416), (911, 404), (932, 388), (953, 373), (974, 355), (995, 337), (1016, 317), (1037, 303),
-            (1058, 286), (1079, 269), (1100, 252), (1121, 236), (1142, 222), (1163, 204), (1176, 183), (1194, 162), (1215, 148), (1236, 138),
-            (1257, 129), (1278, 123), (1299, 121), (1320, 128), (1341, 146), (1362, 164), (1383, 180), (1404, 199), (1425, 219), (1446, 238),
-            (1467, 257), (1488, 274), (1509, 288), (1530, 300), (1551, 311), (1572, 320), (1593, 332), (1614, 347), (1635, 366), (1656, 386),
-            (1677, 402), (1698, 420), (1719, 436), (1740, 447), (1761, 461), (1782, 474), (1803, 489), (1824, 503), (1845, 516), (1866, 529),
-            (1887, 543), (1908, 559), (1929, 578), (1949, 599), (1970, 617), (1991, 630), (2012, 646), (2033, 661), (2054, 679), (2075, 695),
-            (2096, 714), (2117, 734), (2138, 753), (2159, 770), (2180, 785), (2201, 799), (2222, 810), (2243, 823), (2264, 835), (2285, 848),
-            (2306, 866), (2324, 887), (2330, 894)
-        ]
+    "up": {
+        "hero": (1299, 121),  # Middle position from captured coordinates
+        "units": [
+            (229, 903),
+            (250, 889),
+            (271, 876),
+            (292, 865),
+            (313, 854),
+            (334, 840),
+            (355, 825),
+            (376, 811),
+            (397, 797),
+            (418, 783),
+            (439, 768),
+            (460, 750),
+            (481, 730),
+            (502, 715),
+            (523, 697),
+            (538, 676),
+            (559, 656),
+            (580, 639),
+            (601, 626),
+            (622, 611),
+            (643, 600),
+            (664, 590),
+            (685, 579),
+            (706, 569),
+            (727, 556),
+            (748, 543),
+            (769, 527),
+            (790, 507),
+            (809, 486),
+            (827, 465),
+            (848, 448),
+            (869, 432),
+            (890, 416),
+            (911, 404),
+            (932, 388),
+            (953, 373),
+            (974, 355),
+            (995, 337),
+            (1016, 317),
+            (1037, 303),
+            (1058, 286),
+            (1079, 269),
+            (1100, 252),
+            (1121, 236),
+            (1142, 222),
+            (1163, 204),
+            (1176, 183),
+            (1194, 162),
+            (1215, 148),
+            (1236, 138),
+            (1257, 129),
+            (1278, 123),
+            (1299, 121),
+            (1320, 128),
+            (1341, 146),
+            (1362, 164),
+            (1383, 180),
+            (1404, 199),
+            (1425, 219),
+            (1446, 238),
+            (1467, 257),
+            (1488, 274),
+            (1509, 288),
+            (1530, 300),
+            (1551, 311),
+            (1572, 320),
+            (1593, 332),
+            (1614, 347),
+            (1635, 366),
+            (1656, 386),
+            (1677, 402),
+            (1698, 420),
+            (1719, 436),
+            (1740, 447),
+            (1761, 461),
+            (1782, 474),
+            (1803, 489),
+            (1824, 503),
+            (1845, 516),
+            (1866, 529),
+            (1887, 543),
+            (1908, 559),
+            (1929, 578),
+            (1949, 599),
+            (1970, 617),
+            (1991, 630),
+            (2012, 646),
+            (2033, 661),
+            (2054, 679),
+            (2075, 695),
+            (2096, 714),
+            (2117, 734),
+            (2138, 753),
+            (2159, 770),
+            (2180, 785),
+            (2201, 799),
+            (2222, 810),
+            (2243, 823),
+            (2264, 835),
+            (2285, 848),
+            (2306, 866),
+            (2324, 887),
+            (2330, 894),
+        ],
     },
-    'right': {
-        'hero': (2226, 682),
-        'units': [
-            (1472, 85), (1534, 132), (1575, 171), (1620, 207), (1684, 251), (1726, 282), (1767, 318), (1797, 350), (1844, 386), (1886, 420),
-            (1924, 446), (1975, 482), (2045, 531), (2091, 562), (2195, 641), (2251, 691), (2244, 763), (2178, 833), (2121, 882), (2028, 937),
-            (1981, 965), (1914, 1000), (1876, 1021), (1823, 1055), (1771, 1086), (1727, 1117), (1678, 1153), (1636, 1183)
-        ]
+    "right": {
+        "hero": (2226, 682),
+        "units": [
+            (1472, 85),
+            (1534, 132),
+            (1575, 171),
+            (1620, 207),
+            (1684, 251),
+            (1726, 282),
+            (1767, 318),
+            (1797, 350),
+            (1844, 386),
+            (1886, 420),
+            (1924, 446),
+            (1975, 482),
+            (2045, 531),
+            (2091, 562),
+            (2195, 641),
+            (2251, 691),
+            (2244, 763),
+            (2178, 833),
+            (2121, 882),
+            (2028, 937),
+            (1981, 965),
+            (1914, 1000),
+            (1876, 1021),
+            (1823, 1055),
+            (1771, 1086),
+            (1727, 1117),
+            (1678, 1153),
+            (1636, 1183),
+        ],
     },
-    'down': {
-        'hero': (1281, 1143),  # Middle position from captured coordinates
-        'units': [
-            (273, 415), (294, 431), (315, 446), (336, 463), (357, 478), (378, 496), (399, 513), (420, 528), (441, 547), (462, 567),
-            (483, 583), (504, 600), (525, 618), (546, 632), (567, 648), (588, 663), (609, 681), (630, 697), (651, 711), (672, 724),
-            (693, 739), (714, 751), (735, 762), (756, 775), (777, 790), (798, 804), (819, 818), (840, 831), (861, 846), (882, 863),
-            (903, 878), (924, 894), (945, 912), (966, 929), (987, 946), (1008, 964), (1029, 982), (1050, 1001), (1071, 1020), (1092, 1040),
-            (1113, 1059), (1134, 1074), (1155, 1088), (1176, 1102), (1197, 1116), (1218, 1126), (1239, 1133), (1260, 1138), (1281, 1143), (1302, 1147),
-            (1323, 1149), (1344, 1149), (1365, 1148), (1386, 1147), (1407, 1140), (1428, 1125), (1449, 1105), (1464, 1084), (1483, 1063), (1501, 1042),
-            (1522, 1025), (1543, 1009), (1564, 995), (1585, 981), (1606, 965), (1627, 952), (1648, 933), (1669, 918), (1690, 904), (1711, 888),
-            (1732, 871), (1753, 858), (1774, 840), (1795, 821), (1816, 802), (1837, 784), (1858, 765), (1879, 744), (1900, 729), (1921, 718),
-            (1942, 709), (1963, 698), (1977, 677), (1987, 656), (2008, 636), (2029, 622), (2050, 606), (2071, 593), (2092, 580), (2113, 565),
-            (2133, 544), (2154, 525), (2175, 509), (2196, 496), (2217, 484), (2238, 470), (2259, 454), (2280, 438), (2301, 424)
-        ]
-    }
+    "down": {
+        "hero": (1281, 1143),  # Middle position from captured coordinates
+        "units": [
+            (273, 415),
+            (294, 431),
+            (315, 446),
+            (336, 463),
+            (357, 478),
+            (378, 496),
+            (399, 513),
+            (420, 528),
+            (441, 547),
+            (462, 567),
+            (483, 583),
+            (504, 600),
+            (525, 618),
+            (546, 632),
+            (567, 648),
+            (588, 663),
+            (609, 681),
+            (630, 697),
+            (651, 711),
+            (672, 724),
+            (693, 739),
+            (714, 751),
+            (735, 762),
+            (756, 775),
+            (777, 790),
+            (798, 804),
+            (819, 818),
+            (840, 831),
+            (861, 846),
+            (882, 863),
+            (903, 878),
+            (924, 894),
+            (945, 912),
+            (966, 929),
+            (987, 946),
+            (1008, 964),
+            (1029, 982),
+            (1050, 1001),
+            (1071, 1020),
+            (1092, 1040),
+            (1113, 1059),
+            (1134, 1074),
+            (1155, 1088),
+            (1176, 1102),
+            (1197, 1116),
+            (1218, 1126),
+            (1239, 1133),
+            (1260, 1138),
+            (1281, 1143),
+            (1302, 1147),
+            (1323, 1149),
+            (1344, 1149),
+            (1365, 1148),
+            (1386, 1147),
+            (1407, 1140),
+            (1428, 1125),
+            (1449, 1105),
+            (1464, 1084),
+            (1483, 1063),
+            (1501, 1042),
+            (1522, 1025),
+            (1543, 1009),
+            (1564, 995),
+            (1585, 981),
+            (1606, 965),
+            (1627, 952),
+            (1648, 933),
+            (1669, 918),
+            (1690, 904),
+            (1711, 888),
+            (1732, 871),
+            (1753, 858),
+            (1774, 840),
+            (1795, 821),
+            (1816, 802),
+            (1837, 784),
+            (1858, 765),
+            (1879, 744),
+            (1900, 729),
+            (1921, 718),
+            (1942, 709),
+            (1963, 698),
+            (1977, 677),
+            (1987, 656),
+            (2008, 636),
+            (2029, 622),
+            (2050, 606),
+            (2071, 593),
+            (2092, 580),
+            (2113, 565),
+            (2133, 544),
+            (2154, 525),
+            (2175, 509),
+            (2196, 496),
+            (2217, 484),
+            (2238, 470),
+            (2259, 454),
+            (2280, 438),
+            (2301, 424),
+        ],
+    },
 }
 
 # Wall Breaker deployment positions for SGoblin Farm (middle of each deployment edge)
 # Each side has 2 edges, so 2 wall breaker positions per side
 WALL_BREAKER_POSITIONS = {
-    'up': [
-        (932, 388),   # 1/3 through deployment path (left-center)
-        (1677, 402)   # 2/3 through deployment path (right-center)
+    "up": [
+        (932, 388),  # 1/3 through deployment path (left-center)
+        (1677, 402),  # 2/3 through deployment path (right-center)
     ],
-    'down': [
-        (966, 929),   # 1/3 through deployment path (left-center)
-        (1648, 933)   # 2/3 through deployment path (right-center)
-    ]
+    "down": [
+        (966, 929),  # 1/3 through deployment path (left-center)
+        (1648, 933),  # 2/3 through deployment path (right-center)
+    ],
 }
 
 # Achievement Building Template Sizes (width, height)
 # Used for accurate bounding box drawing and center calculations
 ACHIEVEMENT_BUILDING_SIZES = {
-    'eagle_artillery': (70, 70),
-    'firespitter': (50, 50),
-    'inferno_tower': (40, 80),
-    'monolith': (54, 80),
-    'multi_archer_tower': (40, 80),
-    'multi_gear_tower': (40, 80),
-    'ricochet_cannon': (50, 50),
-    'scattershot': (60, 60),
-    'spell_tower': (40, 40),
-    'xbow': (60, 60),
+    "eagle_artillery": (70, 70),
+    "firespitter": (50, 50),
+    "inferno_tower": (40, 80),
+    "monolith": (54, 80),
+    "multi_archer_tower": (40, 80),
+    "multi_gear_tower": (40, 80),
+    "ricochet_cannon": (50, 50),
+    "scattershot": (60, 60),
+    "spell_tower": (40, 40),
+    "xbow": (60, 60),
 }
 
 # Building-specific confidence thresholds (default is 0.7)
 # Lower threshold for buildings that are harder to detect
 ACHIEVEMENT_BUILDING_THRESHOLDS = {
-    'monolith': 0.65,  # Monolith templates need lower threshold
-    'spell_tower': 0.78,  # Higher threshold to reduce false positives
-    'firespitter': 0.78,  # Higher threshold to reduce false positives
+    "monolith": 0.65,  # Monolith templates need lower threshold
+    "spell_tower": 0.78,  # Higher threshold to reduce false positives
+    "firespitter": 0.78,  # Higher threshold to reduce false positives
 }
 
 # GPU Template Matching (Work In Progress)
@@ -391,15 +616,15 @@ ACHIEVEMENT_BUILDING_THRESHOLDS = {
 # Visualization Overlay Colors
 # Used by visualization_overlay.py for real-time detection display
 OVERLAY_COLORS = {
-    'ocr_success': '#00FF00',      # Green - high confidence OCR
-    'ocr_warning': '#FFFF00',      # Yellow - medium confidence OCR
-    'ocr_fail': '#FF0000',         # Red - low confidence OCR
-    'air_defense': '#FF4444',      # Light red - air defenses
-    'town_hall': '#AA00FF',        # Purple - town hall
-    'achievement': '#00FFFF',      # Cyan - achievement buildings (conf >= 0.7)
-    'achievement_low': '#FF0000',  # Red - achievement buildings (conf 0.6-0.7, not used in attack)
-    'air_sweeper': '#00FFFF',      # Cyan - air sweepers
-    'deployment': '#FFFF00',       # Yellow - troop deployment positions
-    'spell_target': '#FF00FF',     # Magenta - spell targets
-    'side_indicator': '#00FF00',   # Green - attack side indicator
+    "ocr_success": "#00FF00",  # Green - high confidence OCR
+    "ocr_warning": "#FFFF00",  # Yellow - medium confidence OCR
+    "ocr_fail": "#FF0000",  # Red - low confidence OCR
+    "air_defense": "#FF4444",  # Light red - air defenses
+    "town_hall": "#AA00FF",  # Purple - town hall
+    "achievement": "#00FFFF",  # Cyan - achievement buildings (conf >= 0.7)
+    "achievement_low": "#FF0000",  # Red - achievement buildings (conf 0.6-0.7, not used in attack)
+    "air_sweeper": "#00FFFF",  # Cyan - air sweepers
+    "deployment": "#FFFF00",  # Yellow - troop deployment positions
+    "spell_target": "#FF00FF",  # Magenta - spell targets
+    "side_indicator": "#00FF00",  # Green - attack side indicator
 }

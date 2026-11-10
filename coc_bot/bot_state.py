@@ -5,7 +5,7 @@ Allows multiple GUIs (Tkinter, Web) to share and sync state.
 
 import json
 import threading
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List
 
 
 class BotStateManager:
@@ -60,12 +60,12 @@ class BotStateManager:
         with self._lock:
             state_copy = self._state.copy()
 
-        with open(filepath, 'w', encoding='utf-8') as f:
+        with open(filepath, "w", encoding="utf-8") as f:
             json.dump(state_copy, f, indent=2)
 
     def load_from_json(self, filepath: str) -> None:
         """Load state from JSON file."""
-        with open(filepath, 'r', encoding='utf-8') as f:
+        with open(filepath, "r", encoding="utf-8") as f:
             data = json.load(f)
 
         with self._lock:
