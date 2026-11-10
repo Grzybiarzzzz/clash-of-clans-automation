@@ -1,6 +1,6 @@
 # Computer vision: from pixels to deployment positions
 
-[Project overview](../README.md) · [Implementation](../main.py)
+[Project overview](../README.md) · [Implementation](../coc_bot/vision/bb_deployment_zone.py)
 
 Builder Base boundary detection was one of the parts I struggled with most. The goal was to place troops around the visible deployment boundary instead of relying only on fixed coordinates. That required turning noisy screen pixels into a useful geometric approximation, then turning that geometry into candidate clicks.
 

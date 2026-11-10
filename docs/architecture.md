@@ -38,6 +38,8 @@ Reference images are functional matching assets. Selected diagnostic captures il
 
 ## Further engineering work
 
-The largest structural improvement would be separating screen observation, profile decisions, and action execution from the application startup in `main.py`. That would make it easier to replay recorded observations through decision logic without controlling a live desktop.
+Screen observation (`coc_bot/vision/`), input (`coc_bot/input/`), attack routines (`coc_bot/attacks/`), and application startup (`coc_bot/app.py`) live in separate modules. They still communicate through module-level session state in `coc_bot/runtime.py`, and the attack routines call detection and input functions directly.
 
-For now, the isolated tests cover the shared-state and web components. End-to-end behavior still depends on validation on Windows with the intended game layout.
+The next structural step would be passing the screen source and the input device into the routines instead of importing them. That would make it possible to replay recorded screenshots through the decision logic without controlling a live desktop.
+
+For now, the tests cover imports, the pure geometry helpers, the GUI composition, and the shared-state and web components. End-to-end behavior still depends on validation on Windows with the intended game layout.
