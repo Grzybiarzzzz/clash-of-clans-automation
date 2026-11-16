@@ -13,3 +13,5 @@ for _name in ("keyboard", "pyautogui"):
 
 if not hasattr(ctypes, "windll"):
     ctypes.windll = MagicMock(name="windll")
+
+from tests.bot_fakes import bot, screen  # noqa: E402, F401  (fixtures for every test module)

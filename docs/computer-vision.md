@@ -112,6 +112,25 @@ When glow detection fails, a fallback estimates the path from purple health-bar 
 
 ## Reading numeric values
 
-The project includes both Tesseract OCR and a separate template-based digit reader. In the digit path, thresholded image regions are matched against digit templates. Non-maximum suppression removes overlapping candidate boxes, and the retained detections are assembled into a numeric reading.
+Resource numbers (scouted loot, own storages, end-screen loot) are read by a digit reader written for the game's typeface, in `coc_bot/vision/digits.py`. Troop counts, the destruction percentage, and the Builder Base "Attacker" label still use Tesseract.
 
-This is a useful example of combining established image-processing methods with application-specific rules. The code also applies plausibility checks in some resource-reading paths. Those checks can reject obvious errors, but they do not establish that every surviving reading is correct.
+The game draws every number the same way: a bright fill, a dark outline, and a wider space between groups of three digits. The reader depends on those properties rather than on whatever is behind the number:
+
+1. **Fill mask.** A pixel belongs to a glyph when its darkest colour channel exceeds a threshold derived from the digit templates. Saturated backgrounds such as a storage bar stay out of the mask because one of their channels is dark.
+2. **Segmentation.** Each connected blob of fill that has the height of a digit and is surrounded by dark outline is one digit. The outline separates neighbours, and bright scenery has no outline.
+3. **Classification.** The blob is correlated with the fill shape of each template glyph. The best match must be good enough and clearly ahead of the second best.
+4. **Structure.** The digits must sit on one line, and the wide gaps between them must be exactly the thousands separators. A digit that went missing shifts those gaps.
+
+A reading that fails any of these returns no value together with a reason (`clipped`, `unknown_glyph`, `bad_grouping`, and so on). It is never reported as 0, so callers can tell "unreadable" from "empty": the scouting routines skip a base they cannot read and pause after several in a row, and the storage checks make no decision on a failed read.
+
+The earlier reader thresholded the whole crop with Otsu's method and slid every template across it, with non-maximum suppression choosing among overlapping matches. Its cut-off depended on the background, and a missed digit silently produced a number ten times smaller. It is kept as `digits.legacy_read` for comparison and can be selected with `OCR_ENGINE = "legacy"` in `config.py`.
+
+### Measuring it
+
+The repository's tests exercise the reader on numbers composed from the digit templates over synthetic backgrounds. That shows the mechanism, not accuracy on real frames. For real frames the bot records what it sees:
+
+- While running, it saves crops to `data/ocr_corpus/<screen>/` with the value it read in the file name and a row in `index.jsonl`. Every failed reading and every disagreement with the old reader is kept; routine readings are sampled.
+- `python tools/ocr/replay_corpus.py --recorded` summarises which failures occurred.
+- Crops copied to `tests/data/ocr/<screen>/` with the correct value in the file name become test cases. `python tools/ocr/replay_corpus.py` prints how many are read correctly, refused, or read wrong, next to the old reader's score, and `tests/test_ocr_replay.py` runs them in the suite.
+
+After each attack the bot also compares the growth of its storages with the loot the end screen showed. A contradiction is logged as `[OCR AUDIT]`: one of the three readings was wrong, or resources were spent in between.

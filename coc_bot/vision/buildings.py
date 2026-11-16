@@ -7,13 +7,14 @@ from concurrent.futures import as_completed, ThreadPoolExecutor
 
 import cv2
 import numpy as np
-from PIL import ImageGrab
 
 import config
 from coc_bot import runtime
 from coc_bot.discord_log import send_discord_debug_log
 from coc_bot.overlay import overlay_draw_detection
 from coc_bot.vision.matching import gpu_match_template
+from coc_bot.vision.capture import grab as grab_screen
+from coc_bot.vision.templates import load_template
 
 # Template cache for achievement buildings (speeds up detection by 0.5-1s per scan)
 achievement_building_templates = {}
@@ -27,7 +28,7 @@ def detect_air_defenses():
     air_defenses = []
 
     # Capture the base view region
-    base_img = ImageGrab.grab(bbox=config.BASE_VIEW_REGION)
+    base_img = grab_screen(config.BASE_VIEW_REGION)
     base_cv = cv2.cvtColor(np.array(base_img), cv2.COLOR_RGB2BGR)
 
     # Check if templates directory exists
@@ -49,7 +50,7 @@ def detect_air_defenses():
     for template_file in os.listdir(config.AIR_DEFENSE_TEMPLATES_DIR):
         if template_file.lower().endswith((".png", ".jpg", ".jpeg")):
             template_path = os.path.join(config.AIR_DEFENSE_TEMPLATES_DIR, template_file)
-            template = cv2.imread(template_path)
+            template = load_template(template_path)
 
             if template is None:
                 print(f"Failed to load template: {template_file}")
@@ -177,7 +178,7 @@ def load_achievement_building_templates():
         templates = []
         for template_file in template_files:
             template_path = os.path.join(templates_dir, template_file)
-            template = cv2.imread(template_path)
+            template = load_template(template_path)
 
             if template is not None:
                 templates.append((template, template_file))
@@ -206,7 +207,7 @@ def detect_achievement_building(building_type):
     global achievement_building_templates
 
     # Capture the base view region
-    base_img = ImageGrab.grab(bbox=config.BASE_VIEW_REGION)
+    base_img = grab_screen(config.BASE_VIEW_REGION)
     base_cv = cv2.cvtColor(np.array(base_img), cv2.COLOR_RGB2BGR)
 
     # Use cached templates (or fall back to loading from disk if cache empty)
@@ -236,7 +237,7 @@ def detect_achievement_building(building_type):
         templates_list = []
         for template_file in template_files:
             template_path = os.path.join(templates_dir, template_file)
-            template = cv2.imread(template_path)
+            template = load_template(template_path)
             if template is not None:
                 templates_list.append((template, template_file))
 
@@ -370,7 +371,7 @@ def detect_achievement_building_from_image(building_type, base_cv):
         templates_list = []
         for template_file in template_files:
             template_path = os.path.join(templates_dir, template_file)
-            template = cv2.imread(template_path)
+            template = load_template(template_path)
             if template is not None:
                 templates_list.append((template, template_file))
 
@@ -473,7 +474,7 @@ def detect_town_hall():
     Returns (x, y, level, confidence) tuple or None if not found.
     """
     # Capture the Town Hall region
-    th_img = ImageGrab.grab(bbox=config.TOWN_HALL_REGION)
+    th_img = grab_screen(config.TOWN_HALL_REGION)
     th_cv = cv2.cvtColor(np.array(th_img), cv2.COLOR_RGB2BGR)
 
     # Check if templates directory exists
@@ -489,7 +490,7 @@ def detect_town_hall():
     for template_file in os.listdir(config.TOWN_HALL_TEMPLATES_DIR):
         if template_file.lower().endswith((".png", ".jpg", ".jpeg")):
             template_path = os.path.join(config.TOWN_HALL_TEMPLATES_DIR, template_file)
-            template = cv2.imread(template_path)
+            template = load_template(template_path)
 
             if template is None:
                 continue
@@ -541,12 +542,12 @@ def detect_air_sweepers():
         print(f"Air sweeper templates directory not found: {templates_dir}")
         return sweepers
     # Capture the base view region
-    base_img = ImageGrab.grab(bbox=config.BASE_VIEW_REGION)
+    base_img = grab_screen(config.BASE_VIEW_REGION)
     base_cv = cv2.cvtColor(np.array(base_img), cv2.COLOR_RGB2BGR)
     # For each template (direction)
     for template_path in glob.glob(os.path.join(templates_dir, "air_sweeper_*.png")):
         direction = os.path.splitext(os.path.basename(template_path))[0].replace("air_sweeper_", "")
-        template = cv2.imread(template_path)
+        template = load_template(template_path)
         if template is None:
             continue
         result = cv2.matchTemplate(base_cv, template, cv2.TM_CCOEFF_NORMED)
@@ -604,7 +605,7 @@ def detect_all_achievement_buildings(enabled_buildings=None):
     start_time = time.time()
 
     # Capture base screenshot ONCE (shared by all threads)
-    base_img = ImageGrab.grab(bbox=config.BASE_VIEW_REGION)
+    base_img = grab_screen(config.BASE_VIEW_REGION)
     base_cv = cv2.cvtColor(np.array(base_img), cv2.COLOR_RGB2BGR)
 
     results = {}
@@ -813,7 +814,7 @@ def scan_achievement_buildings_sequential(settings):
     send_discord_debug_log(f"Sequential scan: checking {len(priority_enabled)} building types")
 
     # 4. Capture screenshot ONCE (shared for all detections)
-    base_img = ImageGrab.grab(bbox=config.BASE_VIEW_REGION)
+    base_img = grab_screen(config.BASE_VIEW_REGION)
     base_cv = cv2.cvtColor(np.array(base_img), cv2.COLOR_RGB2BGR)
 
     # 5. Scan each building type sequentially (one at a time)

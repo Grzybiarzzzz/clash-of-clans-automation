@@ -40,6 +40,8 @@ Reference images are functional matching assets. Selected diagnostic captures il
 
 Screen observation (`coc_bot/vision/`), input (`coc_bot/input/`), attack routines (`coc_bot/attacks/`), and application startup (`coc_bot/app.py`) live in separate modules. They still communicate through module-level session state in `coc_bot/runtime.py`, and the attack routines call detection and input functions directly.
 
-The next structural step would be passing the screen source and the input device into the routines instead of importing them. That would make it possible to replay recorded screenshots through the decision logic without controlling a live desktop.
+Every detector now captures the screen through one function, `coc_bot.vision.capture.grab`, whose source can be replaced. Tests use that to show the detectors prepared frames, and a detector that checks several regions can freeze one capture and crop from it. The next structural step would be doing the same for the input device, so that recorded sessions can be replayed through the decision logic without controlling a live desktop.
 
-For now, the tests cover imports, the pure geometry helpers, the GUI composition, and the shared-state and web components. End-to-end behavior still depends on validation on Windows with the intended game layout.
+The connection monitor runs on its own thread. When it sees the connection-lost dialog it interrupts the bot thread, which abandons its routine at the next capture or click and starts a new cycle once the game is back, instead of both threads clicking at once.
+
+The tests cover imports, the pure geometry helpers, the GUI composition, the shared-state and web components, and, on synthetic frames, digit reading, storage checks, and how the loop counts skips and recovers from a lost connection. End-to-end behavior still depends on validation on Windows with the intended game layout.

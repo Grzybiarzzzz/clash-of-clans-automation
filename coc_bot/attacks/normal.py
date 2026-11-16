@@ -7,7 +7,9 @@ from coc_bot.attacks.common import (
     deploy_lightning_spells,
     deploy_troops,
     handle_post_battle,
+    leave_unreadable_base,
     prepare_hotkeys,
+    read_scouted_loot,
     should_skip_base,
     skip_base,
     wait_for_battle_end,
@@ -17,12 +19,16 @@ from coc_bot.geometry import get_air_defense_proximity_sorter, get_lightning_spe
 from coc_bot.humanized_input import reading_pause, thinking_pause
 from coc_bot.input.camera import move_camera_to_side
 from coc_bot.vision.buildings import detect_air_defenses, detect_town_hall
-from coc_bot.vision.ocr import evaluate_base_resources
-from coc_bot.vision.screens import detect_alt_hotkeys
+from coc_bot.vision.screens import detect_alt_hotkeys, wait_for_attack_screen_ready
 
 
 def perform_normal_attack():
-    """Perform a normal attack (non-derank mode)"""
+    """Evaluate the base on screen and attack it, or skip it.
+
+    Returns "skipped" when the base was skipped, "paused" when the routine paused the bot,
+    True when the bot should pause because the storages are full, and False after a
+    completed attack.
+    """
     # SANITY CHECK: Verify we should be here
     settings = runtime.gui.get_settings()
     current_profile = settings.get("current_profile", "Unknown")
@@ -42,8 +48,19 @@ def perform_normal_attack():
     # Get current settings from GUI
     settings = runtime.gui.get_settings()
 
+    # The loot numbers only exist once the base has loaded
+    if not wait_for_attack_screen_ready(timeout=10):
+        print("[NORMAL ATTACK] Attack screen not ready - skipping base")
+        send_discord_debug_log("Normal attack: Attack screen timeout - skipping", "WARNING")
+        runtime.gui.log_message("Attack screen timeout - skipping")
+        skip_base()
+        return "skipped"
+
     # OCR resources
-    gold, elixir = evaluate_base_resources()
+    loot = read_scouted_loot()
+    if loot is None:
+        return leave_unreadable_base()
+    gold, elixir = loot
 
     # Human-like pause to "read" the loot values
     reading_pause(0.4)  # Quick glance at loot
@@ -62,7 +79,7 @@ def perform_normal_attack():
     should_skip, skip_reason = should_skip_base(gold, elixir, air_defenses, settings)
     if should_skip:
         skip_base()
-        return False  # Attack not completed
+        return "skipped"
 
     send_discord_debug_log(f"Base selected for attack: {len(air_defenses)} air defenses, {gold + elixir:,} resources")
 
@@ -70,7 +87,7 @@ def perform_normal_attack():
     town_hall = detect_town_hall()
     if check_town_hall_level(town_hall, settings):
         skip_base()
-        return False  # Attack not completed
+        return "skipped"
 
     chosen_side, side_coords = choose_attack_side(settings, town_hall)
 

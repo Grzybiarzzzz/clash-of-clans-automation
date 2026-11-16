@@ -6,11 +6,11 @@ import cv2
 import keyboard
 import numpy as np
 import pyautogui
-from PIL import ImageGrab
 
 import config
 from coc_bot.discord_log import send_discord_debug_log
 from coc_bot.humanized_input import fast_click
+from coc_bot.vision.capture import grab as grab_screen
 
 
 def detect_queen_arrow_projectile():
@@ -38,7 +38,7 @@ def detect_queen_arrow_projectile():
 
         for frame_num in range(frame_count):
             # Capture screenshot of base region only
-            base_img = ImageGrab.grab(bbox=config.BASE_VIEW_REGION)
+            base_img = grab_screen(config.BASE_VIEW_REGION)
             img = cv2.cvtColor(np.array(base_img), cv2.COLOR_RGB2BGR)
             hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
 

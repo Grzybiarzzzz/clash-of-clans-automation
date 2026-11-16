@@ -11,6 +11,8 @@ import numpy as np
 from typing import Tuple, List
 import math
 
+from coc_bot import interrupts
+
 # Import configuration
 try:
     from coc_bot.humanized_config import *  # noqa: F403
@@ -334,6 +336,7 @@ def human_like_move_click_enhanced(x: int, y: int, region_size: int = 8, pre_cli
         region_size: Randomization region size in pixels
         pre_click_pause: Whether to pause before clicking
     """
+    interrupts.checkpoint()
     try:
         # Get starting position
         start = pyautogui.position()
@@ -420,6 +423,7 @@ def fast_click(x: int, y: int, region_size: int = 8) -> None:
         y: Target Y coordinate
         region_size: Randomization region size in pixels
     """
+    interrupts.checkpoint()
     try:
         # Minimal randomization
         rx = x + random.randint(-region_size, region_size)

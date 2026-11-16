@@ -12,6 +12,8 @@ from coc_bot import runtime
 from coc_bot.attacks.common import (
     deploy_wall_breaker,
     handle_post_battle,
+    leave_unreadable_base,
+    read_scouted_loot,
     skip_base,
     wait_for_battle_end,
 )
@@ -20,7 +22,6 @@ from coc_bot.geometry import calculate_deployment_step, get_opposite_side
 from coc_bot.humanized_input import fast_click, human_like_move_click
 from coc_bot.input.camera import move_camera_to_opposite_side, move_camera_to_side
 from coc_bot.vision.buildings import scan_achievement_buildings_parallel_priority
-from coc_bot.vision.ocr import evaluate_base_resources
 from coc_bot.vision.screens import (
     detect_return_home_button,
     detect_surrender_or_end_battle,
@@ -410,24 +411,12 @@ def perform_sgoblin_farm_attack():
         skip_base()
         return "skipped"
 
-    # OCR resources with retry if 0 detected - keep retrying until both values > 0
-    retry_attempt = 0
-    while True:
-        gold, elixir = evaluate_base_resources()
-
-        # If either value is 0, retry after 0.2 seconds (give more time for screen to load)
-        if gold == 0 or elixir == 0:
-            retry_attempt += 1
-            print(
-                f"[SGOBLIN] OCR returned 0 (gold={gold}, elixir={elixir}), retrying in 0.2s... (attempt {retry_attempt})"
-            )
-            send_discord_debug_log(f"SGoblin Farm: OCR retry {retry_attempt} - gold={gold}, elixir={elixir}")
-            time.sleep(0.2)
-            continue
-
-        # Success - both values are non-zero
-        print(f"[SGOBLIN] OCR successful: gold={gold:,}, elixir={elixir:,}")
-        break
+    # Read the loot; the read itself waits a few seconds for the numbers to appear
+    loot = read_scouted_loot()
+    if loot is None:
+        return leave_unreadable_base()
+    gold, elixir = loot
+    print(f"[SGOBLIN] OCR successful: gold={gold:,}, elixir={elixir:,}")
 
     # Check if resources meet minimum threshold (no TH or AD check for SGoblin Farm)
     min_resources = settings.get("min_resources", 800000)

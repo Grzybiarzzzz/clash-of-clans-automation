@@ -390,7 +390,7 @@ class VisualizationOverlay:
         try:
             import os
             from datetime import datetime
-            from PIL import ImageGrab
+            from coc_bot.vision.capture import grab as grab_screen
 
             # Create folder if it doesn't exist
             os.makedirs(folder, exist_ok=True)
@@ -412,7 +412,7 @@ class VisualizationOverlay:
             w = self.window.winfo_width()
             h = self.window.winfo_height()
 
-            screenshot = ImageGrab.grab(bbox=(x, y, x + w, y + h))
+            screenshot = grab_screen((x, y, x + w, y + h))
 
             # Restore transparent background
             self.canvas.configure(bg=self.transparent_color)

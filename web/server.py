@@ -13,15 +13,26 @@ if str(_parent) not in sys.path:
     sys.path.insert(0, str(_parent))
 
 import uvicorn
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 
+from web.origin import is_allowed_origin
 from web.routes.api import router as api_router
 from web.routes.ws import router as ws_router, setup_state_listener
 
 
 app = FastAPI(title="CoC Bot Control API")
+
+
+
+@app.middleware("http")
+async def reject_requests_from_other_sites(request: Request, call_next):
+    """Requests that change something must come from the local GUI, not from another website."""
+    if request.method not in ("GET", "HEAD", "OPTIONS") and not is_allowed_origin(request.headers.get("origin")):
+        return JSONResponse({"detail": "Requests from other origins are not allowed"}, status_code=403)
+    return await call_next(request)
+
 
 # Register API routes
 app.include_router(api_router)
