@@ -5,12 +5,13 @@ import time
 
 import cv2
 import numpy as np
-from PIL import ImageGrab
 
 import config
 from coc_bot import runtime
 from coc_bot.discord_log import send_discord_debug_log
 from coc_bot.vision.ocr import check_bb_attacker_text
+from coc_bot.vision.capture import grab as grab_screen
+from coc_bot.vision.templates import load_template
 
 # BB Gold template cache (eliminates disk I/O during attacks)
 _bb_gold_template_cache = {}
@@ -22,7 +23,7 @@ def detect_army_button():
     Returns (x, y) coordinates of the button center if found, None otherwise.
     """
     # Capture the search region
-    screen_img = ImageGrab.grab(bbox=config.ARMY_BUTTON_SEARCH_REGION)
+    screen_img = grab_screen(config.ARMY_BUTTON_SEARCH_REGION)
     screen_cv = cv2.cvtColor(np.array(screen_img), cv2.COLOR_RGB2BGR)
 
     # Check if templates directory exists
@@ -40,7 +41,7 @@ def detect_army_button():
         send_discord_debug_log(f"Army button template not found: {template_path}", "WARNING")
         return None
 
-    template = cv2.imread(template_path)
+    template = load_template(template_path)
     if template is None:
         print(f"Failed to load army button template: {template_path}")
         send_discord_debug_log(f"Failed to load army button template: {template_path}", "WARNING")
@@ -71,7 +72,7 @@ def detect_surrender_button():
     Returns (x, y) coordinates of the button center if found, None otherwise.
     """
     # Full screen search
-    screen_img = ImageGrab.grab()
+    screen_img = grab_screen()
     screen_cv = cv2.cvtColor(np.array(screen_img), cv2.COLOR_RGB2BGR)
 
     # Check if templates directory exists
@@ -87,7 +88,7 @@ def detect_surrender_button():
         # Cache miss - load from disk as fallback
         template_path = os.path.join(surrender_template_dir, "surrender.png")
         if os.path.exists(template_path):
-            template = cv2.imread(template_path)
+            template = load_template(template_path)
 
     if template is None:
         print(f"Failed to load surrender button template: {template_path}")
@@ -134,7 +135,7 @@ def wait_for_attack_screen_ready(timeout=10):
         check_count += 1
 
         # Capture screen
-        screen_img = ImageGrab.grab()
+        screen_img = grab_screen()
         screen_cv = cv2.cvtColor(np.array(screen_img), cv2.COLOR_RGB2BGR)
 
         # Load End Battle template
@@ -144,7 +145,7 @@ def wait_for_attack_screen_ready(timeout=10):
             send_discord_debug_log(f"End Battle template not found: {template_path}", "ERROR")
             return False
 
-        template = cv2.imread(template_path)
+        template = load_template(template_path)
         if template is None:
             print(f"[ATTACK SCREEN] Failed to load End Battle template: {template_path}")
             send_discord_debug_log(f"Failed to load End Battle template: {template_path}", "ERROR")
@@ -194,7 +195,7 @@ def detect_star_bonus_screen():
         print(f"Star bonus template not found: {template_path}")
         return False
 
-    template = cv2.imread(template_path)
+    template = load_template(template_path)
     if template is None:
         print(f"Failed to load star bonus template: {template_path}")
         return False
@@ -208,7 +209,7 @@ def detect_star_bonus_screen():
     star_bonus_region = (600, 50, 1900, 700)
 
     # Capture the search region
-    screen_img = ImageGrab.grab(bbox=star_bonus_region)
+    screen_img = grab_screen(star_bonus_region)
     screen_cv = cv2.cvtColor(np.array(screen_img), cv2.COLOR_RGB2BGR)
 
     # Get search region dimensions
@@ -221,7 +222,7 @@ def detect_star_bonus_screen():
             f"[SBARB FARM] Template ({template_width}x{template_height}) is larger than search region ({region_width}x{region_height}), using full screen"
         )
         # Fall back to full screen search
-        screen_img = ImageGrab.grab()
+        screen_img = grab_screen()
         screen_cv = cv2.cvtColor(np.array(screen_img), cv2.COLOR_RGB2BGR)
 
     # Perform template matching
@@ -250,7 +251,7 @@ def detect_two_stars():
     """
     # Search bottom-right region where stars appear
     search_region = (1500, 1000, 2560, 1440)  # Bottom-right corner
-    screen_img = ImageGrab.grab(bbox=search_region)
+    screen_img = grab_screen(search_region)
     screen_cv = cv2.cvtColor(np.array(screen_img), cv2.COLOR_RGB2BGR)
 
     # Check if templates directory exists
@@ -266,7 +267,7 @@ def detect_two_stars():
         # Cache miss - load from disk as fallback
         template_path = os.path.join(stars_template_dir, "2_stars.png")
         if os.path.exists(template_path):
-            template = cv2.imread(template_path)
+            template = load_template(template_path)
 
     if template is None:
         print(f"Failed to load 2 stars template: {template_path}")
@@ -294,7 +295,7 @@ def detect_three_stars():
     """
     # Search bottom-right region where stars appear
     search_region = (1500, 1000, 2560, 1440)  # Bottom-right corner
-    screen_img = ImageGrab.grab(bbox=search_region)
+    screen_img = grab_screen(search_region)
     screen_cv = cv2.cvtColor(np.array(screen_img), cv2.COLOR_RGB2BGR)
 
     # Check if templates directory exists
@@ -310,7 +311,7 @@ def detect_three_stars():
         # Cache miss - load from disk as fallback
         template_path = os.path.join(stars_template_dir, "3_stars.png")
         if os.path.exists(template_path):
-            template = cv2.imread(template_path)
+            template = load_template(template_path)
 
     if template is None:
         print(f"Failed to load 3 stars template: {template_path}")
@@ -336,7 +337,7 @@ def detect_star_bonus():
     Searches center region of screen where the bonus screen appears.
     """
     # Search center region where star bonus screen appears (it's quite big)
-    screen_img = ImageGrab.grab()  # Full screen capture
+    screen_img = grab_screen()  # Full screen capture
     screen_cv = cv2.cvtColor(np.array(screen_img), cv2.COLOR_RGB2BGR)
 
     # Check if templates directory exists
@@ -353,7 +354,7 @@ def detect_star_bonus():
         send_discord_debug_log(f"Star bonus template not found: {template_path}", "WARNING")
         return False
 
-    template = cv2.imread(template_path)
+    template = load_template(template_path)
     if template is None:
         print(f"Failed to load star bonus template: {template_path}")
         send_discord_debug_log(f"Failed to load star bonus template: {template_path}", "WARNING")
@@ -391,7 +392,7 @@ def load_bb_gold_templates():
 
     for name, path in templates.items():
         if os.path.exists(path):
-            template = cv2.imread(path)
+            template = load_template(path)
             if template is not None:
                 _bb_gold_template_cache[name] = template
                 print(f"[CACHE] Loaded BB Gold template: {name}")
@@ -416,9 +417,9 @@ def detect_in_base_state():
         # Use full screen if region not specified
         search_region = getattr(config, "ARMY_BUTTON_SEARCH_REGION", None)
         if search_region:
-            screenshot = ImageGrab.grab(bbox=search_region)
+            screenshot = grab_screen(search_region)
         else:
-            screenshot = ImageGrab.grab()  # Full screen
+            screenshot = grab_screen()  # Full screen
 
         screenshot_cv = cv2.cvtColor(np.array(screenshot), cv2.COLOR_RGB2BGR)
 
@@ -429,7 +430,7 @@ def detect_in_base_state():
             template_dir = getattr(config, "ARMY_BUTTON_TEMPLATE_DIR", "screenshots/reference/reinforcements")
             template_path = os.path.join(template_dir, "army_button.png")
             if os.path.exists(template_path):
-                template = cv2.imread(template_path)
+                template = load_template(template_path)
 
         if template is None:
             return False
@@ -463,7 +464,7 @@ def detect_connection_lost():
         - screenshots/reference/general/try_again.png (button detection)
     """
     try:
-        screenshot = ImageGrab.grab()
+        screenshot = grab_screen()
         screenshot_cv = cv2.cvtColor(np.array(screenshot), cv2.COLOR_RGB2BGR)
 
         # Step 1: Detect the connection lost popup
@@ -471,7 +472,7 @@ def detect_connection_lost():
         if popup_template is None:
             template_path = "screenshots/reference/general/connection_lost.png"
             if os.path.exists(template_path):
-                popup_template = cv2.imread(template_path)
+                popup_template = load_template(template_path)
 
         if popup_template is None:
             return None
@@ -490,7 +491,7 @@ def detect_connection_lost():
         if try_again_template is None:
             template_path = "screenshots/reference/general/try_again.png"
             if os.path.exists(template_path):
-                try_again_template = cv2.imread(template_path)
+                try_again_template = load_template(template_path)
 
         if try_again_template is None:
             print("[CONNECTION] Warning: try_again.png template not found, using fallback position")
@@ -654,7 +655,7 @@ def detect_return_home_button(quiet=False):
     # Search in bottom-center area where return home button appears
     # Button location: X=1070-1496, Y=1116-1328
     region = (1000, 1050, 1550, 1400)
-    screen_img = ImageGrab.grab(bbox=region)
+    screen_img = grab_screen(region)
     screen_cv = cv2.cvtColor(np.array(screen_img), cv2.COLOR_RGB2BGR)
 
     # Check if templates directory exists
@@ -669,7 +670,7 @@ def detect_return_home_button(quiet=False):
         # Cache miss - load from disk as fallback
         template_path = os.path.join(template_dir, "return_home.png")
         if os.path.exists(template_path):
-            template = cv2.imread(template_path)
+            template = load_template(template_path)
 
     if template is None:
         print(f"[BB STATE] Failed to load return home button template: {template_path}")
@@ -700,7 +701,7 @@ def detect_end_battle_button():
     """
     # Search in bottom-left area where end_battle button appears
     region = (0, 1000, 600, 1440)
-    screen_img = ImageGrab.grab(bbox=region)
+    screen_img = grab_screen(region)
     screen_cv = cv2.cvtColor(np.array(screen_img), cv2.COLOR_RGB2BGR)
 
     # Check if templates directory exists
@@ -715,7 +716,7 @@ def detect_end_battle_button():
         # Cache miss - load from disk as fallback
         template_path = os.path.join(template_dir, "end_battle.png")
         if os.path.exists(template_path):
-            template = cv2.imread(template_path)
+            template = load_template(template_path)
 
     if template is None:
         print(f"Failed to load end battle button template: {template_path}")
@@ -805,12 +806,12 @@ def is_base_search_ready():
     region = (0, 1100, 600, 1440)
     threshold = 0.75
     try:
-        template = cv2.imread(template_path)
+        template = load_template(template_path)
         if template is None:
             print(f"Warning: Could not load template at {template_path}")
             return False
 
-        screenshot = ImageGrab.grab(bbox=region)
+        screenshot = grab_screen(region)
         screenshot_cv = cv2.cvtColor(np.array(screenshot), cv2.COLOR_RGB2BGR)
 
         res = cv2.matchTemplate(screenshot_cv, template, cv2.TM_CCOEFF_NORMED)
@@ -830,11 +831,11 @@ def is_attack_screen_ready():
     template_path = "assets/alt_hotkey_template.png"
     region = (522, 1273, 664, 1412)
     try:
-        template = cv2.imread(template_path)
+        template = load_template(template_path)
         if template is None:
             return False
         h, w, _ = template.shape
-        screenshot = ImageGrab.grab(bbox=region)
+        screenshot = grab_screen(region)
         screenshot_cv = cv2.cvtColor(np.array(screenshot), cv2.COLOR_RGB2BGR)
         if screenshot_cv.shape[0] == h and screenshot_cv.shape[1] == w:
             res = cv2.matchTemplate(screenshot_cv, template, cv2.TM_CCOEFF_NORMED)
@@ -854,7 +855,7 @@ def detect_main_base_boat():
     """
     try:
         # Full screen search
-        screen_img = ImageGrab.grab()
+        screen_img = grab_screen()
         screen_cv = cv2.cvtColor(np.array(screen_img), cv2.COLOR_RGB2BGR)
 
         # Load the boat template
@@ -864,7 +865,7 @@ def detect_main_base_boat():
             send_discord_debug_log(f"Main Base boat template not found: {template_path}", "WARNING")
             return None
 
-        template = cv2.imread(template_path)
+        template = load_template(template_path)
         if template is None:
             print(f"[MAIN BOAT] Failed to load boat template: {template_path}")
             send_discord_debug_log(f"Failed to load boat template: {template_path}", "WARNING")
@@ -901,7 +902,7 @@ def detect_bb_boat():
     """
     try:
         # Full screen search
-        screen_img = ImageGrab.grab()
+        screen_img = grab_screen()
         screen_cv = cv2.cvtColor(np.array(screen_img), cv2.COLOR_RGB2BGR)
 
         # Load the boat template
@@ -911,7 +912,7 @@ def detect_bb_boat():
             send_discord_debug_log(f"BB boat template not found: {template_path}", "WARNING")
             return None
 
-        template = cv2.imread(template_path)
+        template = load_template(template_path)
         if template is None:
             print(f"[BB BOAT] Failed to load boat template: {template_path}")
             send_discord_debug_log(f"Failed to load boat template: {template_path}", "WARNING")
@@ -935,7 +936,7 @@ def detect_bb_boat():
         print(f"[BB BOAT] Boat not detected (best match confidence: {max_val:.2f}), trying trees fallback...")
         trees_template_path = "screenshots/reference/builder_base/trees.png"
         if os.path.exists(trees_template_path):
-            trees_template = cv2.imread(trees_template_path)
+            trees_template = load_template(trees_template_path)
             if trees_template is not None:
                 trees_result = cv2.matchTemplate(screen_cv, trees_template, cv2.TM_CCOEFF_NORMED)
                 _, trees_max_val, _, trees_max_loc = cv2.minMaxLoc(trees_result)
@@ -973,13 +974,13 @@ def detect_alt_hotkeys():
     region = (522, 1273, 664, 1412)
 
     try:
-        template = cv2.imread(template_path)
+        template = load_template(template_path)
         if template is None:
             print(f"[DEBUG] Failed to load template: {template_path}")
             return False
 
         h, w, _ = template.shape
-        screenshot = ImageGrab.grab(bbox=region)
+        screenshot = grab_screen(region)
         screenshot_cv = cv2.cvtColor(np.array(screenshot), cv2.COLOR_RGB2BGR)
 
         # Ensure screenshot and template are the same size

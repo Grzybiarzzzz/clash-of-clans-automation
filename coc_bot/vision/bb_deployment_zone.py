@@ -2,9 +2,9 @@
 
 import cv2
 import numpy as np
-from PIL import ImageGrab
 
 from coc_bot.discord_log import send_discord_debug_log
+from coc_bot.vision.capture import grab as grab_screen
 
 
 def filter_out_unit_bar(coordinates):
@@ -57,7 +57,7 @@ def detect_bb_deployment_zone():
     try:
         # Capture the game screen area
         screen_region = (200, 100, 2360, 1200)  # Adjust based on your resolution
-        screenshot = ImageGrab.grab(bbox=screen_region)
+        screenshot = grab_screen(screen_region)
         screenshot_cv = cv2.cvtColor(np.array(screenshot), cv2.COLOR_RGB2BGR)
         screenshot_hsv = cv2.cvtColor(screenshot_cv, cv2.COLOR_BGR2HSV)
 
@@ -476,7 +476,7 @@ def detect_bb_deployment_zone_advanced():
     """
     try:
         # Capture the game screen area
-        screenshot = ImageGrab.grab(bbox=BB_DRAGON_SCREEN_REGION)
+        screenshot = grab_screen(BB_DRAGON_SCREEN_REGION)
         screenshot_cv = cv2.cvtColor(np.array(screenshot), cv2.COLOR_RGB2BGR)
         screenshot_hsv = cv2.cvtColor(screenshot_cv, cv2.COLOR_BGR2HSV)
 
@@ -815,7 +815,7 @@ def save_bb_dragon_debug_visualization(all_coords, dragon_coords, bm_coord):
         os.makedirs(output_dir, exist_ok=True)
 
         # Capture current screen
-        screenshot = ImageGrab.grab(bbox=BB_DRAGON_SCREEN_REGION)
+        screenshot = grab_screen(BB_DRAGON_SCREEN_REGION)
         screenshot_cv = cv2.cvtColor(np.array(screenshot), cv2.COLOR_RGB2BGR)
         screenshot_hsv = cv2.cvtColor(screenshot_cv, cv2.COLOR_BGR2HSV)
 
