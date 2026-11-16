@@ -37,6 +37,16 @@ def update_status():
         runtime.gui.quick_status_label.config(text="● Stopped", foreground="red")
 
 
+def pause_bot(reason):
+    """Pause the bot from the bot thread and tell the user why."""
+    runtime.paused = True
+    runtime.gui.bot_paused = True
+    print(f"[PAUSE] {reason}")
+    runtime.gui.log_message(f"Bot paused: {reason}")
+    send_discord_debug_log(f"Bot paused: {reason}", "WARNING")
+    runtime.root.after(0, update_status)
+
+
 def toggle_pause():
     runtime.paused = not runtime.paused
     runtime.gui.bot_paused = runtime.paused
@@ -45,12 +55,8 @@ def toggle_pause():
     runtime.root.after(0, update_status)
 
 
-def stop_bot():
-    """Stop the bot immediately without closing the GUI"""
-    runtime.running = False
-    runtime.paused = True
-
-    # Release all held keys immediately
+def release_held_inputs():
+    """Let go of modifier keys and mouse buttons that an interrupted routine may still hold."""
     try:
         pyautogui.keyUp("shift")
         pyautogui.keyUp("ctrl")
@@ -62,6 +68,15 @@ def stop_bot():
             pass
     except Exception as e:
         print(f"Error releasing keys: {e}")
+
+
+def stop_bot():
+    """Stop the bot immediately without closing the GUI"""
+    runtime.running = False
+    runtime.paused = True
+
+    # Release all held keys immediately
+    release_held_inputs()
 
     # Stop any ongoing PyAutoGUI operations
     pyautogui.PAUSE = 0

@@ -5,10 +5,9 @@ import time
 
 import pyautogui
 import pytesseract
-from PIL import ImageGrab
 
 import config
-from coc_bot import runtime
+from coc_bot import interrupts, runtime
 from coc_bot.attacks.achievement_farm import perform_achievement_farm_attack
 from coc_bot.attacks.bb_elixir import handle_bb_elixir_mode
 from coc_bot.attacks.bb_gold import handle_bb_gold_mode
@@ -16,12 +15,14 @@ from coc_bot.attacks.derank import handle_derank_mode
 from coc_bot.attacks.normal import perform_normal_attack
 from coc_bot.attacks.sbarb_farm import handle_sbarb_farm_mode
 from coc_bot.attacks.sgoblin_farm import perform_sgoblin_farm_attack
-from coc_bot.controls import check_discord_commands, update_status
+from coc_bot.connection import reconnect_in_progress
+from coc_bot.controls import check_discord_commands, release_held_inputs, update_status
 from coc_bot.discord_log import send_discord_debug_log
 from coc_bot.humanized_input import fast_click, human_like_move_click, humanized_sleep
 from coc_bot.input.camera import click_in_square
 from coc_bot.overlay import overlay_clear
 from coc_bot.session import check_auto_pause, schedule_next_break
+from coc_bot.vision.capture import grab as grab_screen
 from coc_bot.vision.ocr import check_bb_attacker_text
 from coc_bot.vision.screens import (
     detect_return_home_button,
@@ -171,92 +172,72 @@ def _start_search(bb_elixir_mode, bb_gold_mode):
         print(f"After click, mouse position: {pyautogui.position()}")
 
 
+def _wait_for_next_base(timeout=30):
+    """After a skip the game searches on by itself; wait until the next base is on screen."""
+    print("Waiting for next base after skip...")
+    start_time = time.time()
+    while runtime.running and (time.time() - start_time) < timeout:
+        if is_base_search_ready():
+            print("Next base loaded after skip!")
+            runtime.gui.log_message("Next base loaded")
+            time.sleep(0.1)  # Small delay to ensure screen is stable
+            return True
+        time.sleep(0.2)  # Check every 200ms
+
+    print("WARNING: Base search timed out after skip")
+    runtime.gui.log_message("Base search timeout after skip")
+    send_discord_debug_log("Base search timeout after skip", "WARNING")
+    time.sleep(1)
+    return False
+
+
 def _run_evaluated_attack_cycle(sgoblin_farm_mode):
-    """Evaluation-based modes: skip bases until one is attacked (Super Goblin farming or the normal attack)."""
+    """Evaluation-based modes: skip bases until one is attacked (Super Goblin farming or the normal attack).
+
+    Both routines return "skipped" for a skipped base, "paused" when they paused the bot
+    themselves, True when the storages are full and False after a completed attack.
+    """
     while runtime.running:
         if sgoblin_farm_mode:
             print("[DEBUG] ✓ sgoblin_farm_mode matched - using perform_sgoblin_farm_attack()")
-            # Handle SGoblin Farm mode (no TH/AD detection, resource-based only)
+            label = "SGoblin Farm attack"
             result = perform_sgoblin_farm_attack()
-            if result == True:
-                # Pause bot due to full storages
-                runtime.paused = True
-                runtime.gui.bot_paused = True
-                runtime.gui.log_message("Bot paused due to full storages. Discord notification sent.")
-                send_discord_debug_log("Bot paused due to full storages", "WARNING")
-                runtime.root.after(0, update_status)
-                break  # Exit inner while loop
-            elif result == "skipped":
-                # Base was skipped, increment skipped counter and wait for next base
-                runtime.skipped_bases += 1
-                runtime.gui.log_message(f"Base skipped (total: {runtime.skipped_bases})")
-                send_discord_debug_log(f"SGoblin Farm: Base skipped (total: {runtime.skipped_bases})")
-                runtime.root.after(
-                    0, lambda: runtime.gui.update_skipped_stats(runtime.skipped_bases, runtime.attacked_bases)
-                )
-
-                # Wait for next base to load automatically (skip initiates auto-search)
-                print("Waiting for next base after skip...")
-                base_found = False
-                max_wait_time = 30  # Maximum 30 seconds to find next base
-                start_time = time.time()
-
-                while not base_found and (time.time() - start_time) < max_wait_time:
-                    if is_base_search_ready():
-                        base_found = True
-                        print("Next base loaded after skip!")
-                        runtime.gui.log_message("Next base loaded")
-                        time.sleep(0.1)  # Small delay to ensure screen is stable
-                        break
-                    time.sleep(0.2)  # Check every 200ms
-
-                if not base_found:
-                    print("WARNING: Base search timed out after skip")
-                    runtime.gui.log_message("Base search timeout after skip")
-                    send_discord_debug_log("Base search timeout after skip", "WARNING")
-                    time.sleep(1)
-
-                # Continue loop to evaluate next base (don't break - stay in evaluation loop)
-                continue
-            else:
-                # Attack completed successfully
-                runtime.loop_count += 1
-                runtime.gui.update_loop_count(runtime.loop_count)
-                runtime.state_manager.set("loop_count", runtime.loop_count)
-                runtime.state_manager.set("bases_attacked", runtime.attacked_bases + 1)
-                runtime.gui.log_message(f"SGoblin Farm attack {runtime.loop_count} completed")
-                runtime.attacked_bases += 1
-                send_discord_debug_log(f"SGoblin Farm attack {runtime.loop_count} completed successfully")
-                runtime.root.after(
-                    0, lambda: runtime.gui.update_skipped_stats(runtime.skipped_bases, runtime.attacked_bases)
-                )
-                break  # Exit inner while loop to start a new attack cycle
         else:
             print("[DEBUG] Using NORMAL ATTACK mode (will evaluate and may skip)")
-            # Handle normal attack mode
-            should_pause = perform_normal_attack()
-            if should_pause:
-                runtime.paused = True
-                runtime.gui.bot_paused = True
-                runtime.gui.log_message("Bot paused due to full storages. Discord notification sent.")
-                send_discord_debug_log("Bot paused due to full storages", "WARNING")
-                runtime.root.after(0, update_status)
-                break  # Exit inner while loop
+            label = "Attack"
+            result = perform_normal_attack()
 
-            # Update loop count and continue
-            runtime.loop_count += 1
-            runtime.gui.update_loop_count(runtime.loop_count)
-            runtime.state_manager.set("loop_count", runtime.loop_count)
-            runtime.state_manager.set("bases_attacked", runtime.attacked_bases + 1)
-            runtime.gui.log_message(f"Attack {runtime.loop_count} completed")
-            runtime.attacked_bases += 1
-            send_discord_debug_log(f"Attack {runtime.loop_count} completed successfully")
+        if result == "paused":
+            break  # the routine already paused the bot and said why
 
-            # Update skipped/ratio statistics in GUI
+        if result == "skipped":
+            runtime.skipped_bases += 1
+            runtime.gui.log_message(f"Base skipped (total: {runtime.skipped_bases})")
+            send_discord_debug_log(f"Base skipped (total: {runtime.skipped_bases})")
             runtime.root.after(
                 0, lambda: runtime.gui.update_skipped_stats(runtime.skipped_bases, runtime.attacked_bases)
             )
-            break  # Exit inner while loop to start a new attack cycle
+            _wait_for_next_base()
+            continue  # evaluate the next base
+
+        if result is True:
+            runtime.paused = True
+            runtime.gui.bot_paused = True
+            runtime.gui.log_message("Bot paused due to full storages. Discord notification sent.")
+            send_discord_debug_log("Bot paused due to full storages", "WARNING")
+            runtime.root.after(0, update_status)
+            break
+
+        # Attack completed
+        runtime.loop_count += 1
+        runtime.gui.update_loop_count(runtime.loop_count)
+        runtime.state_manager.set("loop_count", runtime.loop_count)
+        runtime.state_manager.set("bases_attacked", runtime.attacked_bases + 1)
+        runtime.gui.log_message(f"{label} {runtime.loop_count} completed")
+        runtime.attacked_bases += 1
+        send_discord_debug_log(f"{label} {runtime.loop_count} completed successfully")
+        runtime.root.after(0, lambda: runtime.gui.update_skipped_stats(runtime.skipped_bases, runtime.attacked_bases))
+        break  # start a new attack cycle
 
 
 def _save_error_screenshot():
@@ -266,7 +247,7 @@ def _save_error_screenshot():
         os.makedirs(error_dir, exist_ok=True)
         timestamp = time.strftime("%Y%m%d_%H%M%S")
         screenshot_path = os.path.join(error_dir, f"error_{timestamp}.png")
-        img = ImageGrab.grab()
+        img = grab_screen()
         img.save(screenshot_path)
         print(f"Error screenshot saved: {screenshot_path}")
         runtime.gui.log_message(f"Error screenshot saved: {screenshot_path}")
@@ -277,8 +258,50 @@ def _save_error_screenshot():
         send_discord_debug_log(f"Failed to save error screenshot: {err}", "ERROR")
 
 
-def main_loop():
+def _resume_after_reconnect():
+    """Wait for the game to come back after the connection monitor interrupted the bot thread."""
+    deadline = time.time() + 90
+    while reconnect_in_progress() and runtime.running and time.time() < deadline:
+        time.sleep(0.5)
+    interrupts.clear()
 
+    # The game reloads into the home village; do not start clicking before it is there.
+    # Another disconnect during this wait interrupts it and brings the loop back here.
+    if runtime.running and not wait_for_base_screen(timeout=60):
+        print("[MAIN LOOP] Base screen not detected after the reconnect - continuing anyway")
+        send_discord_debug_log("Main Loop: base screen not detected after reconnect", "WARNING")
+
+
+def main_loop():
+    """Run attack cycles until the bot is stopped, restarting the cycle after a lost connection."""
+    interrupts.watch_current_thread()
+    while runtime.running:
+        try:
+            if interrupts.pending():
+                _resume_after_reconnect()
+            _run_attack_cycles()
+        except interrupts.ConnectionLost:
+            release_held_inputs()
+            print("[MAIN LOOP] Connection lost - current routine abandoned, waiting for the reconnect")
+            runtime.gui.log_message("Connection lost - waiting for reconnect, then starting a new cycle")
+            send_discord_debug_log("Main Loop: routine abandoned after connection loss", "WARNING")
+
+    if runtime.attacked_bases > 0:
+        skip_ratio = runtime.skipped_bases / runtime.attacked_bases
+    else:
+        skip_ratio = 0
+    print(
+        f"Bases skipped: {runtime.skipped_bases}, Attacks: {runtime.attacked_bases}, Skip/Attack ratio: {skip_ratio:.2f}"
+    )
+    runtime.gui.log_message(
+        f"Bases skipped: {runtime.skipped_bases}, Attacks: {runtime.attacked_bases}, Skip/Attack ratio: {skip_ratio:.2f}"
+    )
+    send_discord_debug_log(
+        f"Session summary: {runtime.skipped_bases} skipped, {runtime.attacked_bases} attacked, ratio: {skip_ratio:.2f}"
+    )
+
+
+def _run_attack_cycles():
     # Each iteration covers one full attack cycle
     while runtime.running:
         # Check for Discord commands
@@ -473,7 +496,7 @@ def main_loop():
                     runtime.gui.log_message("Bot paused due to full storages. Discord notification sent.")
                     send_discord_debug_log("Bot paused due to full storages", "WARNING")
                     runtime.root.after(0, update_status)
-                    break  # Exit main loop
+                    continue  # stay in the loop, paused, so that resuming works
 
                 runtime.loop_count += 1
                 runtime.gui.update_loop_count(runtime.loop_count)
@@ -522,20 +545,6 @@ def main_loop():
             except Exception:
                 print("[ERROR] Failed to update status")
             _save_error_screenshot()
-
-    if runtime.attacked_bases > 0:
-        skip_ratio = runtime.skipped_bases / runtime.attacked_bases
-    else:
-        skip_ratio = 0
-    print(
-        f"Bases skipped: {runtime.skipped_bases}, Attacks: {runtime.attacked_bases}, Skip/Attack ratio: {skip_ratio:.2f}"
-    )
-    runtime.gui.log_message(
-        f"Bases skipped: {runtime.skipped_bases}, Attacks: {runtime.attacked_bases}, Skip/Attack ratio: {skip_ratio:.2f}"
-    )
-    send_discord_debug_log(
-        f"Session summary: {runtime.skipped_bases} skipped, {runtime.attacked_bases} attacked, ratio: {skip_ratio:.2f}"
-    )
 
 
 # Override GUI's run_bot method with our main loop

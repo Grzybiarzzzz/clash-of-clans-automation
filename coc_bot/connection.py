@@ -3,7 +3,7 @@
 import threading
 import time
 
-from coc_bot import runtime
+from coc_bot import interrupts, runtime
 from coc_bot.discord_log import send_discord_debug_log
 from coc_bot.humanized_input import fast_click
 from coc_bot.vision.screens import detect_connection_lost, detect_in_base_state
@@ -27,8 +27,10 @@ def handle_connection_lost():
     if try_again_pos is None:
         return False
 
-    # Pause the monitor while handling reconnection
+    # Pause the monitor while handling reconnection, and take the mouse away from the bot
+    # thread: its attack is lost, and its clicks would land on the reloading game
     _connection_monitor_paused = True
+    interrupts.interrupt()
 
     print("[CONNECTION] *** CONNECTION LOST - Attempting reconnect ***")
     runtime.gui.log_message("Connection lost! Clicking Try Again...")
@@ -74,6 +76,11 @@ def handle_connection_lost():
     send_discord_debug_log("Failed to reconnect after 30 seconds", "ERROR")
     _connection_monitor_paused = False
     return False
+
+
+def reconnect_in_progress():
+    """True while the monitor is clicking "Try Again" and waiting for the game to come back."""
+    return _connection_monitor_paused
 
 
 def connection_monitor_loop():
