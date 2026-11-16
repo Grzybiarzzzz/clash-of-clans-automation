@@ -5,10 +5,10 @@ import time
 
 import keyboard
 import pyautogui
-from PIL import ImageGrab
 
 import config
 from coc_bot import runtime
+from coc_bot.controls import pause_bot
 from coc_bot.discord_log import send_discord_debug_log, send_discord_notification
 from coc_bot.geometry import calculate_lightning_spells_needed
 from coc_bot.humanized_input import human_like_move_click, mouse_drift_idle, random_sleep
@@ -16,10 +16,58 @@ from coc_bot.input.camera import click_in_square
 from coc_bot.overlay import overlay_draw_side, overlay_update
 from coc_bot.profiles import get_global_reinforcements_enabled, get_global_skip_on_th_fail
 from coc_bot.session import save_loot_data
-from coc_bot.storages import check_and_pause_if_storages_full, track_resources
+from coc_bot.storages import (
+    check_and_pause_if_storages_full,
+    find_loot_mismatches,
+    previous_storage_values,
+    read_storage_values,
+    track_resources,
+)
 from coc_bot.vision.buildings import detect_air_sweepers
-from coc_bot.vision.ocr import ocr_attack_resource_template_digits, ocr_loot
+from coc_bot.vision.capture import grab as grab_screen
+from coc_bot.vision.ocr import evaluate_base_resources, ocr_loot
 from coc_bot.vision.screens import detect_army_button, wait_for_base_screen
+
+
+SCOUT_LOOT_TIMEOUT = 3.0  # seconds to wait for the loot of a scouted base to become readable
+MAX_UNREADABLE_BASES = 5  # this many unreadable bases in a row pause the bot
+
+_unreadable_bases = 0
+
+
+def read_scouted_loot():
+    """The loot of the base on screen as (gold, elixir), or None when it stayed unreadable."""
+    global _unreadable_bases
+    gold, elixir = evaluate_base_resources(timeout=SCOUT_LOOT_TIMEOUT)
+    if gold is None or elixir is None:
+        return None
+    _unreadable_bases = 0
+    return gold, elixir
+
+
+def leave_unreadable_base():
+    """Skip a base whose loot could not be read. Returns "skipped", or "paused" when it keeps happening.
+
+    One unreadable base is bad luck with the scenery. Several in a row mean the reader does not
+    work on this screen at all, and skipping on would only burn gold, so the bot pauses with the
+    last base still on screen.
+    """
+    global _unreadable_bases
+    _unreadable_bases += 1
+    if _unreadable_bases >= MAX_UNREADABLE_BASES:
+        _unreadable_bases = 0
+        pause_bot(
+            f"loot unreadable on {MAX_UNREADABLE_BASES} bases in a row - check the crops in "
+            f"{getattr(config, 'OCR_CORPUS_DIR', 'data/ocr_corpus')} (OCR_ENGINE = \"legacy\" in config.py "
+            "switches back to the old reader)"
+        )
+        return "paused"
+    message = f"Loot unreadable - skipping base ({_unreadable_bases}/{MAX_UNREADABLE_BASES} in a row)"
+    print(message)
+    runtime.gui.log_message(message)
+    send_discord_debug_log(message, "WARNING")
+    skip_base()
+    return "skipped"
 
 
 def should_skip_base(gold, elixir, air_defenses, settings):
@@ -423,7 +471,7 @@ def wait_for_battle_end():
     send_discord_debug_log("Waiting for battle to end...")
     check_count = 0
     while runtime.running:
-        img = ImageGrab.grab(bbox=config.BLACK_BAR_REGION)
+        img = grab_screen(config.BLACK_BAR_REGION)
         if all(pixel == config.BLACK_BAR_COLOR for pixel in img.getdata()):
             break
 
@@ -460,92 +508,55 @@ def handle_post_battle():
     # Wait for resources to stabilize before reading
     time.sleep(0.3)
 
-    # Check base resources after returning home (template matching OCR with retry)
-    max_retries = 3
-
-    # Read Gold with retry
-    base_gold = 0
-    for attempt in range(max_retries):
-        base_gold_img = ImageGrab.grab(bbox=config.BASE_GOLD_REGION)
-        base_gold = ocr_attack_resource_template_digits(
-            base_gold_img, context="base_screen", debug=False, resource_type="gold"
-        )
-        if base_gold > 0:
-            break
-        if attempt < max_retries - 1:
-            print(f"[STORAGE] Gold OCR returned 0, retrying ({attempt + 1}/{max_retries})...")
-            time.sleep(0.2)
-
-    # Read Elixir with retry
-    base_elixir = 0
-    for attempt in range(max_retries):
-        base_elixir_img = ImageGrab.grab(bbox=config.BASE_ELIXIR_REGION)
-        base_elixir = ocr_attack_resource_template_digits(
-            base_elixir_img, context="base_screen", debug=False, resource_type="elixir"
-        )
-        if base_elixir > 0:
-            break
-        if attempt < max_retries - 1:
-            print(f"[STORAGE] Elixir OCR returned 0, retrying ({attempt + 1}/{max_retries})...")
-            time.sleep(0.2)
-
-    # Read Dark Elixir with retry
-    base_dark_elixir = 0
-    if hasattr(config, "BASE_DARK_ELIXIR_REGION"):
-        for attempt in range(max_retries):
-            base_dark_elixir_img = ImageGrab.grab(bbox=config.BASE_DARK_ELIXIR_REGION)
-            base_dark_elixir = ocr_attack_resource_template_digits(
-                base_dark_elixir_img, context="base_dark_elixir", debug=False
-            )
-            if base_dark_elixir > 0:
-                break
-            if attempt < max_retries - 1:
-                print(f"[STORAGE] DE OCR returned 0, retrying ({attempt + 1}/{max_retries})...")
-                time.sleep(0.2)
-    print(f"Base resources after attack: Gold={base_gold}, Elixir={base_elixir}, Dark Elixir={base_dark_elixir}")
-    send_discord_debug_log(
-        f"Base resources after attack: Gold={base_gold:,}, Elixir={base_elixir:,}, Dark Elixir={base_dark_elixir:,}"
-    )
-
-    # Track resources and check for full storages (no loot gained over 3 attacks)
-    track_resources(base_gold, base_elixir, base_dark_elixir, base_type="main_base")
-    check_and_pause_if_storages_full(base_type="main_base")
-
-    # Check if storages are full (Farming profile, at least 2 of 3 full)
     settings = runtime.gui.get_settings()
-    current_profile = settings.get("current_profile", "")
-    if current_profile == "Farming":
-        # Get max values from settings (fall back to defaults if missing)
-        try:
-            import json
+    capacity = {
+        "gold": int(settings.get("max_gold_storage", 14_000_000)),
+        "elixir": int(settings.get("max_elixir_storage", 14_000_000)),
+        "dark_elixir": int(settings.get("max_dark_elixir_storage", 240_000)),
+    }
 
-            with open("bot_settings.json", "r", encoding="utf-8") as f:
-                file_data = json.load(f)
-            max_gold = int(file_data.get("max_gold_storage", 14000000))
-            max_elixir = int(file_data.get("max_elixir_storage", 14000000))
-            max_dark = int(file_data.get("max_dark_elixir_storage", 240000))
-        except Exception:
-            max_gold = 14000000
-            max_elixir = 14000000
-            max_dark = 240000
-        full_count = 0
-        if base_gold == max_gold:
-            full_count += 1
-        if base_elixir == max_elixir:
-            full_count += 1
-        if base_dark_elixir == max_dark:
-            full_count += 1
-        if full_count >= 2:
-            msg = f"<@everyone> Storages are full! Gold: {base_gold:,}/{max_gold:,}, Elixir: {base_elixir:,}/{max_elixir:,}, Dark Elixir: {base_dark_elixir:,}/{max_dark:,}. Bot paused."
-            send_discord_notification(msg)
-            runtime.gui.log_message("At least 2 storages are full. Bot paused.")
-            return True  # Signal to pause bot
+    before = previous_storage_values("main_base")
+    after = read_storage_values("main_base")
+    if after is None:
+        # No reading is better than a wrong one: nothing below may act on guessed numbers
+        print("[STORAGE] Storages unreadable after the attack - skipping the full-storage checks")
+        send_discord_debug_log("Storages unreadable after attack - full-storage checks skipped", "WARNING")
+    else:
+        print(
+            f"Base resources after attack: Gold={after['gold']:,}, Elixir={after['elixir']:,}, "
+            f"Dark Elixir={after['dark_elixir']:,}"
+        )
+        send_discord_debug_log(
+            f"Base resources after attack: Gold={after['gold']:,}, Elixir={after['elixir']:,}, "
+            f"Dark Elixir={after['dark_elixir']:,}"
+        )
 
-    # Check if storages are full (legacy logic)
-    if base_gold == 11_000_000 or base_elixir == 14_000_000:
-        msg = f"<@everyone> Storages are full! Gold: {base_gold:,}, Elixir: {base_elixir:,}. Bot paused."
-        send_discord_notification(msg)
-        return True  # Signal to pause bot
+        # Storage growth should match the loot screen; a contradiction points at a misread number
+        for mismatch in find_loot_mismatches(before, after, loot_data, capacity):
+            message = (
+                f"[OCR AUDIT] {mismatch['resource']} storage changed by {mismatch['gained']:,} "
+                f"but the loot screen showed {mismatch['loot']:,} - one of the readings is probably wrong"
+            )
+            print(message)
+            runtime.gui.log_message(message)
+            send_discord_debug_log(message, "WARNING")
+
+        # Track resources and check for full storages (no loot gained over 3 attacks)
+        track_resources(after["gold"], after["elixir"], after["dark_elixir"], base_type="main_base")
+        check_and_pause_if_storages_full(base_type="main_base")
+
+        # Farming profile: pause once at least 2 of the 3 storages reached their configured maximum
+        if settings.get("current_profile", "") == "Farming":
+            full_count = sum(1 for resource in capacity if after[resource] >= capacity[resource] > 0)
+            if full_count >= 2:
+                msg = (
+                    f"<@everyone> Storages are full! Gold: {after['gold']:,}/{capacity['gold']:,}, "
+                    f"Elixir: {after['elixir']:,}/{capacity['elixir']:,}, "
+                    f"Dark Elixir: {after['dark_elixir']:,}/{capacity['dark_elixir']:,}. Bot paused."
+                )
+                send_discord_notification(msg)
+                runtime.gui.log_message("At least 2 storages are full. Bot paused.")
+                return True  # Signal to pause bot
 
     # Handle reinforcements
     reinforcements_enabled = get_global_reinforcements_enabled()

@@ -32,6 +32,17 @@ BASE_DARK_ELIXIR_REGION = (2257, 266, 2441, 319)
 BB_BASE_GOLD_REGION = (2123, 45, 2433, 92)  # BB gold storage (to be calibrated)
 BB_BASE_ELIXIR_REGION = (2123, 157, 2433, 206)  # BB elixir storage (to be calibrated)
 
+# Resource number reading (coc_bot/vision/digits.py)
+OCR_ENGINE = "segmented"  # "segmented": outline-based digit reader; "legacy": the original sliding template match
+OCR_CHECK_GROUPING = True  # reject readings whose wide gaps are not the thousands separators
+OCR_CORPUS_ENABLED = True  # save OCR crops with their readings for review and replay
+OCR_CORPUS_DIR = "data/ocr_corpus"
+OCR_CORPUS_MAX_FILES = 5000  # stop saving crops once the folder holds this many
+OCR_CORPUS_KEEP_EVERY = 20  # of the uneventful readings keep one in this many (failures are always kept)
+
+# Destruction percentage box during an attack (bottom right, "XX%")
+DESTRUCTION_REGION = (2404, 1111, 2534, 1170)
+
 # Minimum resource threshold
 MIN_AMOUNT = 1700000
 
