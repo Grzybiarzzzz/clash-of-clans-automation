@@ -8,6 +8,8 @@ from typing import Set, Optional
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
+from web.origin import is_allowed_origin
+
 
 router = APIRouter()
 
@@ -94,6 +96,11 @@ def setup_state_listener(state_manager):
 @router.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
     """WebSocket endpoint for real-time state sync."""
+    # The socket can start and stop the bot, so other websites must not be able to open it
+    if not is_allowed_origin(websocket.headers.get("origin")):
+        await websocket.close(code=1008)
+        return
+
     # Refresh the loop when reconnecting after a server/test-client restart.
     manager.set_event_loop(asyncio.get_running_loop())
 
