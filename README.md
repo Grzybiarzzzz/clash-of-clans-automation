@@ -29,7 +29,7 @@ The [complete attack datasets and reproduction script](docs/metrics/README.md) m
 
 The bot reads the game screen, decides whether a base meets the selected criteria, executes a configured sequence of mouse and keyboard actions, and records attack data.
 
-- **Screen interpretation:** OpenCV template matching identifies buildings and interface elements; Tesseract OCR reads resource and trophy values.
+- **Screen interpretation:** OpenCV template matching identifies buildings and interface elements; a digit reader built for the game's outlined typeface reads resource values, and Tesseract OCR reads the remaining texts.
 - **Deployment geometry:** Builder Base boundary estimation using HSV masks, Hough lines, convex hulls, and perimeter sampling.
 - **Attack profiles:** farming, trophy pushing, deranking, Super Goblin and Super Barbarian farming, achievement targeting, Builder Base modes, and custom settings.
 - **Targeting:** building-specific detection, cluster selection, and configurable troop, spell, and hero timing.
@@ -45,7 +45,7 @@ Template-match scores express similarity to reference images; they are not calib
 
 Builder Base deployment detection was one of the hardest parts of the project for me. The Baby Dragon routine combines red-color segmentation with line detection, constructs a convex hull around likely boundary fragments, and samples positions around its perimeter. The difficult part is rejecting unrelated red objects while recovering enough of a fragmented boundary to choose useful deployment points.
 
-Other techniques include spatial clustering for spell placement, multi-frame Giant Arrow path estimation with line fitting and outlier rejection, and digit recognition with non-maximum suppression alongside Tesseract OCR. See [Computer vision: from pixels to deployment positions](docs/computer-vision.md) for the algorithms, geometric tradeoffs, fallback behavior, and two annotated Builder Base examples.
+Other techniques include spatial clustering for spell placement, multi-frame Giant Arrow path estimation with line fitting and outlier rejection, and a resource-number reader that segments digits by their outline and rejects readings whose digit grouping is implausible. See [Computer vision: from pixels to deployment positions](docs/computer-vision.md) for the algorithms, geometric tradeoffs, fallback behavior, and two annotated Builder Base examples.
 
 ## How the pieces fit together
 
@@ -106,7 +106,7 @@ Discord and Clash of Clans API settings belong in `private_config.py`. Use `priv
 
 `discord_controller.py` is a separate optional controller. Local statistics, runtime screenshots, and private configuration are excluded from version control; selected diagnostic images and aggregate statistics are included in the documentation.
 
-The web API does not implement authentication. Its default listener is restricted to this computer; it is not designed to be exposed directly to a network or the internet.
+The web API does not implement authentication. Its default listener is restricted to this computer, and requests that change something are refused when they come from a web page of another origin. It is not designed to be exposed directly to a network or the internet.
 
 ## Scope and limitations
 
@@ -123,7 +123,7 @@ The code is organised by responsibility (vision, input, attack routines, GUI pan
 | `coc_bot/app.py` | Startup: GUI, shared state, hotkeys, template caches, web server |
 | `coc_bot/loop.py` | Main loop: mode selection and dispatch to attack routines |
 | `coc_bot/runtime.py` | Session state shared by the bot thread, GUI, hotkeys, and web server |
-| `coc_bot/vision/` | Template matching, screen and button detection, OCR, Builder Base deployment zone |
+| `coc_bot/vision/` | Screen capture, template cache and matching, screen and button detection, digit reading and OCR, Builder Base deployment zone |
 | `coc_bot/attacks/` | Attack routines, their stage helpers, and shared attack steps |
 | `coc_bot/input/` | Windows `SendInput` clicks, turbo deployment, camera movement |
 | `coc_bot/humanized_input.py` | Mouse paths and input timing |
@@ -132,11 +132,11 @@ The code is organised by responsibility (vision, input, attack routines, GUI pan
 | `coc_bot/bot_state.py` | Observable state and change notifications for the web layer |
 | `coc_bot/queue_manager.py` | Mode sequencing and switching |
 | `coc_bot/visualization_overlay.py` | Detection overlays |
-| `coc_bot/` (other modules) | Profiles, storages, session records, connection recovery, Discord logging |
+| `coc_bot/` (other modules) | Profiles, storages, session records, connection recovery and interrupts, Discord logging |
 | `web/` | FastAPI, WebSocket, and Vue frontend |
 | `screenshots/reference/` | Visual matching templates |
-| `tools/` | Original calibration and diagnostic utilities |
-| `tests/` | Import, geometry, GUI composition, state, API, and WebSocket tests |
+| `tools/` | Calibration and diagnostic utilities; `tools/ocr/replay_corpus.py` measures the digit reader on saved crops |
+| `tests/` | Import, geometry, GUI composition, state, API, and WebSocket tests; digit reading, storage and attack-flow tests on synthetic frames |
 
 For linting and the tests, which run on any platform:
 
